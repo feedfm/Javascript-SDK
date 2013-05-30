@@ -1,0 +1,44 @@
+<html>
+<head>
+</head>
+<body>
+
+<button id="play">play</button>
+<button id="pause">pause</button>
+<button id="skip">skip</button>
+
+
+<script src="/js/vendor/require.js"></script>
+<script src="/js/require-config.js"></script>
+<script>
+  require([ 'lib/player', 'jquery' ], function(Player, $) {
+    
+    var player = new Player('3d3eac0db16c1f3fae94fe0d0e5698238306bfda', 'c7afd83121b0362aab0852c88095735ee2d0a810');
+
+    // remove any pre-existing client id
+    player.session._deleteCookie();
+
+    player.setBaseUrl('http://feed.localdomain');
+    player.setPlacementId(10000);
+
+    player.on('all', function() {
+      console.log('event sprung!', arguments);
+    });
+
+    $('#play').on('click', function() {
+      player.play();
+    });
+
+    $('#pause').on('click', function() {
+      player.pause();
+    });
+
+    $('#skip').on('click', function() {
+      player.skip();
+    });
+
+  });
+</script>
+
+</body>
+</html>

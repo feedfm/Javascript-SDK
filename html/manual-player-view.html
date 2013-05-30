@@ -1,0 +1,63 @@
+<html>
+<head>
+<style>
+
+#player-view .play-button.button-enabled,
+#player-view .pause-button.button-enabled {
+  color: green;
+}
+
+#player-view .play-button.button-disabled,
+#player-view .pause-button.button-disabled {
+  display: none;
+}
+
+#player-view .skip-button.button-disabled {
+  color: red;
+}
+
+#player-view .skip-button.button-enabled {
+  color: green;
+}
+
+#player-view .track, 
+#player-view .release, 
+#player-view .artist {
+  font-weight: bold;
+}
+
+</style>
+</head>
+<body>
+
+<div id="player-view">
+<div>
+  <span class='position'></span> <span class='status'></span>
+</div>
+<button class="play-button">play</button>
+<button class="pause-button">pause</button>
+<button class="skip-button">skip</button>
+</div>
+
+
+<script src="/js/vendor/require.js"></script>
+<script src="/js/require-config.js"></script>
+<script>
+  require([ 'lib/player', 'lib/player-view', 'jquery' ], function(Player, PlayerView, $) {
+    
+    var player = new Player('3d3eac0db16c1f3fae94fe0d0e5698238306bfda', 'c7afd83121b0362aab0852c88095735ee2d0a810');
+
+    // remove any pre-existing client id
+    player.session._deleteCookie();
+
+    player.setBaseUrl('http://feed.localdomain');
+    player.setPlacementId(10000);
+
+    var playerView = new PlayerView(player, 'player-view');
+
+
+  });
+</script>
+
+</body>
+</html>
