@@ -128,6 +128,7 @@
         fake: true,
         options: options,
         setVolume: function() { },
+        play: function() { },
         pause: function() { },
         resume: function() { },
         destruct: function() { }
