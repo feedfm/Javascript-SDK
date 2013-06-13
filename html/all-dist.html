@@ -16,6 +16,17 @@
 
   <script>
     mocha.setup('bdd');
+    mocha.globals([
+      '__flash__arrayToXML',
+      '__flash__argumentsToXML',
+      '__flash__objectToXML',
+      '__flash__escapeXML',
+      '__flash__toXML',
+      '__flash__request',
+      '__flash__addCallback',
+      '__flash__removeCallback'
+    ]);
+
   </script>
 
   <!-- tests -->

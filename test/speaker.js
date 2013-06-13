@@ -7,11 +7,19 @@
   describe('speaker', function() {
 
     it('exports the base API', function() {
-      assert.property(Feed.speaker, 'create');
+      assert.property(Feed, 'getSpeaker');
+
+      var speaker = Feed.getSpeaker({
+        //preferFlash: true,
+        //swfBase: '/Javascript-SDK/dist',
+        //debug: true
+      });
+      assert.property(speaker, 'create');
     });
 
     it('will create a song object, if requested to', function() {
-      var song = Feed.speaker.create('chirp.mp3', { });
+      var speaker = Feed.getSpeaker();
+      var song = speaker.create('/sample/chirp.mp3', { });
 
       assert.isNotNull(song);
 
@@ -21,7 +29,7 @@
     it('will play a song object and trigger play and finish events', function(done) {
       var playCalled = false;
 
-      var song = Feed.speaker.create('chirp.mp3', { 
+      var song = Feed.getSpeaker().create('/sample/chirp.mp3', { 
         play: function() { playCalled = true; },
         finish: function() {
           assert.equal(playCalled, true, 'should have triggered play event');
@@ -40,7 +48,7 @@
     it('will play a long song object and respond to pause events', function(done) {
       var playCalled = false;
 
-      var song = Feed.speaker.create('hutz.mp3', { 
+      var song = Feed.getSpeaker().create('hutz.mp3', { 
         play: function() { 
           playCalled = true; 
         },
@@ -66,7 +74,7 @@
     it('will play a long song object and respond to pause and unpause events', function(done) {
       var playCount = 0, pauseCount = 0;
 
-      var song = Feed.speaker.create('hutz.mp3', { 
+      var song = Feed.getSpeaker().create('hutz.mp3', { 
         play: function() { 
           playCount++;
         },

@@ -1,17 +1,17 @@
-/*global _:false, $:false, SoundManager:false */
+/*global _:false, SoundManager:false */
 
 /*
  * The speaker object encapsulates the SoundManager2 code and boils it down
  * to the following api:
  *
- *    Feed.speaker.initializeForMobile: mobile clients can only start using
+ *    speaker.initializeForMobile: mobile clients can only start using
  *      speaker when handling an 'onClick' event. This call should be made 
  *      at that time to get sound initialized while waiting for details
  *      of what to play from the server.
  *
- *    Feed.speaker.setVolume(value): set the volume from 0 (mute) - 100 (full volume)
+ *    speaker.setVolume(value): set the volume from 0 (mute) - 100 (full volume)
  *
- *    var sound = Feed.speaker.create(url, eventHandlerMap): create a new sound from the
+ *    var sound = speaker.create(url, eventHandlerMap): create a new sound from the
  *       given url and return a 'song' object that can be used to pause/play/
  *       destroy the song and receive trigger events as the song plays/stops. 
  *
@@ -37,6 +37,10 @@
  *         resume: resume playback
  *         destroy: stop playback, prevent any future playback, and free up memory
  *
+ *   This code uses the wonderful SoundManager2 api and falls back to
+ *   flash if HTML5 isn't available. Before loading this code, you can
+ *   assign 'window.Flash.base = "/path/to/my/swfs"' to tell the
+ *   SoundManager2 code where it can find the soundmanager2.swf files.
  */
 
 (function() {
@@ -115,22 +119,58 @@
       }
     }
   };
+
+  var Speaker = function(options) {
+    var speaker = this;
+
+    window.soundManager = new SoundManager();
+    window.soundManager.wmode = 'transparent';
+    window.soundManager.useHighPerformance = true;
+    window.soundManager.flashPollingInterval = 500;
+    window.soundManager.html5PollingInterval = 500;
+
+    options = options || {};
+    window.soundManager.debugMode = options.debug || false;
+    window.soundManager.debugFlash = options.debug || false;
+    window.soundManager.preferFlash = options.preferFlash || false;
+    window.soundManager.url = options.swfBase || '';
+
+    window.soundManager.onready(function() {
+      // swap in the true sound object creation function
+      speaker.createSongObject = function(songOptions) {
+        return window.soundManager.createSound(songOptions);
+      };
+
+      // create actual sound objects for sounds already queued up
+      _.each(speaker.outstandingPlays, function(sound) {
+        var playing = sound.songObject.playing;
+
+        speaker._assignSongObject(sound);
+
+        if (playing) {
+          sound.songObject.play();
+        }
+      });
+    });
+
+    window.soundManager.beginDelayedInit();
+  };
   
-  var speaker = {
+  Speaker.prototype = {
     vol: 100,
     outstandingPlays: { },
     mobileInitialized: false,
-    initializationPromise: $.Deferred(),
 
     createSongObject: function(options) { 
       // this is replaced with a real call to SoundManager upon initialization
       return { 
         fake: true,
+        playing: false,
         options: options,
         setVolume: function() { },
-        play: function() { },
-        pause: function() { },
-        resume: function() { },
+        play: function() { this.playing = true; },
+        pause: function() { this.playing = false; },
+        resume: function() { this.playing = true; },
         destruct: function() { }
       };
     },
@@ -155,12 +195,19 @@
     create: function(url, callbacks) {
       var sound = new Sound(callbacks);
       sound.id = _.uniqueId('play');
+      sound.url = url;
 
       this.outstandingPlays[sound.id] = sound;
 
+      this._assignSongObject(sound);
+
+      return sound;
+    },
+
+    _assignSongObject: function(sound) {
       sound.songObject = this.createSongObject({
         id: sound.id,
-        url: url,
+        url: sound.url,
         volume: speaker.vol,
         autoPlay: false,
         type: 'audio/mp3',
@@ -232,38 +279,19 @@
   };
 
   // add events to speaker class
-  _.extend(speaker, window.Feed.Events);
-
-  function onready() {
-    // swap in the true sound object creation function
-    speaker.createSongObject = function(options) {
-      return window.soundManager.createSound(options);
-    };
-
-    // pretend each existing clip has finished
-    _.each(speaker.outstandingPlays, function(song) {
-      song.songObject.options.onfinish.call(song.songObject);
-    });
-
-    speaker.initializationPromise.resolve();
-  }
-
-  // create instance of SoundManager
-  // (note that we hacked it so that it doesn't build itself on load)
-  window.soundManager = new SoundManager();
-  window.soundManager.url = '/swf/four';
-  window.soundManager.wmode = 'transparent';
-  window.soundManager.debugMode = false;
-  window.soundManager.debugFlash = false;
-  window.soundManager.useHighPerformance = true;
-  window.soundManager.preferFlash = false;
-  window.soundManager.flashPollingInterval = 500;
-  window.soundManager.html5PollingInterval = 500;
-  window.soundManager.onready(onready);
-
-  window.soundManager.beginDelayedInit();
+  _.extend(Speaker.prototype, window.Feed.Events);
 
   window.Feed = window.Feed || {};
-  window.Feed.speaker = speaker;
+
+  var speaker = null;
+
+  // there should only ever be a single instance of 'Speaker'
+  window.Feed.getSpeaker = function(options) {
+    if (speaker === null) {
+      speaker = new Speaker(options);
+    }
+
+    return speaker;
+  };
 
 })();

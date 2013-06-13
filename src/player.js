@@ -64,11 +64,13 @@
     }
   }
 
-  var Player = function(token, secret) {
+  var Player = function(token, secret, options) {
     this.state = {
       paused: true
       // activePlay
     };
+
+    options = options || {};
 
     _.extend(this, window.Feed.Events);
 
@@ -77,7 +79,7 @@
     this.session.on('play-completed', this._onPlayCompleted, this);
     this.session.on('plays-exhausted', this._onPlaysExhausted, this);
 
-    this.speaker = window.Feed.speaker;
+    this.speaker = window.Feed.getSpeaker(options);
     this.setMuted(this.isMuted());
 
     this.session.on('all', function() {
