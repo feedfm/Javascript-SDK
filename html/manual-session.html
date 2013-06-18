@@ -1,8 +1,26 @@
 <html>
 <head>
+  <!-- dependencies -->
+  <script src="../lib/json2.js" type="text/javascript"></script>
+  <script src="../lib/hmac-sha256.js" type="text/javascript"></script>
+  <script src="../lib/enc-base64.js" type="text/javascript"></script>
+  <script src="../lib/oauth.js" type="text/javascript"></script>
+  <script src="../lib/jquery.js" type="text/javascript"></script>
+  <script src="../lib/jquery.cookie.js" type="text/javascript"></script>
+  <script src="../lib/underscore.js" type="text/javascript"></script>
+  <script src="../lib/soundmanager2.js" type="text/javascript"></script>
+
+  <!-- code -->
+  <script src="../src/log.js" type="text/javascript"></script>
+  <script src="../src/events.js" type="text/javascript"></script>
+  <script src="../src/speaker.js" type="text/javascript"></script>
+  <script src="../src/session.js" type="text/javascript"></script>
+  <script src="../src/player.js" type="text/javascript"></script>
+  <script src="../src/player-view.js" type="text/javascript"></script>
 </head>
 <body>
 
+<button id="getStationInformation">getStationInformation</button>
 <button id="tune">tune</button>
 <button id="start">start</button>
 <button id="skip">skip</button>
@@ -13,37 +31,40 @@
 <script src="/js/vendor/require.js"></script>
 <script src="/js/require-config.js"></script>
 <script>
-  require([ 'lib/session', 'jquery' ], function(Session, $) {
-    var session = new Session();
+  var session = new Feed.Session();
 
-    session.setBaseUrl('http://feed.localdomain');
-    session.setCredentials('3d3eac0db16c1f3fae94fe0d0e5698238306bfda', 'c7afd83121b0362aab0852c88095735ee2d0a810');
-    session.setPlacementId(10000);
+  session.setBaseUrl('http://feed.localdomain');
+  session.setCredentials('3d3eac0db16c1f3fae94fe0d0e5698238306bfda', 'c7afd83121b0362aab0852c88095735ee2d0a810');
+  session.setPlacementId(10000);
 
-    session.on('all', function() {
-      console.log('event sprung!', arguments);
+  session.on('all', function() {
+    console.log('event sprung!', arguments);
+  });
+
+  $('#getStationInformation').on('click', function() {
+    session.getStationInformation(function(stationInformation) {
+      console.log('station information:', stationInformation);
     });
+  });
 
-    $('#tune').on('click', function() {
-      session.tune();
-    });
+  $('#tune').on('click', function() {
+    session.tune();
+  });
 
-    $('#start').on('click', function() {
-      session.reportPlayStarted();
-    });
+  $('#start').on('click', function() {
+    session.reportPlayStarted();
+  });
 
-    $('#skip').on('click', function() {
-      session.requestSkip();
-    });
+  $('#skip').on('click', function() {
+    session.requestSkip();
+  });
 
-    $('#invalid').on('click', function() {
-      session.requestInvalidate();
-    });
+  $('#invalid').on('click', function() {
+    session.requestInvalidate();
+  });
 
-    $('#complete').on('click', function() {
-      session.reportPlayCompleted();
-    });
-
+  $('#complete').on('click', function() {
+    session.reportPlayCompleted();
   });
 </script>
 
