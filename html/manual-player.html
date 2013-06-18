@@ -16,7 +16,7 @@
     var player = new Player('3d3eac0db16c1f3fae94fe0d0e5698238306bfda', 'c7afd83121b0362aab0852c88095735ee2d0a810');
 
     // remove any pre-existing client id
-    player.session._deleteCookie();
+    player.session._deleteStoredCid();
 
     player.setBaseUrl('http://feed.localdomain');
     player.setPlacementId(10000);

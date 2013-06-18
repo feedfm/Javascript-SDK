@@ -558,7 +558,7 @@
         };
 
         if (self.config.stationId) {
-          ajax.data.stationId = self.config.stationId;
+          ajax.data.station_id = self.config.stationId;
         }
 
         self.config.pendingRequest = {
