@@ -25,6 +25,11 @@
  *
  *  session.on('play-active', someHandler);
  *
+ *  Then you optionally ask the server for information about the station we're
+ *  tuning to:
+ *
+ *  session.getStationInformation(function(stationInfo) { console.log(stationInfo); });
+ *
  *  Then you tell the session to start maintaining a queue of 
  *  music to play:
  *
@@ -198,6 +203,48 @@
 
     // kick off request for next play
     this._requestNextPlay();
+  };
+
+  // getStationInformation
+  Session.prototype.getStationInformation = function(stationInformationCallback, delay) {
+    var self = this;
+
+    if (!this.config.placementId) {
+      throw new Error('no placementId set');
+    }
+
+    this._getClientId().then(function() {
+      var ajax = { 
+        url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId + '/station',
+        type: 'GET',
+        dataType: 'json',
+        timeout: 6000,
+        data: {
+          client_id: self.config.clientId
+        }
+      };
+
+      if (self.config.stationId) {
+        ajax.data.station_id = self.config.stationId;
+      }
+
+      // request new play from server
+      log('requesting station information from server');
+      self._signedAjax(ajax)
+        .done(_.bind(self._receiveStationInformation, self, stationInformationCallback))
+        .fail(_.bind(self._failedStationInformation, self, delay, ajax, stationInformationCallback));
+    });
+  };
+
+  Session.prototype._receiveStationInformation = function(stationInformationCallback, stationInformation) {
+    if (stationInformation && stationInformation.success && (stationInformation.stations.length > 0)) {
+      stationInformationCallback(stationInformation.stations[0]);
+    }
+  };
+
+  Session.prototype._failedStationInformation = function(delay, ajax, stationInformationCallback) {
+    delay = delay ? (delay * 2) : 500;
+    _.delay(_.bind(this.getStationInformation, this, stationInformationCallback, delay), delay);
   };
 
   Session.prototype.getActivePlay = function() { 

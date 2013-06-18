@@ -21,6 +21,11 @@
  *    player.setStationId(xxx);
  *      set station on session, which should stop any current plays
  *
+ *  Optionally get information about the station we're tuning in to:
+ *
+ *    player.getStationInformation(function(stationInfo) { console.log(stationInfo); });
+ *      ask the server about the station we're about to tune to.
+ *
  *  Then control playback with:
  *
  *    tune() - load up the first song from the current placement/station, but
@@ -175,6 +180,10 @@
 
   Player.prototype.isPaused = function() {
     return this.session.isTuned() && this.state.paused;
+  };
+
+  Player.prototype.getStationInformation = function(stationInformationCallback) {
+    return this.session.getStationInformation(stationInformationCallback);
   };
 
   Player.prototype.tune = function() {
