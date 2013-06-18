@@ -32,19 +32,71 @@ module.exports = function(grunt) {
     uglify: {
       options: {
         compress: true,
-        report: 'gzip',
+        report: 'min',
         preserveComments: 'some',
         banner: '/* A Feed.fm joint: github.com/fuzz-radio/Javascript-SDK */'
       },
 
       dist: {
         files: {
-          'dist/feed.js': [ 
+          'dist/feed-with-jquery.js': [ 
             'lib/json2.js',
             'lib/hmac-sha256.js',
             'lib/enc-base64.js',
             'lib/oauth.js',
             'lib/jquery.js',
+            'lib/jquery.cookie.js',
+            'lib/underscore.js',
+            'lib/soundmanager2.js',
+
+            'src/events.js',
+            'src/nolog.js',
+            'src/speaker.js',
+            'src/session.js',
+            'src/player.js',
+            'src/player-view.js'
+          ],
+
+          'dist/feed-with-jquery-debug.js': [ 
+            'lib/json2.js',
+            'lib/hmac-sha256.js',
+            'lib/enc-base64.js',
+            'lib/oauth.js',
+            'lib/jquery.js',
+            'lib/jquery.cookie.js',
+            'lib/underscore.js',
+            'lib/soundmanager2.js',
+
+            'src/events.js',
+            'src/log.js',
+            'src/speaker.js',
+            'src/session.js',
+            'src/player.js',
+            'src/player-view.js'
+          ],
+
+          'dist/feed-without-jquery.js': [
+            'lib/json2.js',
+            'lib/hmac-sha256.js',
+            'lib/enc-base64.js',
+            'lib/oauth.js',
+            'lib/jquery.cookie.js',
+            'lib/underscore.js',
+            'lib/soundmanager2.js',
+
+            'src/events.js',
+            'src/nolog.js',
+            'src/speaker.js',
+            'src/session.js',
+            'src/player.js',
+            'src/player-view.js'
+          ],
+
+          'dist/feed-without-jquery-debug.js': [ 
+            'lib/json2.js',
+            'lib/hmac-sha256.js',
+            'lib/enc-base64.js',
+            'lib/oauth.js',
             'lib/jquery.cookie.js',
             'lib/underscore.js',
             'lib/soundmanager2.js',

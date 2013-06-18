@@ -25,10 +25,10 @@ Definitions
 Creating a Player and Streaming Music
 =====================================
 
-1) Include the 'dist/feed.js' source in your HTML - either directly from
+1) Include the 'dist/feed-with-jquery.js' source in your HTML - either directly from
 your website or from feed.fm:
 
-<script type='application/javascript' src='//feed.fm/js/feed.js'></script>
+<script type='application/javascript' src='//feed.fm/js/feed-with-jquery.js'></script>
 
 2) Enter the minimal HTML to display the player:
 
