@@ -69,10 +69,6 @@
     this.player.on('muted', _.bind(this.renderMute, this, true));
     this.player.on('unmuted', _.bind(this.renderMute, this, false));
 
-    this.player.on('all', function() {
-      console.log('seeing', arguments);
-    });
-
     this._enableButtonsBasedOnState();
     this.displayText = this.originalDisplayText = this.$('.status').html();
     this.renderStatus();
