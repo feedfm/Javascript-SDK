@@ -103,7 +103,7 @@
       // stationId
       // clientId
       baseUrl: 'http://feed.fm',
-      formats: 'aac',
+      formats: 'mp3,aac',
       maxBitrate: 128,
       timeOffset: 0,
       current: null, /* {

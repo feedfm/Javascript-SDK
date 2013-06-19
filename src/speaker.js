@@ -37,10 +37,22 @@
  *         resume: resume playback
  *         destroy: stop playback, prevent any future playback, and free up memory
  *
- *   This code uses the wonderful SoundManager2 api and falls back to
- *   flash if HTML5 isn't available. Before loading this code, you can
- *   assign 'window.Flash.base = "/path/to/my/swfs"' to tell the
- *   SoundManager2 code where it can find the soundmanager2.swf files.
+ * You shouldn't directly create an instance of the speaker - instead use this:
+ *
+ *   var speaker = Feed.getSpeaker(options);
+ *
+ * That will make sure that all code uses the same instance of 'speaker'. 'options'
+ * is optional, and is an object with any of the following keys:
+ *
+ *   swfBase: URL pointing to directory containing 'soundmanager2.swf' file 
+ *            for flash fallback
+ *   preferFlash: if true, opt to use the flash plugin rather than the
+ *                browser's 'audio' tag
+ *   debug: if true, emit debug information to the console
+ *
+ * This code uses the wonderful SoundManager2 api and falls back to
+ * the soundmanager2 flash plugin if HTML5 audio isn't available. 
+ *
  */
 
 (function() {
