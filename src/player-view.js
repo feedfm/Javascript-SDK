@@ -79,7 +79,7 @@
 
     this.player.getStationInformation(function(station) {
       playerView.originalDisplayText = playerView.formatStation(station);
-      playerView.renderStatus(this.originalDisplayText);
+      playerView.renderStatus(playerView.originalDisplayText);
     });
 
     this.renderMute(this.player.isMuted());
