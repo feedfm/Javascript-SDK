@@ -161,6 +161,7 @@
         speaker._assignSongObject(sound);
 
         if (playing) {
+          log('playing already created sound');
           sound.songObject.play();
         }
       });
@@ -220,6 +221,8 @@
     },
 
     _assignSongObject: function(sound) {
+      var speaker = this;
+
       sound.songObject = this.createSongObject({
         id: sound.id,
         url: sound.url,
