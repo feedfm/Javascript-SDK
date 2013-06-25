@@ -229,12 +229,11 @@
     });
 
     it('will finish a play and move on to the next one', function(done) {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', { swfBase: '../dist' } );
 
       var mock = sinon.mock(player);
 
-      player.setPlacementId('10000');
-
+      player.setPlacementId('10000'); 
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
       mock.expects('trigger').withArgs('play-completed');
@@ -250,7 +249,7 @@
 
         done();
 
-      }, 600);
+      }, 1900);
     });
 
     it('will let us skip a play', function(done) {
