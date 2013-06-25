@@ -122,11 +122,11 @@
 
     // if we're not paused, then start it
     if (!this.state.paused) {
-      var sound = this.state.activePlay.sound;
+      var s = this.state.activePlay.sound;
       // flash freaks if you do this in the finish handler for a sound, so
       // schedule it for the next event loop
       setTimeout(function() {
-        sound.play();
+        s.play();
       }, 1);
     }
   };
