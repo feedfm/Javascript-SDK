@@ -500,7 +500,7 @@
     if (this.config.current && (this.config.current.play === play)) {
       log('request failed - trying again in 1 second');
 
-      this.current.retryCount++;
+      this.config.current.retryCount++;
 
       // wait a second and try again
       _.delay(_.bind(this._startPlay, this, play), 1000);
