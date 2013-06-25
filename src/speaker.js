@@ -232,44 +232,45 @@
           sound._nonRepeatTrigger('finish');
         },
         onid3: function() {
-          //log(sound.id + ": onid3");
+          log(sound.id + ': onid3');
         },
         onstop: function() {
-          //log(sound.id + ": onstop");
+          log(sound.id + ': onstop');
         },
         onsuspend: function() {
-          //log(sound.id + ": suspend");
+          log(sound.id + ': suspend');
         },
         onresume: function() {
-          //log(sound.id + ": onresume");
+          log(sound.id + ': onresume');
           sound._nonRepeatTrigger('play');
         },
         onplay: function() {
-          //log(sound.id + ": onplay");
+          log(sound.id + ': onplay');
           sound._nonRepeatTrigger('play');
         },
         onpause: function() {
-          //log(sound.id + ": pause");
+          log(sound.id + ': pause');
           sound._nonRepeatTrigger('pause');
         },
         onload: function(success) {
-          //log(sound.id + ": onload", success);
+          log(sound.id + ': onload', success);
           if (!success) {
+           log(sound.id + ' failure!');
             sound._nonRepeatTrigger('finish');
             // consider this a failure
             sound.destroy();
           }
         },
         ondataerror: function() {
-          //log(sound.id + ": ondataerror");
+          log(sound.id + ': ondataerror');
           sound._nonRepeatTrigger('finish');
           sound.destroy();
         },
         onconnect: function() {
-          //log(sound.id + ": onconnect" );
+          log(sound.id + ': onconnect' );
         },
         onbufferchange: function() {
-          //log(sound.id + ": onbufferchange");
+          log(sound.id + ': onbufferchange');
         }
       });
 
