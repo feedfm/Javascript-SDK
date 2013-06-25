@@ -193,6 +193,8 @@
   };
 
   Player.prototype.play = function() {
+    this.speaker.initializeForMobile();
+
     if (!this.session.isTuned()) {
       // not currently playing music
       this.state.paused = false;

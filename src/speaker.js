@@ -7,7 +7,7 @@
  *    speaker.initializeForMobile: mobile clients can only start using
  *      speaker when handling an 'onClick' event. This call should be made 
  *      at that time to get sound initialized while waiting for details
- *      of what to play from the server.
+ *      of what to play from the server. 
  *
  *    speaker.setVolume(value): set the volume from 0 (mute) - 100 (full volume)
  *
@@ -49,6 +49,7 @@
  *   preferFlash: if true, opt to use the flash plugin rather than the
  *                browser's 'audio' tag
  *   debug: if true, emit debug information to the console
+ *   silence: URL to an mp3 with no sound, for initializing mobile clients
  *
  * This code uses the wonderful SoundManager2 api and falls back to
  * the soundmanager2 flash plugin if HTML5 audio isn't available. 
@@ -165,6 +166,8 @@
       });
     });
 
+    this.silence = options.silence || '/sample/5seconds.mp3';
+
     window.soundManager.beginDelayedInit();
   };
   
@@ -193,7 +196,7 @@
         // while we ping the server for the song we want
         var sound = this.createSongObject({
           id: 'silence',
-          url: '/sample/5seconds.mp3',
+          url: this.silence,
           volume: 0,
           autoPlay: true,
           type: 'audio/mp3'
