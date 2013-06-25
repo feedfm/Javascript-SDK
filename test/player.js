@@ -3,7 +3,7 @@
 
 (function() {
   var assert = chai.assert,
-      speakerOptions = { swfBase: '../dist', debug: true };
+      speakerOptions = { swfBase: '../dist' };
 
   describe('player', function() {
     var server, requests, plays;
@@ -150,7 +150,7 @@
 
       setTimeout(function() {
         player.pause();
-      }, 100);
+      }, 300);
 
       setTimeout(function() {
         mock.verify();
@@ -159,7 +159,7 @@
 
         done();
 
-      }, 200);
+      }, 400);
     });
 
     it('will allow us to resume a play', function(done) {
@@ -180,11 +180,11 @@
 
       setTimeout(function() {
         player.pause();
-      }, 100);
+      }, 200);
 
       setTimeout(function() {
         player.play();
-      }, 150);
+      }, 350);
 
       setTimeout(function() {
         mock.verify();
@@ -198,49 +198,60 @@
 
     it('will allow us to pause, resume, and them pause and resume a play again', function(done) {
       var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      var mock = sinon.mock(player);
-
       player.setPlacementId('10000');
 
       plays.push(validPlay());
+      plays.push(validPlay());
 
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-paused');
-      mock.expects('trigger').withArgs('play-resumed');
-      mock.expects('trigger').withArgs('play-paused');
-      mock.expects('trigger').withArgs('play-resumed');
+      player.on('play-completed', function() {
+        // this has to be done after we've loaded the swf, or we have timing issues
+        var mock = sinon.mock(player);
+
+        mock.expects('trigger').withArgs('play-active');
+        mock.expects('trigger').withArgs('play-started');
+        mock.expects('trigger').withArgs('play-paused');
+        mock.expects('trigger').withArgs('play-resumed');
+        mock.expects('trigger').withArgs('play-paused');
+        mock.expects('trigger').withArgs('play-resumed');
+
+        player.play();
+
+        setTimeout(function() {
+          console.log('about to pause');
+          player.pause();
+        }, 200);
+
+        setTimeout(function() {
+          console.log('about to play');
+          player.play();
+        }, 250);
+
+        setTimeout(function() {
+          console.log('about to pause again');
+          player.pause();
+        }, 400);
+
+        setTimeout(function() {
+          console.log('about to play again');
+          player.play();
+        }, 450);
+
+        setTimeout(function() {
+          console.log('verifying');
+          mock.verify();
+
+          player.destroy();
+
+          done();
+
+        }, 500);
+      });
 
       player.play();
 
-      setTimeout(function() {
-        player.pause();
-      }, 100);
-
-      setTimeout(function() {
-        player.play();
-      }, 150);
-
-      setTimeout(function() {
-        player.pause();
-      }, 200);
-
-      setTimeout(function() {
-        player.play();
-      }, 250);
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        done();
-
-      }, 300);
     });
 
-    it.only('will finish a play and move on to the next one', function(done) {
+    it('will finish a play and move on to the next one', function(done) {
       var player = new Feed.Player('token', 'secret', speakerOptions);
 
       var mock = sinon.mock(player);
@@ -324,11 +335,11 @@
 
       setTimeout(function() {
         player.pause();
-      }, 100);
+      }, 300);
 
       setTimeout(function() {
         player.skip();
-      }, 150);
+      }, 350);
 
       setTimeout(function() {
         mock.verify();
@@ -337,7 +348,7 @@
 
         done();
 
-      }, 200);
+      }, 400);
     });
     var counter = 0;
     function validPlay(id) {
