@@ -51,8 +51,6 @@
   var log = Feed.log;
 
   var PlayerView = function(id, player) {
-    var playerView = this;
-
     this.id = id;
     this.alertId = null;
     this.durationId = null;
