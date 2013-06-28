@@ -108,18 +108,26 @@
 
   Player.prototype._onPlayActive = function(play) {
     // create a new sound object
+    var sound = this.speaker.create(play.audio_file.url, {
+      play: _.bind(this._onSoundPlay, this),
+      pause: _.bind(this._onSoundPause, this),
+      finish:  _.bind(this._onSoundFinish, this)
+    });
+
     this.state.activePlay = {
       id: play.id,
-      sound: this.speaker.create(play.audio_file.url, {
-        play: _.bind(this._onSoundPlay, this),
-        pause: _.bind(this._onSoundPause, this),
-        finish:  _.bind(this._onSoundFinish, this)
-      }),
+      sound: sound,
       playCount: 0
     };
+
     // if we're not paused, then start it
     if (!this.state.paused) {
-      this.state.activePlay.sound.play();
+      var s = this.state.activePlay.sound;
+      // flash freaks if you do this in the finish handler for a sound, so
+      // schedule it for the next event loop
+      setTimeout(function() {
+        s.play();
+      }, 1);
     }
   };
 
@@ -193,6 +201,8 @@
   };
 
   Player.prototype.play = function() {
+    this.speaker.initializeForMobile();
+
     if (!this.session.isTuned()) {
       // not currently playing music
       this.state.paused = false;

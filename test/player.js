@@ -2,7 +2,8 @@
 /*jshint camelcase:false */
 
 (function() {
-  var assert = chai.assert;
+  var assert = chai.assert,
+      speakerOptions = { swfBase: '../dist' };
 
   describe('player', function() {
     var server, requests, plays;
@@ -39,10 +40,13 @@
         console.log('play');
         requests.push('play');
 
-        var rp = validPlay();
-        plays.push(rp.play);
+        var rp = plays.pop();
 
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, play: rp }));
+        if (rp) {
+          response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, play: rp }));
+        } else {
+          response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 9, message: 'no more plays' } }));
+        }
       });
 
       server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
@@ -81,7 +85,7 @@
     });
 
     it('exports the base API', function() {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', speakerOptions);
 
       assert.property(player, 'play');
       assert.property(player, 'pause');
@@ -93,7 +97,7 @@
     });
 
     it('requires credentials and placement for a play call or will throw', function() {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', speakerOptions);
 
       try {
         player.play();
@@ -105,11 +109,13 @@
     });
 
     it('will start tuning when play is called', function(done) {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', speakerOptions);
 
       var mock = sinon.mock(player);
 
       player.setPlacementId('10000');
+
+      plays.push(validPlay());
 
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
@@ -128,11 +134,13 @@
 
 
     it('will allow us to pause a play', function(done) {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', speakerOptions);
 
       var mock = sinon.mock(player);
 
       player.setPlacementId('10000');
+
+      plays.push(validPlay());
 
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
@@ -142,7 +150,7 @@
 
       setTimeout(function() {
         player.pause();
-      }, 100);
+      }, 300);
 
       setTimeout(function() {
         mock.verify();
@@ -151,15 +159,17 @@
 
         done();
 
-      }, 200);
+      }, 400);
     });
 
     it('will allow us to resume a play', function(done) {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', speakerOptions);
 
       var mock = sinon.mock(player);
 
       player.setPlacementId('10000');
+
+      plays.push(validPlay());
 
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
@@ -170,11 +180,11 @@
 
       setTimeout(function() {
         player.pause();
-      }, 100);
+      }, 200);
 
       setTimeout(function() {
         player.play();
-      }, 150);
+      }, 350);
 
       setTimeout(function() {
         mock.verify();
@@ -183,63 +193,81 @@
 
         done();
 
-      }, 200);
+      }, 500);
     });
 
     it('will allow us to pause, resume, and them pause and resume a play again', function(done) {
-      var player = new Feed.Player('token', 'secret');
-
-      var mock = sinon.mock(player);
-
+      var player = new Feed.Player('token', 'secret', speakerOptions);
       player.setPlacementId('10000');
 
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-paused');
-      mock.expects('trigger').withArgs('play-resumed');
-      mock.expects('trigger').withArgs('play-paused');
-      mock.expects('trigger').withArgs('play-resumed');
+      plays.push(validPlay());
+      plays.push(validPlay());
+
+      player.on('play-completed', function() {
+        // this has to be done after we've loaded the swf, or we have timing issues
+        var mock = sinon.mock(player);
+
+        mock.expects('trigger').withArgs('play-active');
+        mock.expects('trigger').withArgs('play-started');
+        mock.expects('trigger').withArgs('play-paused');
+        mock.expects('trigger').withArgs('play-resumed');
+        mock.expects('trigger').withArgs('play-paused');
+        mock.expects('trigger').withArgs('play-resumed');
+
+        player.play();
+
+        setTimeout(function() {
+          console.log('about to pause');
+          player.pause();
+        }, 200);
+
+        setTimeout(function() {
+          console.log('about to play');
+          player.play();
+        }, 250);
+
+        setTimeout(function() {
+          console.log('about to pause again');
+          player.pause();
+        }, 400);
+
+        setTimeout(function() {
+          console.log('about to play again');
+          player.play();
+        }, 450);
+
+        setTimeout(function() {
+          console.log('verifying');
+          mock.verify();
+
+          player.destroy();
+
+          done();
+
+        }, 500);
+      });
 
       player.play();
 
-      setTimeout(function() {
-        player.pause();
-      }, 100);
-
-      setTimeout(function() {
-        player.play();
-      }, 150);
-
-      setTimeout(function() {
-        player.pause();
-      }, 200);
-
-      setTimeout(function() {
-        player.play();
-      }, 250);
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        done();
-
-      }, 300);
     });
 
     it('will finish a play and move on to the next one', function(done) {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', speakerOptions);
 
       var mock = sinon.mock(player);
 
-      player.setPlacementId('10000');
+      // queue up two plays for the test
+      plays.push(validPlay());
+      plays.push(validPlay());
 
+      player.setPlacementId('10000'); 
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
       mock.expects('trigger').withArgs('play-completed');
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
+      mock.expects('trigger').withArgs('play-completed');
+      mock.expects('trigger').withArgs('plays-exhausted');
 
       player.play();
 
@@ -250,15 +278,18 @@
 
         done();
 
-      }, 600);
+      }, 1900);
     });
 
     it('will let us skip a play', function(done) {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', speakerOptions);
 
       var mock = sinon.mock(player);
 
       player.setPlacementId('10000');
+
+      plays.push(validPlay());
+      plays.push(validPlay());
 
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
@@ -284,9 +315,12 @@
     });
 
     it('if we skip a play that is being paused, it will start up the next play immediately', function(done) {
-      var player = new Feed.Player('token', 'secret');
+      var player = new Feed.Player('token', 'secret', speakerOptions);
 
       var mock = sinon.mock(player);
+
+      plays.push(validPlay());
+      plays.push(validPlay());
 
       player.setPlacementId('10000');
 
@@ -301,11 +335,11 @@
 
       setTimeout(function() {
         player.pause();
-      }, 100);
+      }, 300);
 
       setTimeout(function() {
         player.skip();
-      }, 150);
+      }, 350);
 
       setTimeout(function() {
         mock.verify();
@@ -314,7 +348,7 @@
 
         done();
 
-      }, 200);
+      }, 400);
     });
     var counter = 0;
     function validPlay(id) {

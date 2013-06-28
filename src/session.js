@@ -101,7 +101,7 @@
       // stationId
       // clientId
       baseUrl: 'http://feed.fm',
-      formats: 'aac',
+      formats: 'mp3,aac',
       maxBitrate: 128,
       timeOffset: 0,
       current: null, /* {
@@ -501,7 +501,7 @@
     if (this.config.current && (this.config.current.play === play)) {
       log('request failed - trying again in 1 second');
 
-      this.current.retryCount++;
+      this.config.current.retryCount++;
 
       // wait a second and try again
       _.delay(_.bind(this._startPlay, this, play), 1000);

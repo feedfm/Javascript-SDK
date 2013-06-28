@@ -51,6 +51,8 @@
   var log = Feed.log;
 
   var PlayerView = function(id, player) {
+    var playerView = this;
+
     this.id = id;
     this.alertId = null;
     this.durationId = null;
@@ -76,6 +78,11 @@
     this._enableButtonsBasedOnState();
     this.displayText = this.originalDisplayText = this.$('.status').html();
     this.renderStatus();
+
+    this.player.getStationInformation(function(station) {
+      playerView.originalDisplayText = playerView.formatStation(station);
+      playerView.renderStatus(playerView.originalDisplayText);
+    });
 
     this.renderMute(this.player.isMuted());
 

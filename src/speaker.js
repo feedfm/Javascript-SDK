@@ -7,7 +7,7 @@
  *    speaker.initializeForMobile: mobile clients can only start using
  *      speaker when handling an 'onClick' event. This call should be made 
  *      at that time to get sound initialized while waiting for details
- *      of what to play from the server.
+ *      of what to play from the server. 
  *
  *    speaker.setVolume(value): set the volume from 0 (mute) - 100 (full volume)
  *
@@ -37,10 +37,23 @@
  *         resume: resume playback
  *         destroy: stop playback, prevent any future playback, and free up memory
  *
- *   This code uses the wonderful SoundManager2 api and falls back to
- *   flash if HTML5 isn't available. Before loading this code, you can
- *   assign 'window.Flash.base = "/path/to/my/swfs"' to tell the
- *   SoundManager2 code where it can find the soundmanager2.swf files.
+ * You shouldn't directly create an instance of the speaker - instead use this:
+ *
+ *   var speaker = Feed.getSpeaker(options);
+ *
+ * That will make sure that all code uses the same instance of 'speaker'. 'options'
+ * is optional, and is an object with any of the following keys:
+ *
+ *   swfBase: URL pointing to directory containing 'soundmanager2.swf' file 
+ *            for flash fallback
+ *   preferFlash: if true, opt to use the flash plugin rather than the
+ *                browser's 'audio' tag
+ *   debug: if true, emit debug information to the console
+ *   silence: URL to an mp3 with no sound, for initializing mobile clients
+ *
+ * This code uses the wonderful SoundManager2 api and falls back to
+ * the soundmanager2 flash plugin if HTML5 audio isn't available. 
+ *
  */
 
 (function() {
@@ -148,10 +161,13 @@
         speaker._assignSongObject(sound);
 
         if (playing) {
+          log('playing already created sound');
           sound.songObject.play();
         }
       });
     });
+
+    this.silence = options.silence || '/sample/5seconds.mp3';
 
     window.soundManager.beginDelayedInit();
   };
@@ -181,7 +197,7 @@
         // while we ping the server for the song we want
         var sound = this.createSongObject({
           id: 'silence',
-          url: '/sample/5seconds.mp3',
+          url: this.silence,
           volume: 0,
           autoPlay: true,
           type: 'audio/mp3'
@@ -205,6 +221,8 @@
     },
 
     _assignSongObject: function(sound) {
+      var speaker = this;
+
       sound.songObject = this.createSongObject({
         id: sound.id,
         url: sound.url,
@@ -217,44 +235,45 @@
           sound._nonRepeatTrigger('finish');
         },
         onid3: function() {
-          //log(sound.id + ": onid3");
+          log(sound.id + ': onid3');
         },
         onstop: function() {
-          //log(sound.id + ": onstop");
+          log(sound.id + ': onstop');
         },
         onsuspend: function() {
-          //log(sound.id + ": suspend");
+          log(sound.id + ': suspend');
         },
         onresume: function() {
-          //log(sound.id + ": onresume");
+          log(sound.id + ': onresume');
           sound._nonRepeatTrigger('play');
         },
         onplay: function() {
-          //log(sound.id + ": onplay");
+          log(sound.id + ': onplay');
           sound._nonRepeatTrigger('play');
         },
         onpause: function() {
-          //log(sound.id + ": pause");
+          log(sound.id + ': pause');
           sound._nonRepeatTrigger('pause');
         },
         onload: function(success) {
-          //log(sound.id + ": onload", success);
+          log(sound.id + ': onload', success);
           if (!success) {
+           log(sound.id + ' failure!');
             sound._nonRepeatTrigger('finish');
             // consider this a failure
             sound.destroy();
           }
         },
         ondataerror: function() {
-          //log(sound.id + ": ondataerror");
+          log(sound.id + ': ondataerror');
           sound._nonRepeatTrigger('finish');
           sound.destroy();
         },
         onconnect: function() {
-          //log(sound.id + ": onconnect" );
+          log(sound.id + ': onconnect' );
         },
         onbufferchange: function() {
-          //log(sound.id + ": onbufferchange");
+          log(sound.id + ': onbufferchange');
         }
       });
 
