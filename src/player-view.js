@@ -79,11 +79,24 @@
 
     this.renderMute(this.player.isMuted());
 
+    this.$('.status').on('click', _.bind(this._onStatusClick, this));
     this.$('.play-button').on('click', _.bind(this._onPlayButtonClick, this));
     this.$('.pause-button').on('click', _.bind(this._onPauseButtonClick, this));
     this.$('.skip-button').on('click', _.bind(this._onSkipButtonClick, this));
     this.$('.mute-button').on('click', _.bind(this._onMuteButtonClick, this));
     this.$('.un-mute-button').on('click', _.bind(this._onUnMuteButtonClick, this));
+  };
+
+  PlayerView.prototype._onStatusClick = function() {
+    var state = this.player.getCurrentState();
+
+    if (state === 'playing') {
+      this._onPauseButtonClick();
+
+    } else {
+      this._onPlayButtonClick();
+
+    }
   };
 
   PlayerView.prototype._onMuteButtonClick = function() {
