@@ -20,7 +20,6 @@
 </head>
 <body>
 
-<button id="getStationInformation">getStationInformation</button>
 <button id="tune">tune</button>
 <button id="start">start</button>
 <button id="skip">skip</button>
@@ -39,12 +38,6 @@
 
   session.on('all', function() {
     console.log('event sprung!', arguments);
-  });
-
-  $('#getStationInformation').on('click', function() {
-    session.getStationInformation(function(stationInformation) {
-      console.log('station information:', stationInformation);
-    });
   });
 
   $('#tune').on('click', function() {

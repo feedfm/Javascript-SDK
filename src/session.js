@@ -10,6 +10,10 @@
  *
  *  var session = new Feed.Session(token, secret);
  *
+ *  Then you attach event listeners to the session:
+ *
+ *  session.on('play-active', someHandler);
+ *
  *  Then you need to set a placement and optionally a station:
  *
  *  session.setPlacementId(placementId);
@@ -21,15 +25,6 @@
  *  will be marked as 'completed' and a new song will be requested from
  *  the server.
  *
- *  Then you attach event listeners to the session:
- *
- *  session.on('play-active', someHandler);
- *
- *  Then you optionally ask the server for information about the station we're
- *  tuning to:
- *
- *  session.getStationInformation(function(stationInfo) { console.log(stationInfo); });
- *
  *  Then you tell the session to start maintaining a queue of 
  *  music to play:
  *
@@ -37,6 +32,9 @@
  *
  *  The session will now emit the following events:
  *
+ *  placement: after we tune in to a placement or station,
+ *    this passes on information about the placement we
+ *    tuned in to.
  *  play-active: when the session has a play ready for playback
  *  play-started: when the active play has started playback (as
  *    a result of a call to reportPlayStarted)
@@ -193,6 +191,9 @@
       throw new Error('no placementId set');
     }
 
+    // pull information in about the station
+    this._getPlacementInformation();
+
     // abort any pending requests or plays
     this.config.pendingRequest = null;
     this.config.pendingPlay = null;
@@ -205,17 +206,21 @@
     this._requestNextPlay();
   };
 
-  // getStationInformation
-  Session.prototype.getStationInformation = function(stationInformationCallback, delay) {
+  // _getPlacementInformation
+  Session.prototype._getPlacementInformation = function(delay) {
     var self = this;
 
     if (!this.config.placementId) {
       throw new Error('no placementId set');
     }
 
+    function onReceipt(placement) {
+      self.trigger('placement', placement);
+    }
+
     this._getClientId().then(function() {
       var ajax = { 
-        url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId + '/station',
+        url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId,
         type: 'GET',
         dataType: 'json',
         timeout: 6000,
@@ -224,27 +229,23 @@
         }
       };
 
-      if (self.config.stationId) {
-        ajax.data.station_id = self.config.stationId;
-      }
-
-      // request new play from server
-      log('requesting station information from server');
+      // request placement info from server
+      log('requesting placement information from server');
       self._signedAjax(ajax)
-        .done(_.bind(self._receiveStationInformation, self, stationInformationCallback))
-        .fail(_.bind(self._failedStationInformation, self, delay, ajax, stationInformationCallback));
+        .done(_.bind(self._receivePlacementInformation, self, onReceipt))
+        .fail(_.bind(self._failedPlacementInformation, self, delay, ajax, onReceipt));
     });
   };
 
-  Session.prototype._receiveStationInformation = function(stationInformationCallback, stationInformation) {
-    if (stationInformation && stationInformation.success && (stationInformation.stations.length > 0)) {
-      stationInformationCallback(stationInformation.stations[0]);
+  Session.prototype._receivePlacementInformation = function(placementInformationCallback, placementInformation) {
+    if (placementInformation && placementInformation.success && placementInformation.placement) {
+      placementInformationCallback(placementInformation.placement);
     }
   };
 
-  Session.prototype._failedStationInformation = function(delay, ajax, stationInformationCallback) {
+  Session.prototype._failedPlacementInformation = function(delay, ajax, placementInformationCallback) {
     delay = delay ? (delay * 2) : 500;
-    _.delay(_.bind(this.getStationInformation, this, stationInformationCallback, delay), delay);
+    _.delay(_.bind(this.getPlacementInformation, this, placementInformationCallback, delay), delay);
   };
 
   Session.prototype.getActivePlay = function() { 

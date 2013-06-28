@@ -1,4 +1,4 @@
-/*global _:false, $:false */
+/*global _:false, $:false, Feed:true */
 /*jshint camelcase:false */
 
 /*
@@ -48,6 +48,8 @@
  */
 
 (function() {
+  var log = Feed.log;
+
   var PlayerView = function(id, player) {
     this.id = id;
     this.alertId = null;
@@ -57,7 +59,7 @@
     this.$el = $('#' + id);
     this.player = player;
 
-    
+    this.player.on('placement', this._onPlacement, this);
     this.player.on('play-started', this._onPlayStarted, this);
     this.player.on('play-paused', this._onPlayPaused, this);
     this.player.on('play-resumed', this._onPlayResumed, this);
@@ -68,7 +70,7 @@
     this.player.on('unmuted', _.bind(this.renderMute, this, false));
 
     this.player.on('all', function() {
-      console.log('seeing', arguments);
+      log('seeing', arguments);
     });
 
     this._enableButtonsBasedOnState();
@@ -118,7 +120,21 @@
     return this.$el.find(arg);
   };
 
+  PlayerView.prototype._onPlacement = function(placement) {
+    if (!this._originalDisplayText) {
+      this.originalDisplayText = this.formatPlacement(placement);
+
+      this.renderStatus(this.originalDisplayText);
+    }
+  };
+
+  PlayerView.prototype.formatPlacement = function(placement) {
+    return 'Tune in to <em class=\'placement\'>' + placement.name + '</em>';
+  };
+
   PlayerView.prototype._onPlayStarted = function(play) {
+    this.startedPlayback = true;
+
     this.renderStatus(this.formatPlay(play));
     this._enableButtonsBasedOnState();
     this._enablePositionTracker();
@@ -173,10 +189,6 @@
     return '<span class=\'track\'>' + play.audio_file.track.title +
        '</span> by <span class=\'artist\'>' + play.audio_file.artist.name +
        '</span> on <span class=\'release\'>' + play.audio_file.release.title + '</span>';
-  };
-
-  PlayerView.prototype.formatStation = function(station) {
-    return '<span class=\'station\'>' + station.name + '</span>';
   };
 
   PlayerView.prototype.renderStatus = function(displayText) {
