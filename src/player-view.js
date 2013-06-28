@@ -79,11 +79,6 @@
     this.displayText = this.originalDisplayText = this.$('.status').html();
     this.renderStatus();
 
-    this.player.getStationInformation(function(station) {
-      playerView.originalDisplayText = playerView.formatStation(station);
-      playerView.renderStatus(playerView.originalDisplayText);
-    });
-
     this.renderMute(this.player.isMuted());
 
     this.$('.play-button').on('click', _.bind(this._onPlayButtonClick, this));

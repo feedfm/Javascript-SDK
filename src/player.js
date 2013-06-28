@@ -21,14 +21,9 @@
  *    player.setStationId(xxx);
  *      set station on session, which should stop any current plays
  *
- *  Optionally get information about the station we're tuning in to:
- *
- *    player.getStationInformation(function(stationInfo) { console.log(stationInfo); });
- *      ask the server about the station we're about to tune to.
- *
  *  Then control playback with:
  *
- *    tune() - load up the first song from the current placement/station, but
+ *    tune() - load up information about the current placement, but
  *      don't actually start playing it.
  *    play() - start playing the current placement/station or resume the current song
  *    pause() - pause playback of the current song, if any
@@ -42,6 +37,7 @@
  *    idle - if !session.hasActivePlayStarted()
  *
  *  session events are proxied via the play object:
+ *    placement - information about the placement we just tuned to
  *    play-active - this play is queued up and ready for playback
  *    play-started - this play has begun playback
  *    play-completed  - this play has completed playback
