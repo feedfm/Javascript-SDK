@@ -27,6 +27,9 @@
  *      don't actually start playing it.
  *    play() - start playing the current placement/station or resume the current song
  *    pause() - pause playback of the current song, if any
+ *    like() - tell the server we like this song
+ *    unlike() - tell the server to remove the 'like' for this song
+ *    dislike() - tell the server we dislike this song, and skip to the next one
  *    skip() - request to skip the current song
  *
  *  player has a current state that can be queried with 'getCurrentState()':
@@ -47,6 +50,9 @@
  *  and the play object adds some new events:
  *    play-paused - the currently playing song was paused
  *    play-resumed - the currently playing song was resumed
+ *    play-liked - the currently playing song was liked
+ *    play-unliked - the currently playing song had it's 'like' status removed
+ *    play-disliked - the currently playing song was disliked
  *
  *  Some misc methods:
  *
@@ -146,6 +152,18 @@
     this.trigger('play-resumed', this.session.getActivePlay());
   };
 
+  Player.prototype.getActivePlay = function() {
+    return this.session.getActivePlay();
+  };
+
+  Player.prototype.hasActivePlayStarted = function() {
+    return this.session.hasActivePlayStarted();
+  };
+
+  Player.prototype.getActivePlacement = function() {
+    return this.session.getActivePlacement();
+  };
+
   Player.prototype._onSoundPause = function() {
     // sound paused playback
     if (!this.state.activePlay) {
@@ -205,7 +223,7 @@
 
       return this.session.tune();
 
-    } else if (this.session.getActivePlay && this.state.activePlay && this.state.paused) {
+    } else if (this.session.getActivePlay() && this.state.activePlay && this.state.paused) {
       // resume playback of song
       if (this.state.activePlay.playCount > 1) {
         this.state.activePlay.sound.resume();
@@ -228,6 +246,38 @@
 
     // pause current song
     this.state.activePlay.sound.pause();
+  };
+
+  Player.prototype.like = function() {
+    if (!this.session.hasActivePlayStarted()) {
+      return;
+    }
+
+    this.session.likePlay(this.state.activePlay.id);
+
+    this.trigger('play-liked');
+  };
+
+  Player.prototype.unlike = function() {
+    if (!this.session.hasActivePlayStarted()) {
+      return;
+    }
+
+    this.session.unlikePlay(this.state.activePlay.id);
+
+    this.trigger('play-unliked');
+  };
+
+  Player.prototype.dislike = function() {
+    if (!this.session.hasActivePlayStarted()) {
+      return;
+    }
+
+    this.session.dislikePlay(this.state.activePlay.id);
+
+    this.trigger('play-disliked');
+
+    this.skip();
   };
 
   Player.prototype.skip = function() {

@@ -78,6 +78,10 @@
  *  session.maybeCanSkip(): returns true if there is a song being played now and 
  *    we believe we can skip it (this might not hold true, and the server can
  *    override this)
+ *
+ *  Other misc calls:
+ *  
+ *  session.likePlay(), session.unlikePlay(), session.dislikePlay(): like handling
  */
 
 (function() {
@@ -98,6 +102,7 @@
       // token
       // secret
       // placementId
+      // placement
       // stationId
       // clientId
       baseUrl: 'http://feed.fm',
@@ -214,10 +219,6 @@
       throw new Error('no placementId set');
     }
 
-    function onReceipt(placement) {
-      self.trigger('placement', placement);
-    }
-
     this._getClientId().then(function() {
       var ajax = { 
         url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId,
@@ -232,20 +233,30 @@
       // request placement info from server
       log('requesting placement information from server');
       self._signedAjax(ajax)
-        .done(_.bind(self._receivePlacementInformation, self, onReceipt))
-        .fail(_.bind(self._failedPlacementInformation, self, delay, ajax, onReceipt));
+        .done(_.bind(self._receivePlacementInformation, self))
+        .fail(_.bind(self._failedPlacementInformation, self, delay, ajax));
     });
   };
 
-  Session.prototype._receivePlacementInformation = function(placementInformationCallback, placementInformation) {
+  Session.prototype._receivePlacementInformation = function(placementInformation) {
     if (placementInformation && placementInformation.success && placementInformation.placement) {
-      placementInformationCallback(placementInformation.placement);
+      this.config.placement = placementInformation.placement;
+
+      this.trigger('placement', placementInformation.placement);
     }
   };
 
-  Session.prototype._failedPlacementInformation = function(delay, ajax, placementInformationCallback) {
+  Session.prototype._failedPlacementInformation = function(delay) {
     delay = delay ? (delay * 2) : 500;
-    _.delay(_.bind(this.getPlacementInformation, this, placementInformationCallback, delay), delay);
+    _.delay(_.bind(this.getPlacementInformation, this, delay), delay);
+  };
+
+  Session.prototype.getActivePlacement = function() {
+    if (this.config.placement) {
+      return this.config.placement;
+    } else {
+      return null;
+    }
   };
 
   Session.prototype.getActivePlay = function() { 
@@ -795,6 +806,39 @@
 
   Session.prototype.maybeCanSkip = function() {
     return this.config.current && this.config.current.started && this.config.current.canSkip;
+  };
+
+  Session.prototype.likePlay = function(playId) {
+    this._signedAjax({
+      url: this.config.baseUrl + '/api/v2/play/' + playId + '/like',
+      type: 'POST'
+    });
+
+    if (this.config.current && (this.config.current.play.id === playId)) {
+      this.config.current.play.liked = true;
+    }
+  };
+
+  Session.prototype.unlikePlay = function(playId) {
+    this._signedAjax({
+      url: this.config.baseUrl + '/api/v2/play/' + playId + '/like',
+      type: 'DELETE'
+    });
+
+    if (this.config.current && (this.config.current.play.id === playId)) {
+      delete this.config.current.play['liked'];
+    }
+  };
+
+  Session.prototype.dislikePlay = function(playId) {
+    this._signedAjax({
+      url: this.config.baseUrl + '/api/v2/play/' + playId + '/dislike',
+      type: 'POST'
+    });
+
+    if (this.config.current && (this.config.current.play.id === playId)) {
+      this.config.current.play.liked = false;
+    }
   };
 
   function supports_html5_storage() {
