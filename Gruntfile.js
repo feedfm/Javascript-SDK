@@ -108,13 +108,16 @@ module.exports = function(grunt) {
 
     uglify: {
       options: {
-        compress: true,
+        compress: false,
         report: 'min',
         preserveComments: 'some',
         banner: '/* A Feed.fm joint: github.com/fuzz-radio/Javascript-SDK */'
       },
 
       dist: {
+        options: {
+          compress: true
+        },
         files: {
           'dist/feed-with-jquery.js': [ 
             'lib/json2.js',
