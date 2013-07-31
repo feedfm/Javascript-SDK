@@ -83,6 +83,7 @@
 
     this.session = new window.Feed.Session(token, secret);
     this.session.on('play-active', this._onPlayActive, this);
+    this.session.on('play-started', this._onPlayStarted, this);
     this.session.on('play-completed', this._onPlayCompleted, this);
     this.session.on('plays-exhausted', this._onPlaysExhausted, this);
 
@@ -119,7 +120,9 @@
     this.state.activePlay = {
       id: play.id,
       sound: sound,
-      playCount: 0
+      playCount: 0,
+      soundCompleted: false,
+      playStarted: false
     };
 
     // if we're not paused, then start it
@@ -180,7 +183,33 @@
       throw new Error('got an onSoundFinished, but no active play?');
     }
 
+    this.state.activePlay.soundCompleted = true;
+
+    if (!this.state.activePlay.playStarted) {
+      // if the song failed before we told the server about it, wait
+      // until word from the server that we started before we say
+      // that we completed the song
+      return;
+    }
+
     this.session.reportPlayCompleted();
+  };
+
+  Player.prototype._onPlayStarted = function() {
+    var session = this.session;
+
+    if (!this.state.activePlay) {
+      throw new Error('got onPlayStarted, but no active play!');
+    }
+
+    this.state.activePlay.playStarted = true;
+
+    if (this.state.activePlay.soundCompleted) {
+      // the sound completed before the session announced the play started
+      _.defer(function() {
+        session.reportPlayCompleted();
+      });
+    }
   };
 
   Player.prototype._onPlayCompleted = function() {

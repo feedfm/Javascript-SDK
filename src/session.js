@@ -219,6 +219,13 @@
       throw new Error('no placementId set');
     }
 
+    if (this.config.placement && (this.config.placement.id === this.config.placementId)) {
+      // already have placement info
+      return;
+    }
+
+    console.log('*** placement', this.config);
+
     this._getClientId().then(function() {
       var ajax = { 
         url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId,
@@ -248,7 +255,7 @@
 
   Session.prototype._failedPlacementInformation = function(delay) {
     delay = delay ? (delay * 2) : 500;
-    _.delay(_.bind(this.getPlacementInformation, this, delay), delay);
+    _.delay(_.bind(this._getPlacementInformation, this, delay), delay);
   };
 
   Session.prototype.getActivePlacement = function() {

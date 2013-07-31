@@ -377,7 +377,7 @@
           },
           'codec': 'mp3',
           'bitrate': '128',
-          'url': '/sample/chirp.mp3'
+          'url': 'chirp.mp3'
         }
       };
     }
