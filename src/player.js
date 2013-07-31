@@ -35,8 +35,6 @@
  *  player has a current state that can be queried with 'getCurrentState()':
  *    playing - if session.hasActivePlayStarted() and we're not paused
  *    paused -  if session.hasActivePlayStarted() and we're paused
- *    waiting - if session.waitingForRequest() or session.hasActivePlayStarted() and we're
- *       still loading an mp3
  *    idle - if !session.hasActivePlayStarted()
  *
  *  session events are proxied via the play object:

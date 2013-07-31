@@ -167,7 +167,7 @@
       });
     });
 
-    this.silence = options.silence || '/sample/5seconds.mp3';
+    this.silence = options.silence || 'http://feed.fm/sample/5seconds.mp3';
 
     window.soundManager.beginDelayedInit();
   };
