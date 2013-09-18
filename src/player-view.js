@@ -57,6 +57,9 @@
  *  methods. If you just want to override how the title of a song is
  *  rendered, then the formatPlay(play) method should be overridden.
  *
+ *  The top level player element will have one of three classes set at
+ *  all times: 'state-playing', 'state-idle', 'state-paused'
+ *
  */
 
 (function() {
