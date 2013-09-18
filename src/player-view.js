@@ -328,6 +328,10 @@
       .addClass('button-enabled')
       .removeAttr('disabled');
 
+    this.$el
+      .removeClass('state-playing state-paused state-idle')
+      .addClass('state-' + state);
+
   };
 
   window.Feed = window.Feed || {};
