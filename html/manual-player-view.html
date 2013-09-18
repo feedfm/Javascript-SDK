@@ -52,21 +52,21 @@
 <div>
   <span class='position'></span> <span class='status'></span>
 </div>
+<button class='start-button'>start</button>
+<button class='resume-button'>resume</button>
 <button class="play-button">play</button>
 <button class="pause-button">pause</button>
 <button class="skip-button">skip</button>
 </div>
 
 
-<script src="/js/vendor/require.js"></script>
-<script src="/js/require-config.js"></script>
 <script>
   var player = new Feed.Player('3d3eac0db16c1f3fae94fe0d0e5698238306bfda', 'c7afd83121b0362aab0852c88095735ee2d0a810');
 
   // remove any pre-existing client id
   player.session._deleteStoredCid();
 
-  player.setBaseUrl('http://feed.localdomain');
+  player.setBaseUrl('http://feed.localdomain:8000');
   player.setPlacementId(10000);
 
   var playerView = new Feed.PlayerView('player-view', player);
