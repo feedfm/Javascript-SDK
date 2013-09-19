@@ -1,4 +1,4 @@
-/*global _:false, $:false, Feed:true */
+/*global _:false, $:false */
 /*jshint camelcase:false */
 
 /*
