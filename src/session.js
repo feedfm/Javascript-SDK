@@ -224,8 +224,6 @@
       return;
     }
 
-    console.log('*** placement', this.config);
-
     this._getClientId().then(function() {
       var ajax = { 
         url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId,
