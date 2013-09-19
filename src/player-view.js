@@ -63,8 +63,6 @@
  */
 
 (function() {
-  var log = Feed.log;
-
   var PlayerView = function(id, player) {
     this.id = id;
     this.alertId = null;
@@ -84,10 +82,6 @@
     this.player.on('play-disliked', this._onPlayDislked, this);
     this.player.on('plays-exhausted', this._onPlaysExhausted, this);
     this.player.on('skip-denied', this._onSkipDenied, this);
-
-    this.player.on('all', function() {
-      log('seeing', arguments);
-    });
 
     this._enableButtonsBasedOnState();
     this.displayText = this.originalDisplayText = this.$('.status').html();

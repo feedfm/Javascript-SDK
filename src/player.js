@@ -59,8 +59,6 @@
  */
 
 (function() {
-  var log = window.Feed.log;
-
   function supports_html5_storage() {
     try {
       return 'localStorage' in window && window['localStorage'] !== null;
@@ -89,7 +87,6 @@
     this.setMuted(this.isMuted());
 
     this.session.on('all', function() {
-      log('proxying from', this, arguments);
       // propagate all events out to everybody else
       this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
     }, this);
@@ -258,8 +255,6 @@
       } else {
         this.state.activePlay.sound.play();
       }
-    } else {
-      log('state', this.state);
     }
 
   };
