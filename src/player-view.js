@@ -25,6 +25,7 @@
  *    <div class='elapsed'></div>
  *    <div class='duration'></div>
  *    <button class='play-button button-enabled'>Play</button>
+ *
  *    <button class='pause-button button-disabled'>Pause</button>
  *    <button class='skip-button button-disabled'>Skip</button>
  *    <button class='like-button button-disabled'>Like</button>
@@ -34,6 +35,12 @@
  *  The buttons should all be 'button-disabled' except for the play
  *  button. As the player changes state, it will change the
  *  'button-disabled' classes to 'button-enabled'.
+ *
+ *  Note that the 'play-button' is visible before any playback starts,
+ *  and while playback is paused. If you want a button that is only visible
+ *  before any playback has started, then create a 'start-button'. If you
+ *  want a button that is only visible when playback is paused, then
+ *  create a 'resume-button'.
  *
  *  The 'like' button has an additional 'liked' class that is added to
  *  it when the current song has been liked.
@@ -49,6 +56,9 @@
  *  can be changed by overriding the renderPosition(positionInMillis, durationInMillis)
  *  methods. If you just want to override how the title of a song is
  *  rendered, then the formatPlay(play) method should be overridden.
+ *
+ *  The top level player element will have one of three classes set at
+ *  all times: 'state-playing', 'state-idle', 'state-paused'
  *
  */
 
@@ -83,12 +93,12 @@
     this.displayText = this.originalDisplayText = this.$('.status').html();
     this.renderStatus();
 
-    this.$('.status').on('click', _.bind(this._onStatusClick, this));
-    this.$('.play-button').on('click', _.bind(this._onPlayButtonClick, this));
-    this.$('.pause-button').on('click', _.bind(this._onPauseButtonClick, this));
-    this.$('.skip-button').on('click', _.bind(this._onSkipButtonClick, this));
-    this.$('.like-button').on('click', _.bind(this._onLikeButtonClick, this));
-    this.$('.dislike-button').on('click', _.bind(this._onDislikeButtonClick, this));
+    this.$el.on('click', '.status', _.bind(this._onStatusClick, this));
+    this.$el.on('click', '.play-button, .start-button, .resume-button', _.bind(this._onPlayButtonClick, this));
+    this.$el.on('click', '.pause-button', _.bind(this._onPauseButtonClick, this));
+    this.$el.on('click', '.skip-button', _.bind(this._onSkipButtonClick, this));
+    this.$el.on('click', '.like-button', _.bind(this._onLikeButtonClick, this));
+    this.$el.on('click', '.dislike-button', _.bind(this._onDislikeButtonClick, this));
   };
 
   PlayerView.prototype._onStatusClick = function() {
@@ -284,7 +294,7 @@
     switch (state) {
       case 'playing':
         toEnable = '.pause-button, .like-button, .dislike-button';
-        toDisable = '.play-button';
+        toDisable = '.play-button, .start-button, .resume-button';
 
         if (this.player.maybeCanSkip()) {
           toEnable += ', .skip-button';
@@ -294,8 +304,8 @@
         break;
 
       case 'paused':
-        toEnable = '.play-button, .like-button, .dislike-button';
-        toDisable = '.pause-button';
+        toEnable = '.play-button, .resume-button, .like-button, .dislike-button';
+        toDisable = '.pause-button, .start-button';
 
         if (this.player.maybeCanSkip()) {
           toEnable += ', .skip-button';
@@ -306,8 +316,8 @@
 
       /* case 'idle': */
       default:
-        toEnable = '.play-button';
-        toDisable = '.pause-button, .like-button, .dislike-button, .skip-button';
+        toEnable = '.play-button, .start-button';
+        toDisable = '.resume-button, .pause-button, .like-button, .dislike-button, .skip-button';
         break;
     }
 
@@ -320,6 +330,10 @@
       .removeClass('button-disabled')
       .addClass('button-enabled')
       .removeAttr('disabled');
+
+    this.$el
+      .removeClass('state-playing state-paused state-idle')
+      .addClass('state-' + state);
 
   };
 
