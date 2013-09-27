@@ -116,7 +116,7 @@ module.exports = function(grunt) {
 
       dist: {
         options: {
-          compress: true
+          compress: false
         },
         files: {
           'dist/feed-with-jquery.js': [ 

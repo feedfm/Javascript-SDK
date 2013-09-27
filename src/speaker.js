@@ -136,40 +136,39 @@
   var Speaker = function(options) {
     var speaker = this;
 
-    window.soundManager = new SoundManager();
-    window.soundManager.wmode = 'transparent';
-    window.soundManager.useHighPerformance = true;
-    window.soundManager.flashPollingInterval = 500;
-    window.soundManager.html5PollingInterval = 500;
-
     options = options || {};
-    window.soundManager.debugMode = options.debug || false;
-    window.soundManager.debugFlash = options.debug || false;
-    window.soundManager.preferFlash = options.preferFlash || false;
-    window.soundManager.url = options.swfBase || '';
 
-    window.soundManager.onready(function() {
-      // swap in the true sound object creation function
-      speaker.createSongObject = function(songOptions) {
-        return window.soundManager.createSound(songOptions);
-      };
+    console.log("building SM");
 
-      // create actual sound objects for sounds already queued up
-      _.each(speaker.outstandingPlays, function(sound) {
-        var playing = sound.songObject.playing;
+    window.soundManager.setup({
+      wmode: 'transparent',
+      useHighPerformance: true,
+      flashPollingInterval: 500,
+      html5PollingInterval: 500,
+      debugMode: options.debug || false,
+      debugFlash: options.debug || false,
+      preferFlash: options.preferFlash || false,
+      url: options.swfBase || '',
+      onready: function() {
+        // swap in the true sound object creation function
+        speaker.createSongObject = function(songOptions) {
+          return window.soundManager.createSound(songOptions);
+        };
 
-        speaker._assignSongObject(sound);
+        // create actual sound objects for sounds already queued up
+        _.each(speaker.outstandingPlays, function(sound) {
+          var playing = sound.songObject.playing;
 
-        if (playing) {
-          log('playing already created sound');
-          sound.songObject.play();
-        }
-      });
+          speaker._assignSongObject(sound);
+
+          if (playing) {
+            log('playing already created sound');
+            sound.songObject.play();
+          }
+        });
+      },
+      silence: options.silence || 'http://feed.fm/sample/5seconds.mp3'
     });
-
-    this.silence = options.silence || 'http://feed.fm/sample/5seconds.mp3';
-
-    window.soundManager.beginDelayedInit();
   };
   
   Speaker.prototype = {
