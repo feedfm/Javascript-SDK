@@ -166,9 +166,10 @@
             sound.songObject.play();
           }
         });
-      },
-      silence: options.silence || 'http://feed.fm/sample/5seconds.mp3'
+      }
     });
+
+    this.silence = options.silence || 'http://feed.fm/sample/5seconds.mp3';
   };
   
   Speaker.prototype = {
