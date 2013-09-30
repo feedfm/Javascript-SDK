@@ -229,12 +229,12 @@
         setTimeout(function() {
           console.log('about to pause again');
           player.pause();
-        }, 400);
+        }, 600);
 
         setTimeout(function() {
           console.log('about to play again');
           player.play();
-        }, 450);
+        }, 750);
 
         setTimeout(function() {
           console.log('verifying');
@@ -244,7 +244,7 @@
 
           done();
 
-        }, 500);
+        }, 800);
       });
 
       player.play();
@@ -348,8 +348,9 @@
 
         done();
 
-      }, 400);
+      }, 600);
     });
+
     var counter = 0;
     function validPlay(id) {
       if (!id) { id = counter++; }
