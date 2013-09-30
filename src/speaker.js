@@ -1,4 +1,4 @@
-/*global _:false, SoundManager:false */
+/*global _:false */
 
 /*
  * The speaker object encapsulates the SoundManager2 code and boils it down
@@ -137,8 +137,6 @@
     var speaker = this;
 
     options = options || {};
-
-    console.log("building SM");
 
     window.soundManager.setup({
       wmode: 'transparent',
