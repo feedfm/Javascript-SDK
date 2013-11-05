@@ -97,8 +97,16 @@ name and are used as described below:
   is disabled by adding a 'button-disabled' class and setting the
   'disabled' attribute to true.
 
-The sample [jsbin](http://jsbin.com/uweSavU/5/edit?html,output) has a function to display
-in the javascript console all the events that the player emits.
+The sample [jsbin](http://jsbin.com/uweSavU/5/edit?html,output) has a function to
+display in the javascript console all the events that the player emits.
+
+When creating your own player skin, most everything can be stylized
+without having to edit javascript. For most projects, you should be able
+to fully customize the player using only CSS rules that take into account
+the 'button-enabled' and 'button-disabled' classes, along with the state
+of the player that is attached as a class to the top level HTML element
+of the player.
+
 
 Working with Feed.Player
 ========================
