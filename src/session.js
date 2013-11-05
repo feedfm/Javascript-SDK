@@ -749,25 +749,26 @@
     this.clientPromise = clientDeferred.promise();
 
     var self = this;
-    this.clientPromise.then(function(clientId) {
+
+    this._requestClientId(function(clientId) {
       // once we've got a clientId, stick it in the config
       self.config.clientId = clientId;
 
       self._setStoredCid(self.config.clientId);
-    });
 
-    this._requestClientId(clientDeferred);
+      clientDeferred.resolve(clientId);
+    });
 
     return this.clientPromise;
   };
 
   // hit the server up for a client id and return it via the passed in deferred
-  Session.prototype._requestClientId = function(deferred, delay) {
+  Session.prototype._requestClientId = function(saveClientId, delay) {
     // see if we've got a cookie
     var clientId = this._getStoredCid();
 
     if (clientId) {
-      return deferred.resolve(clientId);
+      return saveClientId(clientId);
 
     } else {
       var self = this;
@@ -778,19 +779,19 @@
 
       }).done(function(response) {
         if (response.success) {
-          deferred.resolve(response.client_id);
+          saveClientId(response.client_id);
 
         } else {
           repeatAfter(delay, 2000, function(newDelay) { 
             // retry until the end of time
-            self._requestClientId(deferred, newDelay);
+            self._requestClientId(saveClientId, newDelay);
           });
         }
 
       }).fail(function() {
         repeatAfter(delay, 2000, function(newDelay) { 
           // retry until the end of time
-          self._requestClientId(deferred, newDelay);
+          self._requestClientId(saveClientId, newDelay);
         });
       });
     }

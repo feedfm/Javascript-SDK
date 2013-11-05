@@ -710,7 +710,7 @@
       var session = new Feed.Session();
 
       session._requestServerTime = function(deferred) { deferred.resolve(100); };
-      session._requestClientId = function(deferred)   { deferred.resolve('cookie-value'); };
+      session._requestClientId = function(cb)   { cb('cookie-value'); };
 
       session.setCredentials('x', 'y');
       session.setPlacementId('1234');

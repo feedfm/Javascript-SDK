@@ -196,7 +196,7 @@
       }, 500);
     });
 
-    it('will allow us to pause, resume, and them pause and resume a play again', function(done) {
+    it('will allow us to pause, resume, and then pause and resume a play again', function(done) {
       var player = new Feed.Player('token', 'secret', speakerOptions);
       player.setPlacementId('10000');
 
@@ -229,12 +229,12 @@
         setTimeout(function() {
           console.log('about to pause again');
           player.pause();
-        }, 600);
+        }, 300);
 
         setTimeout(function() {
           console.log('about to play again');
           player.play();
-        }, 750);
+        }, 350);
 
         setTimeout(function() {
           console.log('verifying');
@@ -244,7 +244,7 @@
 
           done();
 
-        }, 800);
+        }, 500);
       });
 
       player.play();

@@ -59,12 +59,14 @@
 
   <script>
     if (window.userAgent =~ /iPod|iPhone|iPad/) {
-      var $el = $('<button>Click me to start test</button');
+      var $el = $('<button>Click me to start test</button>');
 
       $el.appendTo($('body'));
       $el.on('click', function() {
+      /*
         var speaker = Feed.getSpeaker({}) 
         speaker.initializeForMobile();
+        */
 
         mocha.run();
       });

@@ -55,7 +55,7 @@
       });
 
       var session = new Feed.Session();
-      session._requestClientId = function(deferred) { deferred.resolve('cookie-value'); };
+      session._requestClientId = function(cb) { cb.resolve('cookie-value'); };
       session._requestServerTime = function(deferred) { deferred.resolve(20); };
 
       session.setCredentials('x', 'y');
