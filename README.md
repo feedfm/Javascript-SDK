@@ -166,7 +166,7 @@ The player emits the following events:
 
   ```js
     player.on('stations', function(stations) {
-      console.log('the array of stations is ', stations);
+      console.log('there are ' + stations.length + ' stations. The first is named ' + stations[0].name);
     });
 
 * play-started - This is sent when playback of a specific song has started.
