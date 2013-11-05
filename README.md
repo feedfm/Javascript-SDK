@@ -22,7 +22,7 @@ If you have not already done so, please go to [http://feed.fm/][2].
 1 Minute Guide to Creating a Player and Streaming Music
 =======================================================
 
-0) Pull up *[this jsbin](http://jsbin.com/uweSavU/4/edit?html,output)* page so you don't have to
+0) Pull up *[this jsbin](http://jsbin.com/uweSavU/5/edit?html,output)* page so you don't have to
 type anything.
 
 1) Include the 'dist/feed-with-jquery.js' source in your HTML - either directly from
@@ -97,7 +97,7 @@ name and are used as described below:
   is disabled by adding a 'button-disabled' class and setting the
   'disabled' attribute to true.
 
-The sample [jsbin](http://jsbin.com/uweSavU/4/edit?html,output) has a function to display
+The sample [jsbin](http://jsbin.com/uweSavU/5/edit?html,output) has a function to display
 in the javascript console all the events that the player emits.
 
 Working with Feed.Player
