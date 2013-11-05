@@ -14,7 +14,7 @@
  *
  *  session.on('play-active', someHandler);
  *
- *  Then you need to set a placement and optionally a station:
+ *  Then you can optionally set a placement and a station:
  *
  *  session.setPlacementId(placementId);
  *  session.setStationId(stationId);
@@ -32,6 +32,10 @@
  *
  *  The session will now emit the following events:
  *
+ *  not-in-us: if feed can't determine that the user is in the US, then
+ *    the user won't be allowed to play any music. This check is made
+ *    every time we try to retrieve a song. Once you get this event, you
+ *    should assume nothing further will work.
  *  placement: after we tune in to a placement or station,
  *    this passes on information about the placement we
  *    tuned in to.
@@ -192,12 +196,12 @@
       throw new Error('no secret set with setCredentials()');
     }
 
+    // pull information in about the placement
     if (!this.config.placementId) {
-      throw new Error('no placementId set');
+      this._getDefaultPlacementInformation();
+    } else {
+      this._getPlacementInformation();
     }
-
-    // pull information in about the station
-    this._getPlacementInformation();
 
     // abort any pending requests or plays
     this.config.pendingRequest = null;
@@ -209,6 +213,44 @@
 
     // kick off request for next play
     this._requestNextPlay();
+  };
+
+  // _getDefaultPlacementInformation
+  Session.prototype._getDefaultPlacementInformation = function(delay) {
+    var self = this;
+
+    if (this.config.placementId && this.config.placement && (this.config.placement.id === this.config.placementId)) {
+      // already have placement info
+      return;
+    }
+
+    var ajax = { 
+      url: self.config.baseUrl + '/api/v2/placement',
+      type: 'GET',
+      dataType: 'json',
+      timeout: 6000
+    };
+
+    // request placement info from server
+    log('requesting default placement information from server');
+    self._signedAjax(ajax)
+      .done(_.bind(self._receiveDefaultPlacementInformation, self))
+      .fail(_.bind(self._failedDefaultPlacementInformation, self, delay, ajax));
+  };
+
+  Session.prototype._receiveDefaultPlacementInformation = function(placementInformation) {
+    if (placementInformation && placementInformation.success && placementInformation.placement) {
+      this.config.placement = placementInformation.placement;
+      this.config.placementId = placementInformation.placement.id;
+
+      this.trigger('placement', placementInformation.placement);
+      this.trigger('stations', placementInformation.stations);
+    }
+  };
+
+  Session.prototype._failedDefaultPlacementInformation = function(delay) {
+    delay = delay ? (delay * 2) : 500;
+    _.delay(_.bind(this._getDefaultPlacementInformation, this, delay), delay);
   };
 
   // _getPlacementInformation
@@ -224,23 +266,18 @@
       return;
     }
 
-    this._getClientId().then(function() {
-      var ajax = { 
-        url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId,
-        type: 'GET',
-        dataType: 'json',
-        timeout: 6000,
-        data: {
-          client_id: self.config.clientId
-        }
-      };
+    var ajax = { 
+      url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId,
+      type: 'GET',
+      dataType: 'json',
+      timeout: 6000
+    };
 
-      // request placement info from server
-      log('requesting placement information from server');
-      self._signedAjax(ajax)
-        .done(_.bind(self._receivePlacementInformation, self))
-        .fail(_.bind(self._failedPlacementInformation, self, delay, ajax));
-    });
+    // request placement info from server
+    log('requesting placement information from server');
+    self._signedAjax(ajax)
+      .done(_.bind(self._receivePlacementInformation, self))
+      .fail(_.bind(self._failedPlacementInformation, self, delay, ajax));
   };
 
   Session.prototype._receivePlacementInformation = function(placementInformation) {
@@ -248,6 +285,7 @@
       this.config.placement = placementInformation.placement;
 
       this.trigger('placement', placementInformation.placement);
+      this.trigger('stations', placementInformation.stations);
     }
   };
 
@@ -614,12 +652,15 @@
           dataType: 'json',
           timeout: 6000,
           data: {
-            placement_id: self.config.placementId,
             formats: self.config.formats,
             client_id: self.config.clientId,
             max_bitrate: self.config.maxBitrate
           }
         };
+
+        if (self.config.placementId) {
+          ajax.data.placement_id = self.config.placementId;
+        }
 
         if (self.config.stationId) {
           ajax.data.station_id = self.config.stationId;
@@ -683,9 +724,24 @@
   };
 
   // server returned an error when we requested the next song
-  Session.prototype._failedNextPlay = function(delay, ajax) {
+  Session.prototype._failedNextPlay = function(delay, ajax, response) {
     // only process if we're still actually waiting for this
     if (this.config.pendingRequest && (this.config.pendingRequest.ajax === ajax)) {
+
+      if (response.status === 403) {
+        try {
+          var fullResponse = $.parseJSON(response.responseText);
+
+          if (fullResponse.error && fullResponse.error.code === 19) {
+            // user isn't in the US any more, so let the call fail
+            this.trigger('not-in-us');
+            return;
+          }
+        } catch (e) {
+          // some other response - fall through and try again
+        }
+      }
+
       log('request failed - trying again');
 
       delay = delay ? (delay * 2) : 500;
@@ -788,7 +844,21 @@
           });
         }
 
-      }).fail(function() {
+      }).fail(function(response) {
+        if (response.status === 403) {
+          try {
+            var fullResponse = $.parseJSON(response.responseText);
+
+            if (fullResponse.error && fullResponse.error.code === 19) {
+              // user isn't in the US any more, so let the call fail
+              self.trigger('not-in-us');
+              return;
+            }
+          } catch (e) {
+            // some other response - fall through and try again
+          }
+        }
+
         repeatAfter(delay, 2000, function(newDelay) { 
           // retry until the end of time
           self._requestClientId(saveClientId, newDelay);

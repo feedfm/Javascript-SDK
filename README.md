@@ -22,14 +22,17 @@ If you have not already done so, please go to [http://feed.fm/][2].
 1 Minute Guide to Creating a Player and Streaming Music
 =======================================================
 
+0) Pull up *[this jsbin](http://jsbin.com/uweSavU/4/edit?html,output)* page so you don't have to
+type anything.
+
 1) Include the 'dist/feed-with-jquery.js' source in your HTML - either directly from
 your website or from feed.fm:
 
 ```html
-<script type='application/javascript' src='http://fuzz-radio.github.io/Javascript-SDK/dist/feed-with-jquery-debug.js'></script>
+<script type='application/javascript' src='http://feed.fm/js/latest/feed-with-jquery.js'></script>
 ```
 
-If you've already got jQuery in your page, you can use 'dist/feed-without-jquery.js'
+If you've already got jQuery in your page, you can use 'js/latest/feed-without-jquery.js'.
 
 2) Enter the minimal HTML to display the player:
 
@@ -40,21 +43,19 @@ If you've already got jQuery in your page, you can use 'dist/feed-without-jquery
   <button class="pause-button">pause</button>
   <button class="skip-button">skip</button>
 </div>
-```html
+```
 
 3) Create an instance of the player and the player view:
 
 ```js
   var player = new Feed.Player('your-token', 'your-secret');
-  player.setPlacementId(your-placement-id);
 
   var playerView = new Feed.PlayerView('player-view-div', player);
 
-  player.tune(); // or player.play() to auto-play
+  player.tune(); // or player.play() to auto-play immediately
 ```
 
-The user can now start/stop music via the simple player interface. You can use
-[this jsFiddle](http://jsfiddle.net/9AAK3/1/) to see it in action.
+The user can now start/stop music via the simple player interface.
 
 Working with Feed.PlayerView
 ============================
@@ -96,8 +97,8 @@ name and are used as described below:
   is disabled by adding a 'button-disabled' class and setting the
   'disabled' attribute to true.
 
-A [jsFiddle](http://jsfiddle.net/9AAK3/1/) has been set up that
-contains all the above elements, so you can play with it.
+The sample [jsbin](http://jsbin.com/uweSavU/4/edit?html,output) has a function to display
+in the javascript console all the events that the player emits.
 
 Working with Feed.Player
 ========================
@@ -110,17 +111,10 @@ token and secret in order to create an instance of the player:
   var player = new Feed.Player('token', 'secret');
 ```
 
-The class pulls music from a specific placement, so that should be
-assigned right after creation:
-
-```js
-  player.setPlacementId(10000);
-```
-
-With the credentials and placement set, the player should be started
-with a call to `tune()` or `play()`. `tune()` will cause the player
-to load up information about the current placement, and `play()` will
-cause the player to `tune()` and then immediately start playing music.
+The player should be started with a call to `tune()` or `play()`.
+`tune()` will cause the player to load up information about the current
+placement, and `play()` will cause the player to `tune()` and then immediately
+start playing music.
 
 Music can be paused with a call to `pause()`, or skipped with a call
 to `skip()`, or resumed/started with a call to `play()`.
@@ -149,16 +143,31 @@ Event handling comes from the BackBone.js project. Some example usage:
 
 The player emits the following events:
 
-* placement - This is sent after a call to `setPlacementId()` with
-  information about the placement that was retrieved from the feed.fm
+* not-in-us - Feed.fm doesn't think the client is located in the US, and so it
+  will refuse to serve up music. When this event is emitted, you can assume
+  the player will no longer function.
+
+* placement - This event provides information about the placement 
+  that music is being pulled from. This is called before any music starts,
+  and also after a call to change the current placement via `setPlacementId()`.
+  This includes information about the placement that was retrieved from the feed.fm
   servers. At this point, only the name and id of the placement are
   returned:
 
   ```js
-    player.on('placment', function(placement) {
+    player.on('placement', function(placement) {
       console.log('the placement id is ' + placement.id + ' and name ' + placement.name);
     });
   ```
+
+* stations - This event provides the list of stations associated with the
+  placement we are pulling music from. It is triggered before any music starts,
+  and also after a call to change the current placement via `setPlacementId()`.
+
+  ```js
+    player.on('stations', function(stations) {
+      console.log('the array of stations is ', stations);
+    });
 
 * play-started - This is sent when playback of a specific song has started.
   Details of the song that has just started are passed as an argument and

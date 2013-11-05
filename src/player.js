@@ -38,6 +38,7 @@
  *    idle - if !session.hasActivePlayStarted()
  *
  *  session events are proxied via the play object:
+ *    not-in-us - user isn't located in the US and can't play music
  *    placement - information about the placement we just tuned to
  *    play-active - this play is queued up and ready for playback
  *    play-started - this play has begun playback
