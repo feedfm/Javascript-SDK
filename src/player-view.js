@@ -81,7 +81,7 @@
     this.player.on('play-completed', this._onPlayCompleted, this);
     this.player.on('play-liked', this._onPlayLiked, this);
     this.player.on('play-unliked', this._onPlayUnliked, this);
-    this.player.on('play-disliked', this._onPlayDislked, this);
+    this.player.on('play-disliked', this._onPlayDisliked, this);
     this.player.on('plays-exhausted', this._onPlaysExhausted, this);
     this.player.on('skip-denied', this._onSkipDenied, this);
 
