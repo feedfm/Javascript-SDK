@@ -43,7 +43,9 @@
  *  create a 'resume-button'.
  *
  *  The 'like' button has an additional 'liked' class that is added to
- *  it when the current song has been liked.
+ *  it when the current song has been liked. Likewise, the 'dislike' button
+ *  has a 'disliked' class added to it when the current song has been
+ *  disliked.
  *
  *  The 'status' section will display the current song and the 'position'
  *  section will display the elapsed time played and duration of the
@@ -169,12 +171,21 @@
   };
 
   PlayerView.prototype._setLikeStatus = function(liked) {
-    if (liked) {
+    if (liked === true) {
       // highlight the like button
       this.$('.like-button').addClass('liked');
+      this.$('.dislike-button').removeClass('disliked');
  
-    } else {
+    } else if (liked === false) {
+      // highlight the dislike button
       this.$('.like-button').removeClass('liked');
+      this.$('.dislike-button').addClass('disliked');
+
+    } else {
+      // nobody gets highlighted
+      this.$('.like-button').removeClass('liked');
+      this.$('.dislike-button').removeClass('disliked');
+
     }
   };
 
