@@ -146,7 +146,7 @@
       debugMode: options.debug || false,
       debugFlash: options.debug || false,
       preferFlash: options.preferFlash || false,
-      url: options.swfBase || '',
+      url: options.swfBase || 'http://feed.fm/js/latest/',
       onready: function() {
         // swap in the true sound object creation function
         speaker.createSongObject = function(songOptions) {
