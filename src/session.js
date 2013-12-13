@@ -98,6 +98,8 @@
 
 define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'feed/util', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events, util) {
 
+console.log('oauth is ', OAuth);
+
   // use SHA256 for encryption
   OAuth.SignatureMethod.registerMethodClass(['HMAC-SHA256', 'HMAC-SHA256-Accessor'],
     OAuth.SignatureMethod.makeSubclass(

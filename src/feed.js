@@ -13,7 +13,7 @@ define([ 'feed/session', 'feed/log', 'feed/player-view', 'feed/player', 'feed/sp
     Player: Player,
     PlayerView: PlayerView,
 
-    // this is going to go away
+    // this is only sticking around for legacy reasons.
     getSpeaker: getSpeaker
   };
 

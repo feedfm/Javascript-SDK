@@ -2,7 +2,7 @@
 
 define(function() {
   // no loggy!
-  return function() { return false; };
+  return function() { console.log.call(console.log, arguments); };
 
 });
 

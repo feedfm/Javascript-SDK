@@ -149,7 +149,7 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
 
     options = options || {};
 
-    window.soundManager.setup({
+    var config = {
       wmode: 'transparent',
       useHighPerformance: true,
       flashPollingInterval: 500,
@@ -176,7 +176,9 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
           }
         });
       }
-    });
+    };
+
+    window.soundManager.setup(config);
 
     this.silence = util.addProtocol(options.silence || '//feed.fm/js/latest/5seconds.mp3', options.secure);
 

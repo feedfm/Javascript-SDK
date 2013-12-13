@@ -23,7 +23,7 @@
       song.destroy();
     });
 
-    it('will play a song object and trigger play and finish events', function(done) {
+    it.only('will play a song object and trigger play and finish events', function(done) {
       var playCalled = false;
 
       var song = Feed.getSpeaker(speakerOptions).create('/sample/chirp.mp3', { 

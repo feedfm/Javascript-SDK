@@ -1,4 +1,4 @@
-(function() {
+
 /**
  * almond 0.2.6 Copyright (c) 2011-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -2683,6 +2683,8 @@ define("enc-base64", function(){});
 
 define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'feed/util', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events, util) {
 
+console.log('oauth is ', OAuth);
+
   // use SHA256 for encryption
   OAuth.SignatureMethod.registerMethodClass(['HMAC-SHA256', 'HMAC-SHA256-Accessor'],
     OAuth.SignatureMethod.makeSubclass(
@@ -4235,7 +4237,7 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
 
     options = options || {};
 
-    window.soundManager.setup({
+    var config = {
       wmode: 'transparent',
       useHighPerformance: true,
       flashPollingInterval: 500,
@@ -4262,7 +4264,9 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
           }
         });
       }
-    });
+    };
+
+    window.soundManager.setup(config);
 
     this.silence = util.addProtocol(options.silence || '//feed.fm/js/latest/5seconds.mp3', options.secure);
 
@@ -4826,9 +4830,9 @@ define('feed/feed',[ 'feed/session', 'feed/log', 'feed/player-view', 'feed/playe
     Player: Player,
     PlayerView: PlayerView,
 
-    // this is going to go away
+    // this is only sticking around for legacy reasons.
     getSpeaker: getSpeaker
   };
 
 });
- window.Feed = require("feed/feed"); }());
+require.config({ map: { "*": { "jquery" : "feed/jquery-external" } } }); window.Feed = require("feed/feed");

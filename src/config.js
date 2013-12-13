@@ -28,7 +28,10 @@ var require = {
     // all our stuff is in the 'feed/' namespace
     'feed' : '../src',
 
-    // global library aliases (should these be in 'map'?)
+    // version aliases... yeah, these should be in
+    // the 'map' section, but that isn't merging
+    // properly with the grunt requirejs task, so
+    // I'm leaving them here.
     'jquery': 'jquery-1.10.2',
     'Backbone': 'backbone-1.1.0',
     'Soundmanager': 'soundmanager2.97a.20130512',

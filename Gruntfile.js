@@ -37,14 +37,8 @@ module.exports = function(grunt) {
         mainConfigFile: 'src/config.js',
         baseUrl: 'vendor',
         name: 'almond',
-        include: [ 'feed/feed' ],
-
-        wrap: {
-          start: '(function() {',
-          end: ' window.Feed = require("feed/feed"); }());'
-        }
+        include: [ 'feed/feed' ]
       },
-
 
       'feed-without-jquery': {
         options: {
@@ -57,6 +51,10 @@ module.exports = function(grunt) {
               // stub out logging
               'feed/log': 'feed/nolog'
             }
+          },
+
+          wrap: {
+            end: 'require.config({ map: { "*": { "jquery" : "feed/jquery-noconflict", "feed/log" : "feed/nolog" } } }); window.Feed = require("feed/feed");'
           }
         }
       },
@@ -72,6 +70,10 @@ module.exports = function(grunt) {
               // stub out logging
               'feed/log': 'feed/nolog'
             }
+          },
+
+          wrap: {
+            end: 'require.config({ map: { "*": { "jquery" : "feed/jquery-noconflict", "feed/log" : "feed/nolog" }, "feed/jquery-noconflict" : { "jquery" : "jquery" } } }); window.Feed = require("feed/feed");'
           }
         }
       },
@@ -87,6 +89,10 @@ module.exports = function(grunt) {
               // use jquery already in page
               'jquery': 'feed/jquery-external'
             }
+          },
+
+          wrap: {
+            end: 'require.config({ map: { "*": { "jquery" : "feed/jquery-external" } } }); window.Feed = require("feed/feed");'
           }
         }
       },
@@ -101,7 +107,14 @@ module.exports = function(grunt) {
             '*': {
               // use our own jQuery, with noConflict(true) to we don't break things
               'jquery': 'feed/jquery-noconflict'
+            },
+            'feed/jquery-noconflict': {
+              'jquery': 'jquery'
             }
+          },
+
+          wrap: {
+            end: 'require.config({ map: { "*": { "jquery" : "feed/jquery-noconflict" }, "feed/jquery-noconflict" : { "jquery" : "jquery" } }}); window.Feed = require("feed/feed");'
           }
         }
       }
