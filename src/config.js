@@ -35,6 +35,15 @@ var require = {
     'CryptoJS': 'hmac-sha256'
   },
 
+  map: {
+    '*' : {
+      'jquery': 'feed/jquery-noconflict'
+    },
+    'feed/jquery-noconflict': {
+      'jquery': 'jquery'
+    }
+  },
+
   shim: {
     'underscore': { exports: '_' },
     'OAuth': { exports: 'OAuth' },

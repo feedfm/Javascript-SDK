@@ -88,7 +88,7 @@
  *  session.likePlay(), session.unlikePlay(), session.dislikePlay(): like handling
  */
 
-define([ 'underscore', 'feed/jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events) {
+define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events) {
 
   // use SHA256 for encryption
   OAuth.SignatureMethod.registerMethodClass(['HMAC-SHA256', 'HMAC-SHA256-Accessor'],

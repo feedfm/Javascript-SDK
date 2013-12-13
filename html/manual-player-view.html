@@ -1,24 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- dependencies -->
-  <script src="../lib/json2.js" type="text/javascript"></script>
-  <script src="../lib/hmac-sha256.js" type="text/javascript"></script>
-  <script src="../lib/enc-base64.js" type="text/javascript"></script>
-  <script src="../lib/oauth.js" type="text/javascript"></script>
-  <script src="../lib/jquery.js" type="text/javascript"></script>
-  <script src="../lib/jquery.cookie.js" type="text/javascript"></script>
-  <script src="../lib/underscore.js" type="text/javascript"></script>
-  <script src="../lib/soundmanager2.js" type="text/javascript"></script>
-
-  <!-- code -->
-  <script src="../src/log.js" type="text/javascript"></script>
-  <script src="../src/events.js" type="text/javascript"></script>
-  <script src="../src/speaker.js" type="text/javascript"></script>
-  <script src="../src/session.js" type="text/javascript"></script>
-  <script src="../src/player.js" type="text/javascript"></script>
-  <script src="../src/player-view.js" type="text/javascript"></script>
-
 <style>
 
 #player-view .play-button.button-enabled,
@@ -60,19 +42,23 @@
 <button class="skip-button">skip</button>
 </div>
 
+<!-- dependencies -->
+<script src="../src/config.js" type="application/javascript"></script>
+<script src="../vendor/require.js" type="application/javascript"></script>
 
 <script>
-  var player = new Feed.Player('3d3eac0db16c1f3fae94fe0d0e5698238306bfda', 'c7afd83121b0362aab0852c88095735ee2d0a810', { debug: true, swfBase: '../dist', silence: 'http://feed.localdomain/sample/5seconds.mp3' });
+  require([ 'feed/feed' ], function(Feed) {
+    var player = new Feed.Player('7bed4d09839c2743e3eeccd493202fc3d8dd656a', '319f82e863918f6bd3e6d9154a2f22c4ed457441', { debug: true, swfBase: '../dist' });
 
-  // remove any pre-existing client id
-  player.session._deleteStoredCid();
+    // remove any pre-existing client id
+    player.session._deleteStoredCid();
 
-  player.setBaseUrl('http://feed.localdomain:8000');
-  player.setPlacementId(10000);
+    player.setBaseUrl('https://feed.fm');
 
-  var playerView = new Feed.PlayerView('player-view', player);
+    var playerView = new Feed.PlayerView('player-view', player);
 
-  player.tune();
+    player.tune();
+  });
 
 </script>
 

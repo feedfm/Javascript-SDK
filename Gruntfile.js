@@ -32,102 +32,77 @@ module.exports = function(grunt) {
     },
 
     requirejs: {
+      // options common to all configs
+      options: {
+        mainConfigFile: 'src/config.js',
+        baseUrl: 'vendor',
+        name: 'almond',
+        include: [ 'feed/feed' ],
+
+        wrap: {
+          start: '(function() {',
+          end: ' window.Feed = require("feed/feed"); }());'
+        }
+      },
+
+
       'feed-without-jquery': {
         options: {
-          mainConfigFile: 'src/config.js',
-
-          baseUrl: 'vendor',
-          name: 'almond',
-          include: [ 'feed/main' ],
           out: 'dist/feed-without-jquery.js',
+
+          map: {
+            '*': {
+              // use existing, in page, jquery
+              'jquery': 'feed/jquery-external',
+              // stub out logging
+              'feed/log': 'feed/nolog'
+            }
+          }
+        }
+      },
+
+      'feed': {
+        options: {
+          out: 'dist/feed.js',
+
+          map: {
+            '*': {
+              // use our own jQuery, with noConflict(true) to we don't break things
+              'jquery': 'feed/jquery-noconflict',
+              // stub out logging
+              'feed/log': 'feed/nolog'
+            }
+          }
+        }
+      },
+
+      'feed-without-jquery-debug': {
+        options: {
+          out: 'dist/feed-without-jquery-debug.js',
 
           optimize: 'none',
 
-          paths: {
-            'jquery': '../src/jquery-external'
-          },
-
-          wrap: {
-            start: '(function() {',
-            end: ' window.Feed = require("feed/main"); }());'
+          map: {
+            '*': {
+              // use jquery already in page
+              'jquery': 'feed/jquery-external'
+            }
           }
         }
-      }
+      },
 
-    },
+      'feed-debug': {
+        options: {
+          out: 'dist/feed-debug.js',
 
-    concat: {
-      dist: {
-        files: {
-          'dist/feed-with-jquery.js': [ 
-            'lib/json2.js',
-            'lib/hmac-sha256.js',
-            'lib/enc-base64.js',
-            'lib/oauth.js',
-            'lib/jquery.js',
-            'lib/jquery.cookie.js',
-            'lib/underscore.js',
-            'lib/soundmanager2.js',
+          optimize: 'none',
 
-            'src/events.js',
-            'src/nolog.js',
-            'src/speaker.js',
-            'src/session.js',
-            'src/player.js',
-            'src/player-view.js'
-          ],
-
-          'dist/feed-with-jquery-debug.js': [ 
-            'lib/json2.js',
-            'lib/hmac-sha256.js',
-            'lib/enc-base64.js',
-            'lib/oauth.js',
-            'lib/jquery.js',
-            'lib/jquery.cookie.js',
-            'lib/underscore.js',
-            'lib/soundmanager2.js',
-
-            'src/events.js',
-            'src/log.js',
-            'src/speaker.js',
-            'src/session.js',
-            'src/player.js',
-            'src/player-view.js'
-          ],
-
-          'dist/feed-without-jquery.js': [
-            'lib/json2.js',
-            'lib/hmac-sha256.js',
-            'lib/enc-base64.js',
-            'lib/oauth.js',
-            'lib/jquery.cookie.js',
-            'lib/underscore.js',
-            'lib/soundmanager2.js',
-
-            'src/events.js',
-            'src/nolog.js',
-            'src/speaker.js',
-            'src/session.js',
-            'src/player.js',
-            'src/player-view.js'
-          ],
-
-          'dist/feed-without-jquery-debug.js': [ 
-            'lib/json2.js',
-            'lib/hmac-sha256.js',
-            'lib/enc-base64.js',
-            'lib/oauth.js',
-            'lib/jquery.cookie.js',
-            'lib/underscore.js',
-            'lib/soundmanager2.js',
-
-            'src/events.js',
-            'src/log.js',
-            'src/speaker.js',
-            'src/session.js',
-            'src/player.js',
-            'src/player-view.js'
-          ]
+          map: {
+            '*': {
+              // use our own jQuery, with noConflict(true) to we don't break things
+              'jquery': 'feed/jquery-noconflict'
+            }
+          }
         }
       }
     },
@@ -138,89 +113,15 @@ module.exports = function(grunt) {
         report: 'min',
         preserveComments: 'some',
         banner: '/* A Feed.fm joint: github.com/fuzz-radio/Javascript-SDK */'
-      },
-
-      dist: {
-        options: {
-          compress: false
-        },
-        files: {
-          'dist/feed-with-jquery.js': [ 
-            'lib/json2.js',
-            'lib/hmac-sha256.js',
-            'lib/enc-base64.js',
-            'lib/oauth.js',
-            'lib/jquery.js',
-            'lib/jquery.cookie.js',
-            'lib/underscore.js',
-            'lib/soundmanager2.js',
-
-            'src/events.js',
-            'src/nolog.js',
-            'src/speaker.js',
-            'src/session.js',
-            'src/player.js',
-            'src/player-view.js'
-          ],
-
-          'dist/feed-with-jquery-debug.js': [ 
-            'lib/json2.js',
-            'lib/hmac-sha256.js',
-            'lib/enc-base64.js',
-            'lib/oauth.js',
-            'lib/jquery.js',
-            'lib/jquery.cookie.js',
-            'lib/underscore.js',
-            'lib/soundmanager2.js',
-
-            'src/events.js',
-            'src/log.js',
-            'src/speaker.js',
-            'src/session.js',
-            'src/player.js',
-            'src/player-view.js'
-          ],
-
-          'dist/feed-without-jquery.js': [
-            'lib/json2.js',
-            'lib/hmac-sha256.js',
-            'lib/enc-base64.js',
-            'lib/oauth.js',
-            'lib/jquery.cookie.js',
-            'lib/underscore.js',
-            'lib/soundmanager2.js',
-
-            'src/events.js',
-            'src/nolog.js',
-            'src/speaker.js',
-            'src/session.js',
-            'src/player.js',
-            'src/player-view.js'
-          ],
-
-          'dist/feed-without-jquery-debug.js': [ 
-            'lib/json2.js',
-            'lib/hmac-sha256.js',
-            'lib/enc-base64.js',
-            'lib/oauth.js',
-            'lib/jquery.cookie.js',
-            'lib/underscore.js',
-            'lib/soundmanager2.js',
-
-            'src/events.js',
-            'src/log.js',
-            'src/speaker.js',
-            'src/session.js',
-            'src/player.js',
-            'src/player-view.js'
-          ]
-        }
       }
+
     }
   });
 
   // Default task.
-  grunt.registerTask('default', ['jshint', 'uglify:dist']);
+  grunt.registerTask('default', ['jshint', 
+    'requirejs:feed', 'requirejs:feed-without-jquery', 
+    'requirejs:feed-debug', 'requirejs:feed-without-jquery-debug' ]);
 
 };
 

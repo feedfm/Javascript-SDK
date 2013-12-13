@@ -64,7 +64,7 @@
  *
  */
 
-define([ 'underscore', 'feed/jquery' ], function(_, $) {
+define([ 'underscore', 'jquery' ], function(_, $) {
 
   var PlayerView = function(id, player) {
     this.id = id;
