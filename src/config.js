@@ -28,8 +28,8 @@ var require = {
     // all our stuff is in the 'feed/' namespace
     'feed' : '../src',
 
-    // library aliases
-    'feed/jquery': '../src/jquery-noconflict',
+    // global library aliases (should these be in 'map'?)
+    'jquery': 'jquery-1.10.2',
     'Backbone': 'backbone-1.1.0',
     'Soundmanager': 'soundmanager2.97a.20130512',
     'CryptoJS': 'hmac-sha256'

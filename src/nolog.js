@@ -2,7 +2,7 @@
 
 define(function() {
   // no loggy!
-  return function() { };
+  return function() { return false; };
 
 });
 

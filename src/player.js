@@ -11,9 +11,14 @@
  *  or similar.
  *
  *  Create this with:
- *    player = new Feed.Player(token, secret)
+ *    player = new Feed.Player(token, secret[, options])
  *
- *  Then set the placement (and optionally station) that we're pulling
+ *  (where 'options' is an optional object that is passed to the
+ *   feed/speaker function and the feed/session constructor. Normally
+ *   you'd only use a value of '{ secure: true }' to use HTTPS for all
+ *   communications)
+ *
+ *  Then set the optional placement and station that we're pulling
  *  from:
  *
  *    player.setPlacementId(xxx);
@@ -79,7 +84,7 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
 
     _.extend(this, Events);
 
-    this.session = new Session(token, secret);
+    this.session = new Session(token, secret, options);
     this.session.on('play-active', this._onPlayActive, this);
     this.session.on('play-started', this._onPlayStarted, this);
     this.session.on('play-completed', this._onPlayCompleted, this);

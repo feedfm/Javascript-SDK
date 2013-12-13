@@ -55,6 +55,8 @@
  *                browser's 'audio' tag
  *   debug: if true, emit debug information to the console
  *   silence: URL to an mp3 with no sound, for initializing mobile clients
+ *   secure: if true, default URLs for the soundmanager2.swf and silence mp3
+ *                will come from 'https' locations
  *
  * The first function call to 'speaker()' is what configures and defines the
  * speaker - and subsequent calls just return the already-created instance.
@@ -66,7 +68,7 @@
  *
  */
 
-define([ 'underscore', 'feed/log', 'feed/events', 'Soundmanager' ], function(_, log, Events) {
+define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, log, Events, util) {
 
   var Sound = function(callbacks) { 
     var obj = _.extend(this, Events);
@@ -155,7 +157,7 @@ define([ 'underscore', 'feed/log', 'feed/events', 'Soundmanager' ], function(_, 
       debugMode: options.debug || false,
       debugFlash: options.debug || false,
       preferFlash: options.preferFlash || false,
-      url: options.swfBase || 'http://feed.fm/js/latest/',
+      url: util.addProtocol(options.swfBase || '//feed.fm/js/latest/', options.secure),
       onready: function() {
         // swap in the true sound object creation function
         speaker.createSongObject = function(songOptions) {
@@ -176,9 +178,10 @@ define([ 'underscore', 'feed/log', 'feed/events', 'Soundmanager' ], function(_, 
       }
     });
 
-    this.silence = options.silence || 'http://feed.fm/sample/5seconds.mp3';
+    this.silence = util.addProtocol(options.silence || '//feed.fm/js/latest/5seconds.mp3', options.secure);
+
   };
-  
+
   Speaker.prototype = {
     vol: 100,
     outstandingPlays: { },

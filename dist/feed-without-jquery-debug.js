@@ -2346,6 +2346,33 @@ define('feed/events',[ 'underscore' ], function(_) {
 });
 
 
+/*global define:false */
+
+define('feed/util',[],function() {
+
+  var util = { };
+
+  util.addProtocol = function(url, secure) {
+    // handle '//somewhere.com/' url's
+    if (url.slice(0, 2) === '//') {
+      if (secure === true) {
+        url = 'https:' + url;
+
+      } else if (secure === false) {
+        url = 'http:' + url;
+      
+      } else {
+        url = window.location.protocol + url;
+      }
+    }
+    
+    return url;
+  };
+
+  return util;
+
+});
+
 /*!
  * jQuery Cookie Plugin v1.3.1
  * https://github.com/carhartl/jquery-cookie
@@ -2566,7 +2593,7 @@ define("enc-base64", function(){});
  *  of truth for a client to manage what is actively being played. It
  *  should be created with:
  *
- *  var session = new Feed.Session(token, secret);
+ *  var session = new Feed.Session(token, secret[, options]);
  *
  *  Then you attach event listeners to the session:
  *
@@ -2644,9 +2671,17 @@ define("enc-base64", function(){});
  *  Other misc calls:
  *  
  *  session.likePlay(), session.unlikePlay(), session.dislikePlay(): like handling
+ *
+ *  The optional 'options' argument passed to the constructor can have the following
+ *  attributes:
+ *
+ *    secure: if true, the default URLs for accessing the feed API will be
+ *       over 'https' rather than 'http' (the default).
+ *    baseUrl: defines the base host that responds to API calls - defaults
+ *       to '//feed.fm'. Really only used with local testing.
  */
 
-define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events) {
+define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'feed/util', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events, util) {
 
   // use SHA256 for encryption
   OAuth.SignatureMethod.registerMethodClass(['HMAC-SHA256', 'HMAC-SHA256-Accessor'],
@@ -2658,7 +2693,9 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
       }
     ));
 
-  var Session = function(token, secret) {
+  var Session = function(token, secret, options) {
+    options = options || { };
+
     this.config = {
       // token
       // secret
@@ -2666,7 +2703,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
       // placement
       // stationId
       // clientId
-      baseUrl: 'http://feed.fm',
+      baseUrl: util.addProtocol(options.baseUrl || '//feed.fm', options.secure),
       formats: 'mp3,aac',
       maxBitrate: 128,
       timeOffset: 0,
@@ -2692,7 +2729,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   };
 
   Session.prototype.setBaseUrl = function(baseUrl) {
-    this.config.baseUrl = baseUrl;
+    this.config.baseUrl = util.addProtocol(baseUrl);
   };
 
   Session.prototype.setCredentials = function(token, secret) {
@@ -3067,7 +3104,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   Session.prototype._startPlay = function(play) {
     if (this.config.current.retryCount > 2) {
       // fuck it - let the user hear the song
-      this._receiveStartPlay(play, false);
+      this._receiveStartPlay(play, { success: true, can_skip: true });
 
     } else {
       log('telling server we\'re starting the play', play);
@@ -4104,6 +4141,8 @@ define("Soundmanager", (function (global) {
  *                browser's 'audio' tag
  *   debug: if true, emit debug information to the console
  *   silence: URL to an mp3 with no sound, for initializing mobile clients
+ *   secure: if true, default URLs for the soundmanager2.swf and silence mp3
+ *                will come from 'https' locations
  *
  * The first function call to 'speaker()' is what configures and defines the
  * speaker - and subsequent calls just return the already-created instance.
@@ -4115,7 +4154,7 @@ define("Soundmanager", (function (global) {
  *
  */
 
-define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'Soundmanager' ], function(_, log, Events) {
+define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, log, Events, util) {
 
   var Sound = function(callbacks) { 
     var obj = _.extend(this, Events);
@@ -4204,7 +4243,7 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'Soundmanager' 
       debugMode: options.debug || false,
       debugFlash: options.debug || false,
       preferFlash: options.preferFlash || false,
-      url: options.swfBase || 'http://feed.fm/js/latest/',
+      url: util.addProtocol(options.swfBase || '//feed.fm/js/latest/', options.secure),
       onready: function() {
         // swap in the true sound object creation function
         speaker.createSongObject = function(songOptions) {
@@ -4225,9 +4264,10 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'Soundmanager' 
       }
     });
 
-    this.silence = options.silence || 'http://feed.fm/sample/5seconds.mp3';
+    this.silence = util.addProtocol(options.silence || '//feed.fm/js/latest/5seconds.mp3', options.secure);
+
   };
-  
+
   Speaker.prototype = {
     vol: 100,
     outstandingPlays: { },
@@ -4382,9 +4422,14 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'Soundmanager' 
  *  or similar.
  *
  *  Create this with:
- *    player = new Feed.Player(token, secret)
+ *    player = new Feed.Player(token, secret[, options])
  *
- *  Then set the placement (and optionally station) that we're pulling
+ *  (where 'options' is an optional object that is passed to the
+ *   feed/speaker function and the feed/session constructor. Normally
+ *   you'd only use a value of '{ secure: true }' to use HTTPS for all
+ *   communications)
+ *
+ *  Then set the optional placement and station that we're pulling
  *  from:
  *
  *    player.setPlacementId(xxx);
@@ -4450,7 +4495,7 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
     _.extend(this, Events);
 
-    this.session = new Session(token, secret);
+    this.session = new Session(token, secret, options);
     this.session.on('play-active', this._onPlayActive, this);
     this.session.on('play-started', this._onPlayStarted, this);
     this.session.on('play-completed', this._onPlayCompleted, this);
@@ -4768,16 +4813,21 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
 /*global define:false */
 
+/*! A Feed.fm joint: github.com/fuzz-radio/Javascript-SDK */
+
 /*
  * This is the object we export as 'Feed' when everything is bundled up.
  */
 
-define('feed/feed',[ 'feed/session', 'feed/log', 'feed/player-view', 'feed/player', 'feed/speaker' ], function(Session, log, PlayerView, Player) {
+define('feed/feed',[ 'feed/session', 'feed/log', 'feed/player-view', 'feed/player', 'feed/speaker' ], function(Session, log, PlayerView, Player, getSpeaker) {
 
   return {
     Session: Session,
     Player: Player,
-    PlayerView: PlayerView
+    PlayerView: PlayerView,
+
+    // this is going to go away
+    getSpeaker: getSpeaker
   };
 
 });

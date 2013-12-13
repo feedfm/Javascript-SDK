@@ -6,12 +6,15 @@
  * This is the object we export as 'Feed' when everything is bundled up.
  */
 
-define([ 'feed/session', 'feed/log', 'feed/player-view', 'feed/player', 'feed/speaker' ], function(Session, log, PlayerView, Player) {
+define([ 'feed/session', 'feed/log', 'feed/player-view', 'feed/player', 'feed/speaker' ], function(Session, log, PlayerView, Player, getSpeaker) {
 
   return {
     Session: Session,
     Player: Player,
-    PlayerView: PlayerView
+    PlayerView: PlayerView,
+
+    // this is going to go away
+    getSpeaker: getSpeaker
   };
 
 });

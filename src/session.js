@@ -8,7 +8,7 @@
  *  of truth for a client to manage what is actively being played. It
  *  should be created with:
  *
- *  var session = new Feed.Session(token, secret);
+ *  var session = new Feed.Session(token, secret[, options]);
  *
  *  Then you attach event listeners to the session:
  *
@@ -86,9 +86,17 @@
  *  Other misc calls:
  *  
  *  session.likePlay(), session.unlikePlay(), session.dislikePlay(): like handling
+ *
+ *  The optional 'options' argument passed to the constructor can have the following
+ *  attributes:
+ *
+ *    secure: if true, the default URLs for accessing the feed API will be
+ *       over 'https' rather than 'http' (the default).
+ *    baseUrl: defines the base host that responds to API calls - defaults
+ *       to '//feed.fm'. Really only used with local testing.
  */
 
-define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events) {
+define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'feed/util', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events, util) {
 
   // use SHA256 for encryption
   OAuth.SignatureMethod.registerMethodClass(['HMAC-SHA256', 'HMAC-SHA256-Accessor'],
@@ -100,7 +108,9 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
       }
     ));
 
-  var Session = function(token, secret) {
+  var Session = function(token, secret, options) {
+    options = options || { };
+
     this.config = {
       // token
       // secret
@@ -108,7 +118,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
       // placement
       // stationId
       // clientId
-      baseUrl: 'http://feed.fm',
+      baseUrl: util.addProtocol(options.baseUrl || '//feed.fm', options.secure),
       formats: 'mp3,aac',
       maxBitrate: 128,
       timeOffset: 0,
@@ -134,7 +144,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype.setBaseUrl = function(baseUrl) {
-    this.config.baseUrl = baseUrl;
+    this.config.baseUrl = util.addProtocol(baseUrl);
   };
 
   Session.prototype.setCredentials = function(token, secret) {
@@ -509,7 +519,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   Session.prototype._startPlay = function(play) {
     if (this.config.current.retryCount > 2) {
       // fuck it - let the user hear the song
-      this._receiveStartPlay(play, false);
+      this._receiveStartPlay(play, { success: true, can_skip: true });
 
     } else {
       log('telling server we\'re starting the play', play);
