@@ -1,4 +1,4 @@
-/*global _:false */
+/*global define:false */
 
 /*
  *  Events mixin from Backbone 
@@ -20,8 +20,7 @@
  *  object.trigger('expand');
  */
 
-(function() {
-
+define([ 'underscore' ], function(_) {
   var slice = Array.prototype.slice;
 
   var Events = {
@@ -175,8 +174,7 @@
     };
   });
 
-  window.Feed = window.Feed || {};
-  window.Feed.Events = Events;
+  return Events;
 
-})();
+});
 

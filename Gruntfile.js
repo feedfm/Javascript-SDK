@@ -6,6 +6,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-concat');
+  grunt.loadNpmTasks('grunt-contrib-requirejs');
 
   // Project configuration.
   grunt.initConfig({
@@ -28,6 +29,31 @@ module.exports = function(grunt) {
       all: [
         'src/*.js'
       ]
+    },
+
+    requirejs: {
+      'feed-without-jquery': {
+        options: {
+          mainConfigFile: 'src/config.js',
+
+          baseUrl: 'vendor',
+          name: 'almond',
+          include: [ 'feed/main' ],
+          out: 'dist/feed-without-jquery.js',
+
+          optimize: 'none',
+
+          paths: {
+            'jquery': '../src/jquery-external'
+          },
+
+          wrap: {
+            start: '(function() {',
+            end: ' window.Feed = require("feed/main"); }());'
+          }
+        }
+      }
+
     },
 
     concat: {

@@ -9,6 +9,7 @@
     "grunt-contrib-concat": "~0.3.0"
   },
   "dependencies": {
-    "grunt-contrib-concat": "~0.3.0"
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-requirejs": "~0.4.1"
   }
 }

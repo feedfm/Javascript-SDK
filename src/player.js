@@ -1,4 +1,4 @@
-/*global _:false */
+/*global define:false */
 /*jshint camelcase:false */
 
 /*
@@ -59,7 +59,8 @@
  *
  */
 
-(function() {
+define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function(_, getSpeaker, Events, Session) {
+
   function supports_html5_storage() {
     try {
       return 'localStorage' in window && window['localStorage'] !== null;
@@ -76,15 +77,15 @@
 
     options = options || {};
 
-    _.extend(this, window.Feed.Events);
+    _.extend(this, Events);
 
-    this.session = new window.Feed.Session(token, secret);
+    this.session = new Session(token, secret);
     this.session.on('play-active', this._onPlayActive, this);
     this.session.on('play-started', this._onPlayStarted, this);
     this.session.on('play-completed', this._onPlayCompleted, this);
     this.session.on('plays-exhausted', this._onPlaysExhausted, this);
 
-    this.speaker = window.Feed.getSpeaker(options);
+    this.speaker = getSpeaker(options);
     this.setMuted(this.isMuted());
 
     this.session.on('all', function() {
@@ -389,7 +390,7 @@
     }
   };
 
-  window.Feed = window.Feed || {};
-  window.Feed.Player = Player;
-})();
+  return Player;
+
+});
 

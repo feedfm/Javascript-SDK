@@ -1,4 +1,4 @@
-/*global console:true */
+/*global console:true, define:false */
 
 /**
  * Console wrapper.
@@ -27,7 +27,7 @@
  *
  **/
 
-(function() {
+define(function() {
   // Tell IE9 to use its built-in console
   if (Function.prototype.bind && (typeof console === 'object' || typeof console === 'function') && typeof console.log === 'object') {
     var fields = ['log','info','warn','error','assert','dir','clear','profile','profileEnd'];
@@ -89,8 +89,7 @@
     }
   };
 
-  window.Feed = window.Feed || {};
-  window.Feed.log = log;
+  return log;
 
-})();
+});
 

@@ -1,4 +1,4 @@
-/*global _:false, $:false */
+/*global define:false */
 /*jshint camelcase:false */
 
 /*
@@ -64,7 +64,8 @@
  *
  */
 
-(function() {
+define([ 'underscore', 'feed/jquery' ], function(_, $) {
+
   var PlayerView = function(id, player) {
     this.id = id;
     this.alertId = null;
@@ -342,8 +343,7 @@
 
   };
 
-  window.Feed = window.Feed || {};
-  window.Feed.PlayerView = PlayerView;
+  return PlayerView;
 
-})();
+});
 

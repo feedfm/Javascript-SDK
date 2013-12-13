@@ -1,17 +1,17 @@
-/*global _:false */
+/*global define:false */
 
 /*
  * The speaker object encapsulates the SoundManager2 code and boils it down
  * to the following api:
  *
- *    speaker.initializeForMobile: mobile clients can only start using
+ *    speaker().initializeForMobile: mobile clients can only start using
  *      speaker when handling an 'onClick' event. This call should be made 
  *      at that time to get sound initialized while waiting for details
  *      of what to play from the server. 
  *
- *    speaker.setVolume(value): set the volume from 0 (mute) - 100 (full volume)
+ *    speaker().setVolume(value): set the volume from 0 (mute) - 100 (full volume)
  *
- *    var sound = speaker.create(url, eventHandlerMap): create a new sound from the
+ *    var sound = speaker().create(url, eventHandlerMap): create a new sound from the
  *       given url and return a 'song' object that can be used to pause/play/
  *       destroy the song and receive trigger events as the song plays/stops. 
  *
@@ -37,11 +37,16 @@
  *         resume: resume playback
  *         destroy: stop playback, prevent any future playback, and free up memory
  *
- * You shouldn't directly create an instance of the speaker - instead use this:
+ * This module returns a function that returns a speaker singleton so everybody
+ * is using the same instance.
  *
- *   var speaker = Feed.getSpeaker(options);
+ * Proper usage looks like this:
  *
- * That will make sure that all code uses the same instance of 'speaker'. 'options'
+ *   require([ 'feed/speaker' ], function(speaker) {
+ *     var mySpeaker = speaker(options);
+ *   });
+ *
+ * That will make sure that all code uses the same speaker instance. 'options'
  * is optional, and is an object with any of the following keys:
  *
  *   swfBase: URL pointing to directory containing 'soundmanager2.swf' file 
@@ -51,16 +56,20 @@
  *   debug: if true, emit debug information to the console
  *   silence: URL to an mp3 with no sound, for initializing mobile clients
  *
+ * The first function call to 'speaker()' is what configures and defines the
+ * speaker - and subsequent calls just return the already-created instance.
+ * I think this is a poor interface, but I don't have a better one at the
+ * moment.
+ *
  * This code uses the wonderful SoundManager2 api and falls back to
  * the soundmanager2 flash plugin if HTML5 audio isn't available. 
  *
  */
 
-(function() {
-  var log = window.Feed.log;
+define([ 'underscore', 'feed/log', 'feed/events', 'Soundmanager' ], function(_, log, Events) {
 
   var Sound = function(callbacks) { 
-    var obj = _.extend(this, window.Feed.Events);
+    var obj = _.extend(this, Events);
 
     if (callbacks) {
       _.each(callbacks, function(cb, ev) {
@@ -296,14 +305,12 @@
   };
 
   // add events to speaker class
-  _.extend(Speaker.prototype, window.Feed.Events);
-
-  window.Feed = window.Feed || {};
+  _.extend(Speaker.prototype, Events);
 
   var speaker = null;
 
   // there should only ever be a single instance of 'Speaker'
-  window.Feed.getSpeaker = function(options) {
+  return function(options) {
     if (speaker === null) {
       speaker = new Speaker(options);
     }
@@ -311,4 +318,4 @@
     return speaker;
   };
 
-})();
+});

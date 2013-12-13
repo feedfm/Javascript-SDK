@@ -1,4 +1,4 @@
-/*global _:false, $:false, CryptoJS:false, OAuth:false */
+/*global define:false */
 /*jshint camelcase:false */
 
 /*
@@ -88,8 +88,7 @@
  *  session.likePlay(), session.unlikePlay(), session.dislikePlay(): like handling
  */
 
-(function() {
-  var log = window.Feed.log;
+define([ 'underscore', 'feed/jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events', 'jquery.cookie', 'enc-base64' ], function(_, $, CryptoJS, OAuth, log, Events) {
 
   // use SHA256 for encryption
   OAuth.SignatureMethod.registerMethodClass(['HMAC-SHA256', 'HMAC-SHA256-Accessor'],
@@ -127,7 +126,7 @@
                         //   sound 
     };
 
-    _.extend(this, window.Feed.Events);
+    _.extend(this, Events);
 
     if (token && secret) {
       this.setCredentials(token, secret);
@@ -959,26 +958,41 @@
   };
 
   Session.prototype._sign = function(request) {
-    // sign the form if oauth is requested
-    var message = {
-      action: request.url,
-      method: request.type,
-      parameters: {
-        oauth_timestamp: this._unixTime() + this.config.timeOffset,
-        oauth_nonce: this._makeNonce(), 
-        oauth_signature_method: 'HMAC-SHA256'
-      }
-    };
+    var authorization;
 
-    $.extend(message.parameters, request.data);
+    if (request.url.slice(0, 5) === 'https') {
+      // use Basic auth for HTTPS
+      authorization = 'Basic ' + CryptoJS.enc.Base64.stringify(
+                        CryptoJS.enc.Latin1.parse(
+                          this.config.token + ':' + this.config.secret
+                        )
+                      );
 
-    OAuth.completeRequest(message, {
-      consumerKey:    this.config.token,
-      consumerSecret: this.config.secret
-    });
+    } else {
+      // use OAuth for HTTP
+
+      var message = {
+        action: request.url,
+        method: request.type,
+        parameters: {
+          oauth_timestamp: this._unixTime() + this.config.timeOffset,
+          oauth_nonce: this._makeNonce(), 
+          oauth_signature_method: 'HMAC-SHA256'
+        }
+      };
+
+      $.extend(message.parameters, request.data);
+
+      OAuth.completeRequest(message, {
+        consumerKey:    this.config.token,
+        consumerSecret: this.config.secret
+      });
+
+      authorization = OAuth.getAuthorizationHeader('Feed.fm', message.parameters);
+    }
 
     request.headers = {
-      Authorization: OAuth.getAuthorizationHeader('Feed.fm', message.parameters)
+      Authorization: authorization
     };
 
     return request;
@@ -1003,8 +1017,7 @@
     return $.ajax(request);
   };
 
-  window.Feed = window.Feed || {};
-  window.Feed.Session = Session;
+  return Session;
 
-})();
+});
 
