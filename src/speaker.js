@@ -178,9 +178,19 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
       }
     };
 
-    var soundManager = window.soundManager = new SoundManager();
+    // The SoundManager library likes to watch for the onpageload
+    // event and initialize itself as soon as the page loads. This
+    // causes problems when SoundManager is loaded up lazily by requirejs
+    // vs packaged with all the Feed SDK. When packaging things up,
+    // we prefix all the code with 'window.SM2_DEFER = true;' to prevent
+    // the code from initializing on load, but then the SoundManager
+    // code doesn't make the 'window.soundManager' singleton, so we do that
+    // here
+    if (!window.soundManager) {
+      window.soundManager = new SoundManager();
+    }
     
-    soundManager.setup(config);
+    window.soundManager.setup(config);
 
     this.silence = util.addProtocol(options.silence || '//feed.fm/js/latest/5seconds.mp3', options.secure);
 
