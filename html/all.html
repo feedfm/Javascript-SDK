@@ -48,7 +48,7 @@
     require([ 'jquery', 'feed/feed' ], function($, Feed) {
       window.Feed = Feed;
 
-      if (window.userAgent =~ /iPod|iPhone|iPad/) {
+      if (/iPod|iPhone|iPad/.test(window.navigator.userAgent)) {
         var $el = $('<button>Click me to start test</button>');
 
         $el.appendTo($('body'));

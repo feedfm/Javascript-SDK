@@ -1,4 +1,6 @@
-/*global module:false*/
+/*global module:false, require:false */
+
+var _ = require('underscore');
 
 module.exports = function(grunt) {
 
@@ -51,10 +53,6 @@ module.exports = function(grunt) {
               // stub out logging
               'feed/log': 'feed/nolog'
             }
-          },
-
-          wrap: {
-            end: 'require.config({ map: { "*": { "jquery" : "feed/jquery-noconflict", "feed/log" : "feed/nolog" } } }); window.Feed = require("feed/feed");'
           }
         }
       },
@@ -70,10 +68,6 @@ module.exports = function(grunt) {
               // stub out logging
               'feed/log': 'feed/nolog'
             }
-          },
-
-          wrap: {
-            end: 'require.config({ map: { "*": { "jquery" : "feed/jquery-noconflict", "feed/log" : "feed/nolog" }, "feed/jquery-noconflict" : { "jquery" : "jquery" } } }); window.Feed = require("feed/feed");'
           }
         }
       },
@@ -89,10 +83,6 @@ module.exports = function(grunt) {
               // use jquery already in page
               'jquery': 'feed/jquery-external'
             }
-          },
-
-          wrap: {
-            end: 'require.config({ map: { "*": { "jquery" : "feed/jquery-external" } } }); window.Feed = require("feed/feed");'
           }
         }
       },
@@ -111,10 +101,6 @@ module.exports = function(grunt) {
             'feed/jquery-noconflict': {
               'jquery': 'jquery'
             }
-          },
-
-          wrap: {
-            end: 'require.config({ map: { "*": { "jquery" : "feed/jquery-noconflict" }, "feed/jquery-noconflict" : { "jquery" : "jquery" } }}); window.Feed = require("feed/feed");'
           }
         }
       }
@@ -131,8 +117,26 @@ module.exports = function(grunt) {
     }
   });
 
+  grunt.config('requirejs');
+  
+  // copy the map config in the requirejs entries to the 'wrap'
+  // so the mapping is added to the final file
+  _.each(grunt.config('requirejs'), function(value, key) {
+    if (key !== 'options') {
+      grunt.config(
+        'requirejs.' + key + '.options.wrap',
+        {
+          start: 'window.SM2_DEFER = true;',
+          end: 'require.config({ map: ' + 
+            JSON.stringify(grunt.config('requirejs.' + key + '.options.map')) +
+            ' }); window.Feed = require("feed/feed");'
+        }
+      );
+    }
+  });
+
   // Default task.
-  grunt.registerTask('default', ['jshint', 
+  grunt.registerTask('default', ['jshint' , 
     'requirejs:feed', 'requirejs:feed-without-jquery', 
     'requirejs:feed-debug', 'requirejs:feed-without-jquery-debug' ]);
 

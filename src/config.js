@@ -34,7 +34,7 @@ var require = {
     // I'm leaving them here.
     'jquery': 'jquery-1.10.2',
     'Backbone': 'backbone-1.1.0',
-    'Soundmanager': 'soundmanager2.97a.20130512',
+    'Soundmanager': 'soundmanager2-nodebug-97a-20131201',
     'CryptoJS': 'hmac-sha256'
   },
 

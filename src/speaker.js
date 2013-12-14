@@ -68,7 +68,7 @@
  *
  */
 
-define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, log, Events, util) {
+define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, log, Events, util, SoundManager) {
 
   var Sound = function(callbacks) { 
     var obj = _.extend(this, Events);
@@ -178,7 +178,9 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
       }
     };
 
-    window.soundManager.setup(config);
+    var soundManager = window.soundManager = new SoundManager();
+    
+    soundManager.setup(config);
 
     this.silence = util.addProtocol(options.silence || '//feed.fm/js/latest/5seconds.mp3', options.secure);
 
