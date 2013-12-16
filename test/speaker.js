@@ -68,6 +68,35 @@
 
     });
 
+    it('will play a long song object with a start offset', function(done) {
+      var playCalled = false;
+
+      var song = Feed.getSpeaker(speakerOptions).create('hutz.mp3', { 
+        play: function() { 
+          playCalled = true; 
+        },
+        pause: function() {
+          song.destroy();
+          done();
+        },
+        finish: function() {
+          assert.fail(null, null, 'should not have finished this play');
+        },
+
+        // start 3 seconds in
+        startPosition: 3000
+      });
+
+      assert.isNotNull(song);
+
+      song.play();
+
+      setTimeout(function() {
+        song.pause();
+      }, 1500);
+
+    });
+
     it('will play a long song object and respond to pause and unpause events', function(done) {
       var playCount = 0, pauseCount = 0;
 

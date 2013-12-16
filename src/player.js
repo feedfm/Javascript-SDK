@@ -113,11 +113,17 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
 
   Player.prototype._onPlayActive = function(play) {
     // create a new sound object
-    var sound = this.speaker.create(play.audio_file.url, {
+    var options = {
       play: _.bind(this._onSoundPlay, this),
       pause: _.bind(this._onSoundPause, this),
       finish:  _.bind(this._onSoundFinish, this)
-    });
+    };
+
+    if (play.startPosition) {
+      options.startPosition = play.startPosition;
+    }
+
+    var sound = this.speaker.create(play.audio_file.url, options);
 
     this.state.activePlay = {
       id: play.id,

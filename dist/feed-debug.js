@@ -12414,6 +12414,12 @@ define("enc-base64", function(){});
  *  placement: after we tune in to a placement or station,
  *    this passes on information about the placement we
  *    tuned in to.
+ *  stations: after tuning to a specific placement, the server returns a
+ *    list of available stations. This is that list.
+ *  station-changed: emitted after a 'setStation' call, and passed the
+ *    ID of the station
+ *  placement-changed: emitted after a 'setPlacement' call, and passed the
+ *    ID of the placement
  *  play-active: when the session has a play ready for playback
  *  play-started: when the active play has started playback (as
  *    a result of a call to reportPlayStarted)
@@ -12580,13 +12586,6 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
       throw new Error('no secret set with setCredentials()');
     }
 
-    // pull information in about the placement
-    if (!this.config.placementId) {
-      this._getDefaultPlacementInformation();
-    } else {
-      this._getPlacementInformation();
-    }
-
     // abort any pending requests or plays
     this.config.pendingRequest = null;
     this.config.pendingPlay = null;
@@ -12595,8 +12594,13 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
     // the status to waiting
     this._assignCurrentPlay(null, true);
 
-    // kick off request for next play
-    this._requestNextPlay();
+    // pull information in about the placement, followed by
+    // a request for the next play
+    if (!this.config.placementId) {
+      this._getDefaultPlacementInformation();
+    } else {
+      this._getPlacementInformation();
+    }
   };
 
   // _getDefaultPlacementInformation
@@ -12625,10 +12629,21 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   Session.prototype._receiveDefaultPlacementInformation = function(placementInformation) {
     if (placementInformation && placementInformation.success && placementInformation.placement) {
       this.config.placement = placementInformation.placement;
+
       this.config.placementId = placementInformation.placement.id;
+      this.trigger('placement-changed', this.config.placementId);
 
       this.trigger('placement', placementInformation.placement);
+
+      if (!('stationId' in this.config) && (placementInformation.stations.length > 0)) {
+        this.config.stationId = placementInformation.stations[0].id;
+        this.trigger('station-changed', this.config.stationId);
+      }
+
       this.trigger('stations', placementInformation.stations);
+
+      // kick off request for next play
+      this._requestNextPlay();
     }
   };
 
@@ -12669,7 +12684,16 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
       this.config.placement = placementInformation.placement;
 
       this.trigger('placement', placementInformation.placement);
+
+      if (!('stationId' in this.config) && (placementInformation.stations.length > 0)) {
+        this.config.stationId = placementInformation.stations[0].id;
+        this.trigger('station-changed', this.config.stationId);
+      }
+
       this.trigger('stations', placementInformation.stations);
+
+      // kick off request for next play
+      this._requestNextPlay();
     }
   };
 
@@ -16438,13 +16462,21 @@ define("Soundmanager", (function (global) {
  *
  *    speaker().setVolume(value): set the volume from 0 (mute) - 100 (full volume)
  *
- *    var sound = speaker().create(url, eventHandlerMap): create a new sound from the
+ *    var sound = speaker().create(url, optionsAndEvents): create a new sound from the
  *       given url and return a 'song' object that can be used to pause/play/
  *       destroy the song and receive trigger events as the song plays/stops. 
  *
- *       The 'eventHandlerMap' is an object that maps events emitted from the
- *       returned object to handler functions. If you don't provide the
- *       callbacks here, you can do "sound.on('event', function() { ... })"
+ *       The 'optionsAndEvents' is an object that lets you specify event
+ *       handlers and options:
+ *
+ *          startPosition:  specifies the time offset (in milliseconds) that the
+ *                          sound should begin playback at when we begin playback.
+ *          play:           event handler for 'play' event
+ *          pause:          event handler for 'pause' event
+ *          finish:         event handler for 'finish' event
+ *
+ *       If you don't provide the callbacks above, you can do 
+ *       "sound.on('event', function() { ... })"
  *
  *       The returned object emits the following events:
  *         play: the song has started playing or resumed playing after pause
@@ -16459,7 +16491,7 @@ define("Soundmanager", (function (global) {
  *       we can't load a song, it will just get a 'finish' and no 'play'
  *
  *       The returned song object has this following api:
- *         play: start playback
+ *         play: start playback (possibly at the 'startPosition', if specified)
  *         pause: pause playback
  *         resume: resume playback
  *         destroy: stop playback, prevent any future playback, and free up memory
@@ -16497,12 +16529,18 @@ define("Soundmanager", (function (global) {
 
 define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, log, Events, util, SoundManager) {
 
-  var Sound = function(callbacks) { 
+  var Sound = function(options) { 
     var obj = _.extend(this, Events);
 
-    if (callbacks) {
-      _.each(callbacks, function(cb, ev) {
-        obj.on(ev, cb);
+    if (options) {
+      if ('startPosition' in options) {
+        this.startPosition = options.startPosition;
+      }
+
+      _.each(['play', 'pause', 'finish'], function(ev) {
+        if (ev in options) {
+          obj.on(ev, options[ev]);
+        }
       });
     }
 
@@ -16511,29 +16549,43 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
 
   Sound.prototype = {
     play: function() {
-      if (this.songObject) {
-        this.songObject.play();
+      if (this.sm2Sound) {
+        if (!this.sm2Sound.fake && this.startPosition) {
+          var startPosition = this.startPosition;
+
+          this.sm2Sound.load({
+            whileloading: function() {
+              if ((this.playState === 0) && (this.duration > startPosition)) {
+                // start playback as soon as we can
+                this.setPosition(startPosition);
+                this.play();
+              }
+            }
+          });
+        } else {
+          this.sm2Sound.play();
+        }
       }
     },
 
     // pause playback of the current sound clip
     pause: function() {
-      if (this.songObject) {
-        this.songObject.pause();
+      if (this.sm2Sound) {
+        this.sm2Sound.pause();
       }
     },
 
     // resume playback of the current sound clip
     resume: function() {
-      if (this.songObject) {
-        this.songObject.resume();
+      if (this.sm2Sound) {
+        this.sm2Sound.resume();
       }
     },
 
     // elapsed number of milliseconds played
     position: function() {
-      if (this.songObject) {
-        return this.songObject.position;
+      if (this.sm2Sound) {
+        return this.sm2Sound.position;
       } else {
         return 0;
       }
@@ -16542,8 +16594,8 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
     // duration in milliseconds of the song
     // (this may change until the song is full loaded)
     duration: function() {
-      if (this.songObject) {
-        var d = this.songObject.duration;
+      if (this.sm2Sound) {
+        var d = this.sm2Sound.duration;
         return d ? d : 1;
       } else {
         return 1;
@@ -16554,10 +16606,10 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
     destroy: function() {
       log('destroy triggered for', this.id);
 
-      if (this.songObject) {
+      if (this.sm2Sound) {
         delete speaker.outstandingPlays[this.id];
-        this.songObject.destruct();
-        this.songObject = null;
+        this.sm2Sound.destruct();
+        this.sm2Sound = null;
       }
 
       this.off();
@@ -16587,27 +16639,38 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
       url: util.addProtocol(options.swfBase || '//feed.fm/js/latest/', options.secure),
       onready: function() {
         // swap in the true sound object creation function
-        speaker.createSongObject = function(songOptions) {
+        speaker._createSM2Sound = function(songOptions) {
           return window.soundManager.createSound(songOptions);
         };
 
         // create actual sound objects for sounds already queued up
         _.each(speaker.outstandingPlays, function(sound) {
-          var playing = sound.songObject.playing;
+          var playing = sound.sm2Sound.playing;
 
-          speaker._assignSongObject(sound);
+          // swap fake song object with real song object
+          speaker._createAndAssignSM2Sound(sound);
 
           if (playing) {
             log('playing already created sound');
-            sound.songObject.play();
+            sound.play();
           }
         });
       }
     };
 
-    var soundManager = window.soundManager = new SoundManager();
+    // The SoundManager library likes to watch for the onpageload
+    // event and initialize itself as soon as the page loads. This
+    // causes problems when SoundManager is loaded up lazily by requirejs
+    // vs packaged with all the Feed SDK. When packaging things up,
+    // we prefix all the code with 'window.SM2_DEFER = true;' to prevent
+    // the code from initializing on load, but then the SoundManager
+    // code doesn't make the 'window.soundManager' singleton, so we do that
+    // here
+    if (!window.soundManager) {
+      window.soundManager = new SoundManager();
+    }
     
-    soundManager.setup(config);
+    window.soundManager.setup(config);
 
     this.silence = util.addProtocol(options.silence || '//feed.fm/js/latest/5seconds.mp3', options.secure);
 
@@ -16618,25 +16681,11 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
     outstandingPlays: { },
     mobileInitialized: false,
 
-    createSongObject: function(options) { 
-      // this is replaced with a real call to SoundManager upon initialization
-      return { 
-        fake: true,
-        playing: false,
-        options: options,
-        setVolume: function() { },
-        play: function() { this.playing = true; },
-        pause: function() { this.playing = false; },
-        resume: function() { this.playing = true; },
-        destruct: function() { }
-      };
-    },
-
     initializeForMobile: function() {
       if (!this.mobileInitialized) {
         // Just play a blank mp3 file that we know the location of, presumably
         // while we ping the server for the song we want
-        var sound = this.createSongObject({
+        var sound = this._createSM2Sound({
           id: 'silence',
           url: this.silence,
           volume: 0,
@@ -16656,15 +16705,30 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
 
       this.outstandingPlays[sound.id] = sound;
 
-      this._assignSongObject(sound);
+      this._createAndAssignSM2Sound(sound);
 
       return sound;
     },
 
-    _assignSongObject: function(sound) {
+    _createSM2Sound: function(options) { 
+      // this is replaced with a real call to SoundManager upon initialization
+      // the real call just passes everything to the SoundManager.createSound() call
+      return { 
+        fake: true,
+        playing: false,
+        options: options,
+        setVolume: function() { },
+        play: function() { this.playing = true; },
+        pause: function() { this.playing = false; },
+        resume: function() { this.playing = true; },
+        destruct: function() { }
+      };
+    },
+
+    _createAndAssignSM2Sound: function(sound) {
       var speaker = this;
 
-      sound.songObject = this.createSongObject({
+      sound.sm2Sound = this._createSM2Sound({
         id: sound.id,
         url: sound.url,
         volume: speaker.vol,
@@ -16727,7 +16791,7 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
         this.vol = value;
 
         _.each(this.outstandingPlays, function(song) {
-          song.songObject.setVolume(value);
+          song.sm2Sound.setVolume(value);
         });
 
         this.trigger('volume', value);
@@ -16869,11 +16933,17 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
   Player.prototype._onPlayActive = function(play) {
     // create a new sound object
-    var sound = this.speaker.create(play.audio_file.url, {
+    var options = {
       play: _.bind(this._onSoundPlay, this),
       pause: _.bind(this._onSoundPause, this),
       finish:  _.bind(this._onSoundFinish, this)
-    });
+    };
+
+    if (play.startPosition) {
+      options.startPosition = play.startPosition;
+    }
+
+    var sound = this.speaker.create(play.audio_file.url, options);
 
     this.state.activePlay = {
       id: play.id,
