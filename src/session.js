@@ -39,6 +39,12 @@
  *  placement: after we tune in to a placement or station,
  *    this passes on information about the placement we
  *    tuned in to.
+ *  stations: after tuning to a specific placement, the server returns a
+ *    list of available stations. This is that list.
+ *  station-changed: emitted after a 'setPlacement' call, and passed the
+ *    ID of the station
+ *  placement-changed: emitted after a 'setStation' call, and passed the
+ *    ID of the station
  *  play-active: when the session has a play ready for playback
  *  play-started: when the active play has started playback (as
  *    a result of a call to reportPlayStarted)
