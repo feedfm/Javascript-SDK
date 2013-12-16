@@ -35,6 +35,42 @@
           client_id: 'client_id'
         }));
       });
+      
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/10000', function(response) {
+        console.log('placement');
+        requests.push('placement');
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          placement: {
+            id: '10000',
+            name: 'placmeent'
+          },
+          stations: [
+            { id: '222', name: 'station 222' },
+            { id: '333', name: 'station 333' },
+            { id: '444', name: 'station 444' },
+          ]
+        }));
+      });
+
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement', function(response) {
+        console.log('placement');
+        requests.push('placement');
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          placement: {
+            id: '1234',
+            name: 'placmeent'
+          },
+          stations: [
+            { id: '222', name: 'station 222' },
+            { id: '333', name: 'station 333' },
+            { id: '444', name: 'station 444' },
+          ]
+        }));
+      });
 
       server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
         console.log('play');
@@ -88,6 +124,7 @@
       var player = new Feed.Player('token', 'secret', speakerOptions);
 
       assert.property(player, 'play');
+      assert.property(player, 'tune');
       assert.property(player, 'pause');
       assert.property(player, 'skip');
       assert.property(player, 'setPlacementId');
@@ -96,29 +133,21 @@
       assert.property(player, 'off');
     });
 
-    it('requires credentials and placement for a play call or will throw', function() {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      try {
-        player.play();
-
-        assert.fail(null, null, 'should have thrown an exception');
-
-      } catch (e) { }
-
-    });
-
     it('will start tuning when play is called', function(done) {
       var player = new Feed.Player('token', 'secret', speakerOptions);
 
       var mock = sinon.mock(player);
+      
+      mock.expects('trigger').withArgs('placement-changed');
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
+      mock.expects('trigger').withArgs('play-active');
+      mock.expects('trigger').withArgs('play-started');
 
       player.setPlacementId('10000');
 
       plays.push(validPlay());
-
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
 
       player.play();
 
@@ -138,13 +167,17 @@
 
       var mock = sinon.mock(player);
 
-      player.setPlacementId('10000');
-
-      plays.push(validPlay());
-
+      mock.expects('trigger').withArgs('placement-changed');
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
       mock.expects('trigger').withArgs('play-paused');
+
+      player.setPlacementId('10000');
+
+      plays.push(validPlay());
 
       player.play();
 
@@ -167,14 +200,18 @@
 
       var mock = sinon.mock(player);
 
-      player.setPlacementId('10000');
-
-      plays.push(validPlay());
-
+      mock.expects('trigger').withArgs('placement-changed');
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
       mock.expects('trigger').withArgs('play-paused');
       mock.expects('trigger').withArgs('play-resumed');
+
+      player.setPlacementId('10000');
+
+      plays.push(validPlay());
 
       player.play();
 
@@ -260,7 +297,10 @@
       plays.push(validPlay());
       plays.push(validPlay());
 
-      player.setPlacementId('10000'); 
+      mock.expects('trigger').withArgs('placement-changed');
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
       mock.expects('trigger').withArgs('play-completed');
@@ -268,6 +308,8 @@
       mock.expects('trigger').withArgs('play-started');
       mock.expects('trigger').withArgs('play-completed');
       mock.expects('trigger').withArgs('plays-exhausted');
+
+      player.setPlacementId('10000'); 
 
       player.play();
 
@@ -286,16 +328,20 @@
 
       var mock = sinon.mock(player);
 
-      player.setPlacementId('10000');
-
       plays.push(validPlay());
       plays.push(validPlay());
 
+      mock.expects('trigger').withArgs('placement-changed');
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
       mock.expects('trigger').withArgs('play-completed');
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
+
+      player.setPlacementId('10000');
 
       player.play();
 
@@ -322,14 +368,18 @@
       plays.push(validPlay());
       plays.push(validPlay());
 
-      player.setPlacementId('10000');
-
+      mock.expects('trigger').withArgs('placement-changed');
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
       mock.expects('trigger').withArgs('play-paused');
       mock.expects('trigger').withArgs('play-completed');
       mock.expects('trigger').withArgs('play-active');
       mock.expects('trigger').withArgs('play-started');
+
+      player.setPlacementId('10000');
 
       player.play();
 

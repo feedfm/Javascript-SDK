@@ -41,10 +41,10 @@
  *    tuned in to.
  *  stations: after tuning to a specific placement, the server returns a
  *    list of available stations. This is that list.
- *  station-changed: emitted after a 'setPlacement' call, and passed the
+ *  station-changed: emitted after a 'setStation' call, and passed the
  *    ID of the station
- *  placement-changed: emitted after a 'setStation' call, and passed the
- *    ID of the station
+ *  placement-changed: emitted after a 'setPlacement' call, and passed the
+ *    ID of the placement
  *  play-active: when the session has a play ready for playback
  *  play-started: when the active play has started playback (as
  *    a result of a call to reportPlayStarted)
@@ -211,13 +211,6 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
       throw new Error('no secret set with setCredentials()');
     }
 
-    // pull information in about the placement
-    if (!this.config.placementId) {
-      this._getDefaultPlacementInformation();
-    } else {
-      this._getPlacementInformation();
-    }
-
     // abort any pending requests or plays
     this.config.pendingRequest = null;
     this.config.pendingPlay = null;
@@ -226,8 +219,13 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
     // the status to waiting
     this._assignCurrentPlay(null, true);
 
-    // kick off request for next play
-    this._requestNextPlay();
+    // pull information in about the placement, followed by
+    // a request for the next play
+    if (!this.config.placementId) {
+      this._getDefaultPlacementInformation();
+    } else {
+      this._getPlacementInformation();
+    }
   };
 
   // _getDefaultPlacementInformation
@@ -256,10 +254,21 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   Session.prototype._receiveDefaultPlacementInformation = function(placementInformation) {
     if (placementInformation && placementInformation.success && placementInformation.placement) {
       this.config.placement = placementInformation.placement;
+
       this.config.placementId = placementInformation.placement.id;
+      this.trigger('placement-changed', this.config.placementId);
 
       this.trigger('placement', placementInformation.placement);
+
+      if (!('stationId' in this.config) && (placementInformation.stations.length > 0)) {
+        this.config.stationId = placementInformation.stations[0].id;
+        this.trigger('station-changed', this.config.stationId);
+      }
+
       this.trigger('stations', placementInformation.stations);
+
+      // kick off request for next play
+      this._requestNextPlay();
     }
   };
 
@@ -300,7 +309,16 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
       this.config.placement = placementInformation.placement;
 
       this.trigger('placement', placementInformation.placement);
+
+      if (!('stationId' in this.config) && (placementInformation.stations.length > 0)) {
+        this.config.stationId = placementInformation.stations[0].id;
+        this.trigger('station-changed', this.config.stationId);
+      }
+
       this.trigger('stations', placementInformation.stations);
+
+      // kick off request for next play
+      this._requestNextPlay();
     }
   };
 

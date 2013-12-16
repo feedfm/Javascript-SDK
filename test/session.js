@@ -55,6 +55,10 @@
     });
 
     it('will request a play from the server when tune is called', function() {
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var playResponse = validPlayResponse();
 
       server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
@@ -63,6 +67,10 @@
       
       var session = newSessionWithClientAndCredentials();
       var mock = sinon.mock(session);
+
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -81,6 +89,10 @@
 
       server.respondWith('GET', 'http://feed.fm/api/v2/oauth/time', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, time: Math.floor(Date.now() / 1000) }));
+      });
+
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
       server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
@@ -102,6 +114,9 @@
       var mock = sinon.mock(session);
 
       mock.expects('trigger').withArgs('placement-changed');
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
 
       mock.expects('_getStoredCid').returns(null);
       mock.expects('_setStoredCid').withArgs(clientId).returns(null);
@@ -124,6 +139,10 @@
       var playResponses = [],
           mock;
 
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
         var pr = validPlayResponse();
         playResponses.push(pr);
@@ -137,6 +156,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -166,6 +188,10 @@
       var playResponses = [],
           mock;
 
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
         var pr = validPlayResponse();
         playResponses.push(pr);
@@ -184,6 +210,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       // tune to station, get an active play
@@ -245,12 +274,19 @@
         }
       };
 
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
       });
       
       var session = newSessionWithClientAndCredentials();
       var mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('plays-exhausted');
 
       session.tune();
@@ -275,6 +311,10 @@
           ],
         mock;
 
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var i = 0;
       server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
@@ -287,6 +327,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -320,6 +363,10 @@
     });
 
     it('will successfully skip a song', function() {
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var playResponses = [
             validPlayResponse(),
             validPlayResponse()
@@ -343,6 +390,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -378,6 +428,10 @@
     });
 
     it('will not skip a song is has no permission to skip', function() {
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var playResponses = [
             validPlayResponse(),
             validPlayResponse()
@@ -396,6 +450,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -430,6 +487,10 @@
     });
 
     it('will not skip a song if the server denies the skip', function() {
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var playResponses = [
             validPlayResponse(),
             validPlayResponse()
@@ -453,6 +514,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -487,6 +551,10 @@
     });
 
     it('will not let you skip a song the song is not playing', function() {
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var playResponses = [ validPlayResponse() ],
         mock;
 
@@ -507,6 +575,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -528,6 +599,10 @@
     });
 
     it('will let you invalidate an active (and not playing) song', function() {
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var playResponses = [ validPlayResponse(), validPlayResponse() ],
         mock;
 
@@ -548,6 +623,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -572,6 +650,10 @@
     });
 
     it('will let you invalidate a playing song', function() {
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var playResponses = [ validPlayResponse(), validPlayResponse(), validPlayResponse() ],
         mock;
 
@@ -592,6 +674,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -625,6 +710,10 @@
     });
 
     it('will let you report the elapsed playback time', function() {
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
       var playResponses = [ validPlayResponse(), validPlayResponse() ],
           mock;
 
@@ -645,6 +734,9 @@
 
       var session = newSessionWithClientAndCredentials();
       mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
       mock.expects('trigger').withArgs('play-active');
 
       session.tune();
@@ -750,6 +842,21 @@
             'url': 'http://feed.fm/audiofile-665-original.aac'
           }
         }
+      };
+    }
+
+    function validPlacementResponse() {
+      return {
+        success: true,
+
+        placement: {
+          id: '1234',
+          name: 'Test station'
+        },
+        stations: [
+          { id: '222', name: 'Station 1' },
+          { id: '333', name: 'Station 2' }
+        ]
       };
     }
 
