@@ -12498,6 +12498,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
       // placementId
       // placement
       // stationId
+      // stations
       // clientId
       baseUrl: util.addProtocol(options.baseUrl || '//feed.fm', options.secure),
       formats: 'mp3,aac',
@@ -12629,6 +12630,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   Session.prototype._receiveDefaultPlacementInformation = function(placementInformation) {
     if (placementInformation && placementInformation.success && placementInformation.placement) {
       this.config.placement = placementInformation.placement;
+      this.config.stations = placementInformation.stations;
 
       this.config.placementId = placementInformation.placement.id;
       this.trigger('placement-changed', this.config.placementId);
@@ -12682,6 +12684,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   Session.prototype._receivePlacementInformation = function(placementInformation) {
     if (placementInformation && placementInformation.success && placementInformation.placement) {
       this.config.placement = placementInformation.placement;
+      this.config.stations = placementInformation.stations;
 
       this.trigger('placement', placementInformation.placement);
 
@@ -13325,6 +13328,86 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
     }
   };
 
+  /*
+   * Save the current state of the session, so we can recreate
+   * our current state in the future. The object returned
+   * is what should be passed to 'unsuspend'. The 'startPosition'
+   * should be the current playback offset for the active play, 
+   * in milliseconds.
+   */
+
+  Session.prototype.suspend = function(startPosition) {
+    var saved = { };
+
+    if (this.config.placementId) {
+      saved.placementId = this.config.placementId;
+    }
+
+    if (this.config.stationId) {
+      saved.stationId = this.config.stationId;
+    }
+
+    if (this.config.current && this.config.current.started) {
+      // only save the active play if we've actually started
+      // playing it (otherwise the next call to create a play
+      // will return the same data)
+      saved.placement = this.config.placement;
+      saved.stations = this.config.stations;
+      saved.play = _.clone(this.config.current.play);
+      saved.play.startPosition = startPosition;
+      saved.canSkip = this.config.current.canSkip;
+    }
+
+    return saved;
+  };
+
+  /*
+   * Use the saved session passed in to restore the player to
+   * the state it was in previously. This method will make sure
+   * all the necessary events are triggered so that any
+   * object observing events from this session will believe a
+   * 'session.tune()' call was made.
+   */
+
+  Session.prototype.unsuspend = function(saved) {
+    if (this.getActivePlay()) {
+      throw new Error('You cannot unsuspend after running tune()');
+    }
+
+    if ('placementId' in saved) {
+      this.config.placementId = saved.placementId;
+      this.trigger('placement-changed', this.config.placementId);
+    }
+
+    if ('stationId' in saved) {
+      this.config.stationId = saved.stationId;
+      this.trigger('station-changed', this.config.stationId);
+    }
+
+    if ('play' in saved) {
+      this.config.placement = saved.placement;
+      this.config.stations = saved.stations;
+
+      this.trigger('placement', this.config.placement);
+      this.trigger('stations', this.config.stations);
+
+      // emit the 'play-active' event
+      this._assignCurrentPlay(saved.play);
+
+      // make a fake start response from the server, emit
+      // a 'play-start' event, and then start queueing
+      // up the next song to play
+      this._receiveStartPlay(saved.play, { success: true, can_skip: saved.canSkip });
+
+      return saved.play;
+
+    } else {
+      this.tune();
+
+      return null;
+    }
+  };
+
   function supports_html5_storage() {
     try {
       return 'localStorage' in window && window['localStorage'] !== null;
@@ -13492,8 +13575,8 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
  *  methods. If you just want to override how the title of a song is
  *  rendered, then the formatPlay(play) method should be overridden.
  *
- *  The top level player element will have one of three classes set at
- *  all times: 'state-playing', 'state-idle', 'state-paused'
+ *  The top level player element will have one of four classes set at
+ *  all times: 'state-playing', 'state-idle', 'state-paused', or 'state-suspended'
  *
  */
 
@@ -13518,6 +13601,7 @@ define('feed/player-view',[ 'underscore', 'jquery' ], function(_, $) {
     this.player.on('play-disliked', this._onPlayDisliked, this);
     this.player.on('plays-exhausted', this._onPlaysExhausted, this);
     this.player.on('skip-denied', this._onSkipDenied, this);
+    this.player.on('suspend', this._onSuspend, this);
 
     this._enableButtonsBasedOnState();
     this.displayText = this.originalDisplayText = this.$('.status').html();
@@ -13725,6 +13809,10 @@ define('feed/player-view',[ 'underscore', 'jquery' ], function(_, $) {
     }, 3000);
   };
 
+  PlayerView.prototype._onSuspend = function() {
+    this._enableButtonsBasedOnState();
+  };
+
   PlayerView.prototype._enableButtonsBasedOnState = function() {
     var state = this.player.getCurrentState(),
         toEnable,
@@ -13753,6 +13841,13 @@ define('feed/player-view',[ 'underscore', 'jquery' ], function(_, $) {
         }
         break;
 
+      case 'suspended':
+        toEnable = '';
+        toDisable = '.play-button, .resume-button, .like-button, .dislike-button, .pause-button, .start-button, .skip-button';
+
+        break;
+
+
       /* case 'idle': */
       default:
         toEnable = '.play-button, .start-button';
@@ -13765,13 +13860,15 @@ define('feed/player-view',[ 'underscore', 'jquery' ], function(_, $) {
       .addClass('button-disabled')
       .attr('disabled', 'true');
 
-    this.$(toEnable)
-      .removeClass('button-disabled')
-      .addClass('button-enabled')
-      .removeAttr('disabled');
+    if (toEnable) {
+      this.$(toEnable)
+        .removeClass('button-disabled')
+        .addClass('button-enabled')
+        .removeAttr('disabled');
+    }
 
     this.$el
-      .removeClass('state-playing state-paused state-idle')
+      .removeClass('state-playing state-paused state-idle state-suspended')
       .addClass('state-' + state);
 
   };
@@ -16475,9 +16572,6 @@ define("Soundmanager", (function (global) {
  *          pause:          event handler for 'pause' event
  *          finish:         event handler for 'finish' event
  *
- *       If you don't provide the callbacks above, you can do 
- *       "sound.on('event', function() { ... })"
- *
  *       The returned object emits the following events:
  *         play: the song has started playing or resumed playing after pause
  *         pause: the song has paused playback
@@ -16491,7 +16585,7 @@ define("Soundmanager", (function (global) {
  *       we can't load a song, it will just get a 'finish' and no 'play'
  *
  *       The returned song object has this following api:
- *         play: start playback (possibly at the 'startPosition', if specified)
+ *         play: start playback (at the 'startPosition', if specified)
  *         pause: pause playback
  *         resume: resume playback
  *         destroy: stop playback, prevent any future playback, and free up memory
@@ -16861,6 +16955,8 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
  *    playing - if session.hasActivePlayStarted() and we're not paused
  *    paused -  if session.hasActivePlayStarted() and we're paused
  *    idle - if !session.hasActivePlayStarted()
+ *    suspended - if player.suspend() has been called (ie - the player has
+ *      been popped out into a new window)
  *
  *  session events are proxied via the play object:
  *    not-in-us - user isn't located in the US and can't play music
@@ -16877,6 +16973,7 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
  *    play-liked - the currently playing song was liked
  *    play-unliked - the currently playing song had it's 'like' status removed
  *    play-disliked - the currently playing song was disliked
+ *    suspend - player.suspend() was called, and the player should stop playback
  *
  *  Some misc methods:
  *
@@ -16896,7 +16993,8 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
   var Player = function(token, secret, options) {
     this.state = {
-      paused: true
+      paused: true,
+      suspended: false
       // activePlay
     };
 
@@ -16904,14 +17002,14 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
     _.extend(this, Events);
 
+    this.speaker = getSpeaker(options);
+    this.setMuted(this.isMuted());
+
     this.session = new Session(token, secret, options);
     this.session.on('play-active', this._onPlayActive, this);
     this.session.on('play-started', this._onPlayStarted, this);
     this.session.on('play-completed', this._onPlayCompleted, this);
     this.session.on('plays-exhausted', this._onPlaysExhausted, this);
-
-    this.speaker = getSpeaker(options);
-    this.setMuted(this.isMuted());
 
     this.session.on('all', function() {
       // propagate all events out to everybody else
@@ -16948,9 +17046,9 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
     this.state.activePlay = {
       id: play.id,
       sound: sound,
-      playCount: 0,
-      soundCompleted: false,
-      playStarted: false
+      startReportedToServer: false, // wether we got a 'play-started' event from session
+      soundCompleted: false,        // wether the sound object told us it finished playback
+      playStarted: false            // wether playback started on the sound object yet
     };
 
     // if we're not paused, then start it
@@ -16965,17 +17063,17 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
   };
 
   Player.prototype._onSoundPlay = function() {
+    console.log('on sound play');
     // sound started playing
     if (!this.state.activePlay) {
       throw new Error('got an onSoundPlay, but no active play?');
     }
     
-    this.state.activePlay.playCount++;
-
     this.state.paused = false;
+    this.state.activePlay.playStarted = true;
 
     // on the first play, tell the server we're good to go
-    if (this.state.activePlay.playCount === 1) {
+    if (!this.state.activePlay.startReportedToServer) {
       return this.session.reportPlayStarted();
     }
 
@@ -17007,13 +17105,14 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
   };
 
   Player.prototype._onSoundFinish = function() {
+    console.log('on sound finish');
     if (!this.state.activePlay) {
       throw new Error('got an onSoundFinished, but no active play?');
     }
 
     this.state.activePlay.soundCompleted = true;
 
-    if (!this.state.activePlay.playStarted) {
+    if (!this.state.activePlay.playStarted && !this.state.activePlay.startReportedToServer) {
       // if the song failed before we told the server about it, wait
       // until word from the server that we started before we say
       // that we completed the song
@@ -17030,7 +17129,7 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
       throw new Error('got onPlayStarted, but no active play!');
     }
 
-    this.state.activePlay.playStarted = true;
+    this.state.activePlay.startReportedToServer = true;
 
     if (this.state.activePlay.soundCompleted) {
       // the sound completed before the session announced the play started
@@ -17082,7 +17181,7 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
     } else if (this.session.getActivePlay() && this.state.activePlay && this.state.paused) {
       // resume playback of song
-      if (this.state.activePlay.playCount > 1) {
+      if (this.state.activePlay.playStarted) {
         this.state.activePlay.sound.resume();
 
       } else {
@@ -17153,7 +17252,10 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
   };
 
   Player.prototype.getCurrentState = function() {
-    if (!this.session.hasActivePlayStarted()) {
+    if (this.state.suspended) {
+      return 'suspended';
+
+    } else if (!this.session.hasActivePlayStarted()) {
       // nothing started, so we're idle
       return 'idle';
 
@@ -17218,6 +17320,26 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
       }
 
       this.trigger('unmuted');
+    }
+  };
+
+  Player.prototype.suspend = function() {
+    var playing = (this.state.activePlay && this.state.activePlay.sound),
+        state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
+
+    this.pause();
+
+    this.state.suspended = true;
+    this.trigger('suspend');
+
+    return state;
+  };
+
+  Player.prototype.unsuspend = function(state, startPlayback) {
+    this.session.unsuspend(state);
+
+    if (startPlayback) {
+      this.play();
     }
   };
 
