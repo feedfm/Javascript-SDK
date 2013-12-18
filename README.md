@@ -25,14 +25,15 @@ If you have not already done so, please go to [http://feed.fm/][2].
 0) Pull up *[this jsbin](http://jsbin.com/uweSavU/5/edit?html,output)* page so you don't have to
 type anything.
 
-1) Include the 'dist/feed-with-jquery.js' source in your HTML - either directly from
+1) Include the 'dist/feed.js' source in your HTML - either directly from
 your website or from feed.fm:
 
 ```html
-<script type='application/javascript' src='http://feed.fm/js/latest/feed-with-jquery.js'></script>
+<script type='application/javascript' src='http://feed.fm/js/latest/feed.js'></script>
 ```
 
-If you've already got jQuery in your page, you can use 'js/latest/feed-without-jquery.js'.
+If you've already got jQuery in your page, you can use 'js/latest/feed-without-jquery.js' and
+the player will use the global window.jQuery object.
 
 2) Enter the minimal HTML to display the player:
 
@@ -48,7 +49,7 @@ If you've already got jQuery in your page, you can use 'js/latest/feed-without-j
 3) Create an instance of the player and the player view:
 
 ```js
-  var player = new Feed.Player('your-token', 'your-secret');
+  var player = new Feed.Player('your-token', 'your-secret', { secure: true });
 
   var playerView = new Feed.PlayerView('player-view-div', player);
 
@@ -116,8 +117,11 @@ sends them to the browser for playback. The class requires a
 token and secret in order to create an instance of the player:
 
 ```js
-  var player = new Feed.Player('token', 'secret');
+  var player = new Feed.Player('token', 'secret', { secure: true });
 ```
+
+The final argument is optional and lets you specify some extra parameters
+to for the player (fully documented [here](https://github.com/fuzz-radio/Javascript-SDK/blob/master/src/player.js)).
 
 The player should be started with a call to `tune()` or `play()`.
 `tune()` will cause the player to load up information about the current
