@@ -66,6 +66,9 @@ module.exports = function(grunt) {
               'jquery': 'feed/jquery-noconflict',
               // stub out logging
               'feed/log': 'feed/nolog'
+            },
+            'feed/jquery-noconflict': {
+              'jquery': 'jquery'
             }
           }
         }

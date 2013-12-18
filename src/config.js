@@ -26,16 +26,7 @@ var require = {
 
   paths: {
     // all our stuff is in the 'feed/' namespace
-    'feed' : '../src',
-
-    // version aliases... yeah, these should be in
-    // the 'map' section, but that isn't merging
-    // properly with the grunt requirejs task, so
-    // I'm leaving them here.
-    'jquery': 'jquery-1.10.2',
-    'Backbone': 'backbone-1.1.0',
-    'Soundmanager': 'soundmanager2-nodebug-97a-20131201',
-    'CryptoJS': 'hmac-sha256'
+    'feed' : '../src'
   },
 
   map: {

@@ -7188,6 +7188,12 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
  *  Some misc methods:
  *
  *    setMuted(muted)
+ *    suspend - this returns the state of the player a an object that can be passed
+ *      to the unsuspend() call.
+ *    unsuspend(state, [startPlay]) - this call takes the state of a previously suspended player
+ *      instance and makes this player match that one. These calls allow you to suspend
+ *      the player, open up a new window, create a new player instance, and resume playback
+ *      where you left off. This call should be made in place of a tune() or play() call.
  *
  */
 
