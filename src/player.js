@@ -41,6 +41,8 @@
  *    playing - if session.hasActivePlayStarted() and we're not paused
  *    paused -  if session.hasActivePlayStarted() and we're paused
  *    idle - if !session.hasActivePlayStarted()
+ *    suspended - if player.suspend() has been called (ie - the player has
+ *      been popped out into a new window)
  *
  *  session events are proxied via the play object:
  *    not-in-us - user isn't located in the US and can't play music
@@ -57,6 +59,7 @@
  *    play-liked - the currently playing song was liked
  *    play-unliked - the currently playing song had it's 'like' status removed
  *    play-disliked - the currently playing song was disliked
+ *    suspend - player.suspend() was called, and the player should stop playback
  *
  *  Some misc methods:
  *
@@ -76,7 +79,8 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
 
   var Player = function(token, secret, options) {
     this.state = {
-      paused: true
+      paused: true,
+      suspended: false
       // activePlay
     };
 
@@ -334,7 +338,10 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
   };
 
   Player.prototype.getCurrentState = function() {
-    if (!this.session.hasActivePlayStarted()) {
+    if (this.state.suspended) {
+      return 'suspended';
+
+    } else if (!this.session.hasActivePlayStarted()) {
       // nothing started, so we're idle
       return 'idle';
 
@@ -407,6 +414,8 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
         state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
 
     this.pause();
+
+    this.state.suspended = true;
     this.trigger('suspend');
 
     return state;

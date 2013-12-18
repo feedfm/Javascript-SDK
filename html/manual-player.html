@@ -44,7 +44,7 @@ require([ 'jquery', 'feed/feed' ], function($, Feed) {
     // save the current state as a session cookie
     document.cookie = 'player=' + encodeURIComponent(JSON.stringify(state));
 
-    window.open(window.location, 'player');
+    window.open(window.location, '_blank');
   });
 
   $('#delete').on('click', function() {

@@ -59,8 +59,8 @@
  *  methods. If you just want to override how the title of a song is
  *  rendered, then the formatPlay(play) method should be overridden.
  *
- *  The top level player element will have one of three classes set at
- *  all times: 'state-playing', 'state-idle', 'state-paused'
+ *  The top level player element will have one of four classes set at
+ *  all times: 'state-playing', 'state-idle', 'state-paused', or 'state-suspended'
  *
  */
 
@@ -85,6 +85,7 @@ define([ 'underscore', 'jquery' ], function(_, $) {
     this.player.on('play-disliked', this._onPlayDisliked, this);
     this.player.on('plays-exhausted', this._onPlaysExhausted, this);
     this.player.on('skip-denied', this._onSkipDenied, this);
+    this.player.on('suspend', this._onSuspend, this);
 
     this._enableButtonsBasedOnState();
     this.displayText = this.originalDisplayText = this.$('.status').html();
@@ -292,6 +293,10 @@ define([ 'underscore', 'jquery' ], function(_, $) {
     }, 3000);
   };
 
+  PlayerView.prototype._onSuspend = function() {
+    this._enableButtonsBasedOnState();
+  };
+
   PlayerView.prototype._enableButtonsBasedOnState = function() {
     var state = this.player.getCurrentState(),
         toEnable,
@@ -320,6 +325,13 @@ define([ 'underscore', 'jquery' ], function(_, $) {
         }
         break;
 
+      case 'suspended':
+        toEnable = '';
+        toDisable = '.play-button, .resume-button, .like-button, .dislike-button, .pause-button, .start-button, .skip-button';
+
+        break;
+
+
       /* case 'idle': */
       default:
         toEnable = '.play-button, .start-button';
@@ -332,13 +344,15 @@ define([ 'underscore', 'jquery' ], function(_, $) {
       .addClass('button-disabled')
       .attr('disabled', 'true');
 
-    this.$(toEnable)
-      .removeClass('button-disabled')
-      .addClass('button-enabled')
-      .removeAttr('disabled');
+    if (toEnable) {
+      this.$(toEnable)
+        .removeClass('button-disabled')
+        .addClass('button-enabled')
+        .removeAttr('disabled');
+    }
 
     this.$el
-      .removeClass('state-playing state-paused state-idle')
+      .removeClass('state-playing state-paused state-idle state-suspended')
       .addClass('state-' + state);
 
   };
