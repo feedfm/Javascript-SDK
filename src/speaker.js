@@ -24,9 +24,6 @@
  *          pause:          event handler for 'pause' event
  *          finish:         event handler for 'finish' event
  *
- *       If you don't provide the callbacks above, you can do 
- *       "sound.on('event', function() { ... })"
- *
  *       The returned object emits the following events:
  *         play: the song has started playing or resumed playing after pause
  *         pause: the song has paused playback
@@ -40,7 +37,7 @@
  *       we can't load a song, it will just get a 'finish' and no 'play'
  *
  *       The returned song object has this following api:
- *         play: start playback (possibly at the 'startPosition', if specified)
+ *         play: start playback (at the 'startPosition', if specified)
  *         pause: pause playback
  *         resume: resume playback
  *         destroy: stop playback, prevent any future playback, and free up memory

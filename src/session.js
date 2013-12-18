@@ -123,6 +123,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
       // placementId
       // placement
       // stationId
+      // stations
       // clientId
       baseUrl: util.addProtocol(options.baseUrl || '//feed.fm', options.secure),
       formats: 'mp3,aac',
@@ -254,6 +255,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   Session.prototype._receiveDefaultPlacementInformation = function(placementInformation) {
     if (placementInformation && placementInformation.success && placementInformation.placement) {
       this.config.placement = placementInformation.placement;
+      this.config.stations = placementInformation.stations;
 
       this.config.placementId = placementInformation.placement.id;
       this.trigger('placement-changed', this.config.placementId);
@@ -307,6 +309,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   Session.prototype._receivePlacementInformation = function(placementInformation) {
     if (placementInformation && placementInformation.success && placementInformation.placement) {
       this.config.placement = placementInformation.placement;
+      this.config.stations = placementInformation.stations;
 
       this.trigger('placement', placementInformation.placement);
 
@@ -947,6 +950,86 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
 
     if (this.config.current && (this.config.current.play.id === playId)) {
       this.config.current.play.liked = false;
+    }
+  };
+
+  /*
+   * Save the current state of the session, so we can recreate
+   * our current state in the future. The object returned
+   * is what should be passed to 'unsuspend'. The 'startPosition'
+   * should be the current playback offset for the active play, 
+   * in milliseconds.
+   */
+
+  Session.prototype.suspend = function(startPosition) {
+    var saved = { };
+
+    if (this.config.placementId) {
+      saved.placementId = this.config.placementId;
+    }
+
+    if (this.config.stationId) {
+      saved.stationId = this.config.stationId;
+    }
+
+    if (this.config.current && this.config.current.started) {
+      // only save the active play if we've actually started
+      // playing it (otherwise the next call to create a play
+      // will return the same data)
+      saved.placement = this.config.placement;
+      saved.stations = this.config.stations;
+      saved.play = _.clone(this.config.current.play);
+      saved.play.startPosition = startPosition;
+      saved.canSkip = this.config.current.canSkip;
+    }
+
+    return saved;
+  };
+
+  /*
+   * Use the saved session passed in to restore the player to
+   * the state it was in previously. This method will make sure
+   * all the necessary events are triggered so that any
+   * object observing events from this session will believe a
+   * 'session.tune()' call was made.
+   */
+
+  Session.prototype.unsuspend = function(saved) {
+    if (this.getActivePlay()) {
+      throw new Error('You cannot unsuspend after running tune()');
+    }
+
+    if ('placementId' in saved) {
+      this.config.placementId = saved.placementId;
+      this.trigger('placement-changed', this.config.placementId);
+    }
+
+    if ('stationId' in saved) {
+      this.config.stationId = saved.stationId;
+      this.trigger('station-changed', this.config.stationId);
+    }
+
+    if ('play' in saved) {
+      this.config.placement = saved.placement;
+      this.config.stations = saved.stations;
+
+      this.trigger('placement', this.config.placement);
+      this.trigger('stations', this.config.stations);
+
+      // emit the 'play-active' event
+      this._assignCurrentPlay(saved.play);
+
+      // make a fake start response from the server, emit
+      // a 'play-start' event, and then start queueing
+      // up the next song to play
+      this._receiveStartPlay(saved.play, { success: true, can_skip: saved.canSkip });
+
+      return saved.play;
+
+    } else {
+      this.tune();
+
+      return null;
     }
   };
 

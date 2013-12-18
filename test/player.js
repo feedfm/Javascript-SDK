@@ -54,6 +54,12 @@
         }));
       });
 
+      server.respondWith('GET', 'http://feed.fm/missing', function(response) {
+        console.log('missing');
+
+        response.respond(404,  { }, 'Sorry, that is missing');
+      });
+
       server.respondWith('GET', 'http://feed.fm/api/v2/placement', function(response) {
         console.log('placement');
         requests.push('placement');
@@ -76,7 +82,7 @@
         console.log('play');
         requests.push('play');
 
-        var rp = plays.pop();
+        var rp = plays.shift();
 
         if (rp) {
           response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, play: rp }));
@@ -399,6 +405,95 @@
         done();
 
       }, 600);
+    });
+
+    it('will allow us to suspend and unsuspend the player while playing a song', function(done) {
+      // run player.play(). wait for 3 seconds. then suspend. then create a new
+      // player. unsuspend it (with play = true). pause it after a fraction of
+      // a second, then confirm our time offset is > 3 seconds.
+  
+      this.timeout(4000);
+
+      var player = new Feed.Player('token', 'secret', speakerOptions);
+      player.setPlacementId('10000');
+
+      // play a long clip so we can test out timing
+      var hutz = validPlay();
+      hutz.audio_file.url = 'hutz.mp3';
+      plays.push(hutz);
+
+      // the player should request the next song twice
+      var queued = validPlay();
+      plays.push(queued);
+      plays.push(queued);
+
+      player.play();
+
+      // wait three seconds
+      setTimeout(function() {
+        var state = player.suspend();
+
+        var newPlayer = new Feed.Player('token', 'secret', speakerOptions);
+
+        newPlayer.unsuspend(state, true);
+
+        setTimeout(function() {
+          newPlayer.pause();
+
+          assert.equal(newPlayer.getPosition() > 2000, true, 'should be past 2 seconds in unsuspended play');
+          done();
+
+        }, 800);
+      }, 2000);
+    });
+
+    it('will will skip over missing/bad files when unsuspending', function(done) {
+      // run player.play(). wait for 2 seconds. then suspend. swap the valid mp3
+      // url in the suspended state with a missing url. then create a new
+      // player. unsuspend it (with play = true). wait for a second. confirm
+      // we're playing the next song.
+  
+      this.timeout(4000);
+
+      var player = new Feed.Player('token', 'secret', speakerOptions);
+      player.setPlacementId('10000');
+
+      // play a long clip so we can test out timing
+      var hutz = validPlay();
+      hutz.audio_file.url = 'hutz.mp3';
+      plays.push(hutz);
+
+      // the player should request the next song twice
+      var queued = validPlay();
+      plays.push(queued);
+      plays.push(queued);
+
+      // this will be the next queued up song
+      plays.push(validPlay());
+
+      player.play();
+
+      // wait 
+      setTimeout(function() {
+        var state = player.suspend();
+
+        state.play.audio_file.url = 'http://feed.fm/missing';
+
+        var newPlayer = new Feed.Player('token', 'secret', speakerOptions);
+
+        // try to resume playback of the 'missing' song, which will fail
+        newPlayer.unsuspend(state, true);
+
+        newPlayer.on('play-started', function(play) {
+          // confirm that the next song starts up
+          assert.notEqual(play.audio_file.url, 'http://feed.fm/missing', 'should start next song after old one failed to start');
+
+          newPlayer.pause();
+
+          done();
+        });
+
+      }, 1000);
     });
 
     var counter = 0;

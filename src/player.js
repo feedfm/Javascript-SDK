@@ -84,14 +84,14 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
 
     _.extend(this, Events);
 
+    this.speaker = getSpeaker(options);
+    this.setMuted(this.isMuted());
+
     this.session = new Session(token, secret, options);
     this.session.on('play-active', this._onPlayActive, this);
     this.session.on('play-started', this._onPlayStarted, this);
     this.session.on('play-completed', this._onPlayCompleted, this);
     this.session.on('plays-exhausted', this._onPlaysExhausted, this);
-
-    this.speaker = getSpeaker(options);
-    this.setMuted(this.isMuted());
 
     this.session.on('all', function() {
       // propagate all events out to everybody else
@@ -128,9 +128,9 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
     this.state.activePlay = {
       id: play.id,
       sound: sound,
-      playCount: 0,
-      soundCompleted: false,
-      playStarted: false
+      startReportedToServer: false, // wether we got a 'play-started' event from session
+      soundCompleted: false,        // wether the sound object told us it finished playback
+      playStarted: false            // wether playback started on the sound object yet
     };
 
     // if we're not paused, then start it
@@ -145,17 +145,17 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
   };
 
   Player.prototype._onSoundPlay = function() {
+    console.log('on sound play');
     // sound started playing
     if (!this.state.activePlay) {
       throw new Error('got an onSoundPlay, but no active play?');
     }
     
-    this.state.activePlay.playCount++;
-
     this.state.paused = false;
+    this.state.activePlay.playStarted = true;
 
     // on the first play, tell the server we're good to go
-    if (this.state.activePlay.playCount === 1) {
+    if (!this.state.activePlay.startReportedToServer) {
       return this.session.reportPlayStarted();
     }
 
@@ -187,13 +187,14 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
   };
 
   Player.prototype._onSoundFinish = function() {
+    console.log('on sound finish');
     if (!this.state.activePlay) {
       throw new Error('got an onSoundFinished, but no active play?');
     }
 
     this.state.activePlay.soundCompleted = true;
 
-    if (!this.state.activePlay.playStarted) {
+    if (!this.state.activePlay.playStarted && !this.state.activePlay.startReportedToServer) {
       // if the song failed before we told the server about it, wait
       // until word from the server that we started before we say
       // that we completed the song
@@ -210,7 +211,7 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
       throw new Error('got onPlayStarted, but no active play!');
     }
 
-    this.state.activePlay.playStarted = true;
+    this.state.activePlay.startReportedToServer = true;
 
     if (this.state.activePlay.soundCompleted) {
       // the sound completed before the session announced the play started
@@ -262,7 +263,7 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
 
     } else if (this.session.getActivePlay() && this.state.activePlay && this.state.paused) {
       // resume playback of song
-      if (this.state.activePlay.playCount > 1) {
+      if (this.state.activePlay.playStarted) {
         this.state.activePlay.sound.resume();
 
       } else {
@@ -398,6 +399,24 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
       }
 
       this.trigger('unmuted');
+    }
+  };
+
+  Player.prototype.suspend = function() {
+    var playing = (this.state.activePlay && this.state.activePlay.sound),
+        state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
+
+    this.pause();
+    this.trigger('suspend');
+
+    return state;
+  };
+
+  Player.prototype.unsuspend = function(state, startPlayback) {
+    this.session.unsuspend(state);
+
+    if (startPlayback) {
+      this.play();
     }
   };
 

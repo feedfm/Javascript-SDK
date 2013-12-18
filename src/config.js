@@ -48,6 +48,7 @@ var require = {
   },
 
   shim: {
+    'json2': { exports: 'JSON' },
     'underscore': { exports: '_' },
     'OAuth': { exports: 'OAuth' },
     'CryptoJS': { exports: 'CryptoJS' },
