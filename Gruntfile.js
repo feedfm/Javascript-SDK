@@ -6,9 +6,8 @@ module.exports = function(grunt) {
 
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-jshint');
-  grunt.loadNpmTasks('grunt-contrib-uglify');
-  grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-requirejs');
+  grunt.loadNpmTasks('grunt-exec');
 
   // Project configuration.
   grunt.initConfig({
@@ -106,15 +105,15 @@ module.exports = function(grunt) {
       }
     },
 
-    uglify: {
-      options: {
-        compress: false,
-        report: 'min',
-        preserveComments: 'some',
-        banner: '/* A Feed.fm joint: github.com/fuzz-radio/Javascript-SDK */'
+    exec: {
+      noConsole: {
+        // look for debugging calls to console.log in the code
+        command: 'grep console.log src/* | grep -v src/log.js',
+        stderr: false,
+        exitCode: 1
       }
-
     }
+
   });
 
   grunt.config('requirejs');
@@ -136,7 +135,7 @@ module.exports = function(grunt) {
   });
 
   // Default task.
-  grunt.registerTask('default', ['jshint' , 
+  grunt.registerTask('default', ['exec:noConsole', 'jshint', 
     'requirejs:feed', 'requirejs:feed-without-jquery', 
     'requirejs:feed-debug', 'requirejs:feed-without-jquery-debug' ]);
 

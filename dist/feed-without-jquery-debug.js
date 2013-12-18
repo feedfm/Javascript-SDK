@@ -7273,7 +7273,6 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
   };
 
   Player.prototype._onSoundPlay = function() {
-    console.log('on sound play');
     // sound started playing
     if (!this.state.activePlay) {
       throw new Error('got an onSoundPlay, but no active play?');
@@ -7315,7 +7314,6 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
   };
 
   Player.prototype._onSoundFinish = function() {
-    console.log('on sound finish');
     if (!this.state.activePlay) {
       throw new Error('got an onSoundFinished, but no active play?');
     }
