@@ -16504,6 +16504,7 @@ function SoundManager(smURL, smID) {
   };
   winOnLoad = function() {
     windowLoaded = true;
+    domContentLoaded();
     event.remove(window, 'load', winOnLoad);
   };
   preInit = function() {
