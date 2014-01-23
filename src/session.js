@@ -378,7 +378,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
     }
 
     this._signedAjax({
-      url: this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + 'elapse', 
+      url: this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/elapse', 
       type: 'POST',
       data: {
         seconds: seconds

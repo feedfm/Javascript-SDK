@@ -83,7 +83,7 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
         this.startPosition = options.startPosition;
       }
 
-      _.each(['play', 'pause', 'finish'], function(ev) {
+      _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
         if (ev in options) {
           obj.on(ev, options[ev]);
         }
@@ -325,6 +325,9 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
         },
         onbufferchange: function() {
           log(sound.id + ': onbufferchange');
+        },
+        whileplaying: function() {
+          sound.trigger('elapse');
         }
       });
 

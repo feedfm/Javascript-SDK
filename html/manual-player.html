@@ -24,7 +24,25 @@
 <script>
 require([ 'jquery', 'feed/feed' ], function($, Feed) {
   
-   var player = new Feed.Player('7bed4d09839c2743e3eeccd493202fc3d8dd656a', '319f82e863918f6bd3e6d9154a2f22c4ed457441', { debug: true, swfBase: '../dist' });
+   var player = new Feed.Player(
+    // production
+    '7bed4d09839c2743e3eeccd493202fc3d8dd656a', 
+    '319f82e863918f6bd3e6d9154a2f22c4ed457441', 
+    { 
+      debug: true, 
+      swfBase: '../dist' 
+    }
+    /*
+    // localhost dev
+    '7fcef228d85f96746d7c290eb9056d6ee5411d5e', 
+    '84bead07460f549894197b4cf60becde93121c11', 
+    { 
+      debug: true, 
+      swfBase: '../dist',
+      baseUrl: '//feed.localdomain:8000'
+    }
+    */
+  );
 
   player.on('all', function() {
     console.log('event sprung!', arguments);
