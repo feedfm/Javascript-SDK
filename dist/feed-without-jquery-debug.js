@@ -2963,7 +2963,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
     }
 
     this._signedAjax({
-      url: this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + 'elapse', 
+      url: this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/elapse', 
       type: 'POST',
       data: {
         seconds: seconds
@@ -6842,7 +6842,7 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
         this.startPosition = options.startPosition;
       }
 
-      _.each(['play', 'pause', 'finish'], function(ev) {
+      _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
         if (ev in options) {
           obj.on(ev, options[ev]);
         }
@@ -7084,6 +7084,9 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
         },
         onbufferchange: function() {
           log(sound.id + ': onbufferchange');
+        },
+        whileplaying: function() {
+          sound.trigger('elapse');
         }
       });
 
@@ -7251,7 +7254,8 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
     var options = {
       play: _.bind(this._onSoundPlay, this),
       pause: _.bind(this._onSoundPause, this),
-      finish:  _.bind(this._onSoundFinish, this)
+      finish:  _.bind(this._onSoundFinish, this),
+      elapse: _.bind(this._onSoundElapse, this)
     };
 
     if (play.startPosition) {
@@ -7265,7 +7269,8 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
       sound: sound,
       startReportedToServer: false, // wether we got a 'play-started' event from session
       soundCompleted: false,        // wether the sound object told us it finished playback
-      playStarted: false            // wether playback started on the sound object yet
+      playStarted: false,           // wether playback started on the sound object yet
+      previousPosition: 0           // last time we got an 'elapse' callback
     };
 
     // if we're not paused, then start it
@@ -7335,6 +7340,24 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
     }
 
     this.session.reportPlayCompleted();
+  };
+
+  Player.prototype._onSoundElapse = function() {
+    if (!this.state.activePlay) {
+      throw new Error('got an onSoundPause, but no active play?');
+    }
+
+    var sound = this.state.activePlay.sound,
+        position = sound.position(),
+        interval = 5 * 1000,  // ping server every 5 seconds
+        previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
+        currentCount = Math.floor(position / interval);
+
+    this.state.activePlay.previousPosition = position;
+
+    if (currentCount !== previousCount) {
+      this.session.reportPlayElapsed(Math.floor(position / 1000));
+    }
   };
 
   Player.prototype._onPlayStarted = function() {
