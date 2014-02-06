@@ -124,7 +124,7 @@ define([ 'underscore', 'jquery' ], function(_, $) {
   };
 
   PlayerView.prototype._onLikeButtonClick = function(e) {
-    if ($(e.target).is('.liked')) {
+    if ($(e.target).closest('.like-button').is('.liked')) {
       this.player.unlike();
 
     } else {
