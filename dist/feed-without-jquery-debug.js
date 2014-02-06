@@ -3850,7 +3850,7 @@ define('feed/player-view',[ 'underscore', 'jquery' ], function(_, $) {
   };
 
   PlayerView.prototype._onLikeButtonClick = function(e) {
-    if ($(e.target).is('.liked')) {
+    if ($(e.target).closest('.like-button').is('.liked')) {
       this.player.unlike();
 
     } else {
@@ -3937,12 +3937,12 @@ define('feed/player-view',[ 'underscore', 'jquery' ], function(_, $) {
   };
 
   PlayerView.prototype._onPlayCompleted = function() {
-    this.renderStatus(this.originalDisplayText);
     this.renderPosition(0, 0);
     this._enableButtonsBasedOnState();
   };
 
   PlayerView.prototype._onPlaysExhausted = function() {
+    this.renderStatus(this.originalDisplayText);
     this.renderAlert('There is no more music to play in this station!');
 
     this._enableButtonsBasedOnState();
