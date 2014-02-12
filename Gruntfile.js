@@ -12,7 +12,7 @@ module.exports = function(grunt) {
   // Project configuration.
   grunt.initConfig({
     meta: {
-      version: '0.1.0',
+      version: '0.2.0',
       banner: '/* Feed Media */'
     },
 
