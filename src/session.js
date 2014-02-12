@@ -586,9 +586,24 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
     }
   };
 
-  Session.prototype._failStartPlay = function(play) {
+  Session.prototype._failStartPlay = function(play, response) {
     // only process if we're still actually waiting for this
     if (this.config.current && (this.config.current.play === play)) {
+
+      if (response.status === 403) {
+        try {
+          var fullResponse = $.parseJSON(response.responseText);
+
+          if (fullResponse.error && fullResponse.error.code === 20) {
+            // we seem to have missed the response to the original start, so
+            // let's assume the start was good and the song is skippable
+            return this._receiveStartPlay(play, { success: true, can_skip: true });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
       log('request failed - trying again in 1 second');
 
       this.config.current.retryCount++;
