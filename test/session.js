@@ -780,7 +780,7 @@
 
     });
 
-    it.only('will handle a "started playback already" error properly', function(done) {
+    it('will handle a "started playback already" error properly', function(done) {
       // need some extra time due to retry timeouts
       this.timeout(4000);
 
