@@ -129,16 +129,27 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
       formats: 'mp3,aac',
       maxBitrate: 128,
       timeOffset: 0,
+
+      // Represent the active 'play' or null if there is no active play. This should
+      // only be null before the first tune() call or after the server tells us there
+      // is no more music available.
       current: null, /* {
                           play:  play object we're currently playing
                           started: defaults to false
                           canSkip: defaults to false
                          }, */
+
+      // Details of any 'POST /play' request we're awaiting a response for. If this
+      // is null, then we're not waiting for the server to give us a play
       pendingRequest: null, /* {
-                                 ajax:       form data we sent to request a play
+                                 ajax:       form data we sent to request a play, copied
+                                             here so we can retry it if it fails
                                  retryCount: number of times we've retried 
                                }, */
       
+      // Once a play has been created and then started, the server will let us
+      // create a new play. This holds a reference to the next play that will
+      // be active on completion of the current play
       pendingPlay: null // play object we'll start upon completion of current
                         //   sound 
     };
