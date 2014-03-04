@@ -573,8 +573,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
         url: this.config.baseUrl + '/api/v2/play/' + play.id + '/start',
         type: 'POST',
         dataType: 'json',
-        timeout: 3000,
-        data: { id: play.id }
+        timeout: 3000
       })
         .done(_.bind(this._receiveStartPlay, this, play))
         .fail(_.bind(this._failStartPlay, this, play));
