@@ -137,6 +137,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
                           play:  play object we're currently playing
                           started: defaults to false
                           canSkip: defaults to false
+                          retryCount: number of times we've tried to tell server we started this
                          }, */
 
       // Details of any 'POST /play' request we're awaiting a response for. If this
@@ -650,6 +651,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype._requestNextPlay = function(delay) {
+
     if (this.config.pendingRequest) {
       if (this.config.pendingRequest.inprogress) {
         log('tried to get another play while we\'re loading one up');
