@@ -780,6 +780,78 @@
 
     });
 
+    it('will handle a "started playback already" error properly', function(done) {
+      // need some extra time due to retry timeouts
+      this.timeout(4000);
+
+      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      });
+
+      var playResponses = [ validPlayResponse(), validPlayResponse() ],
+          mock;
+
+      var i = 0;
+      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
+      });
+
+      // simulate a failed 'start' request
+      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
+        response.respond(500, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 500, message: 'internal error' } }));
+      });
+
+      var session = newSessionWithClientAndCredentials();
+      mock = sinon.mock(session);
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
+      mock.expects('trigger').withArgs('play-active');
+
+      session.tune();
+
+      server.respond();
+
+      mock.verify();
+
+      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
+      assert.isNull(session.config.pendingPlay, 'nothing queued up yet');
+
+      session.reportPlayStarted();
+      // respond to first failed 'start' request
+      server.respond();
+
+      // swap in the successful start response
+      server.restore();
+
+      server = sinon.fakeServer.create();
+      
+      // hey - we started already!
+      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
+        response.respond(403, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 20, message: 'already started' } }));
+      });
+
+      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
+      });
+
+      // wait 2 seconds for the 'start' retry to happen
+      setTimeout(function() {
+        mock = sinon.mock(session);
+        mock.expects('trigger').withArgs('play-started');
+
+        // respond to second 'start' request
+        server.respond();
+
+        mock.verify();
+
+        done();
+      }, 2000);
+
+    });
+
     it('trying to do anything without an active play will throw an exception', function() {
       var session = newSessionWithClientAndCredentials(),
           exceptionThrown = false;
@@ -860,7 +932,6 @@
       server.respond();
 
       var state = session.suspend(123);
-      console.log('state is', state);
 
       var secondSession = newSessionWithClientAndCredentials();
 

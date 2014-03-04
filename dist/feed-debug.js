@@ -12504,16 +12504,28 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
       formats: 'mp3,aac',
       maxBitrate: 128,
       timeOffset: 0,
+
+      // Represent the active 'play' or null if there is no active play. This should
+      // only be null before the first tune() call or after the server tells us there
+      // is no more music available.
       current: null, /* {
                           play:  play object we're currently playing
                           started: defaults to false
                           canSkip: defaults to false
+                          retryCount: number of times we've tried to tell server we started this
                          }, */
+
+      // Details of any 'POST /play' request we're awaiting a response for. If this
+      // is null, then we're not waiting for the server to give us a play
       pendingRequest: null, /* {
-                                 ajax:       form data we sent to request a play
+                                 ajax:       form data we sent to request a play, copied
+                                             here so we can retry it if it fails
                                  retryCount: number of times we've retried 
                                }, */
       
+      // Once a play has been created and then started, the server will let us
+      // create a new play. This holds a reference to the next play that will
+      // be active on completion of the current play
       pendingPlay: null // play object we'll start upon completion of current
                         //   sound 
     };
@@ -12762,32 +12774,37 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   };
 
   Session.prototype.reportPlayCompleted = function() {
+    var self = this;
+
     if (this.config.current && (this.config.current.started)) {
       this._signedAjax({
         url: this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/complete',
         type: 'POST'
-      });
 
-      if (!this.config.pendingRequest) {
-        log('song finished, and no outstanding request, so playing pendingPlay');
-        // if we're not waiting for an incoming request, then we must
-        // have the next play queued up, so play it:
-        var pendingPlay = this.config.pendingPlay;
-        this.config.pendingPlay = null;
-
-        this._assignCurrentPlay(pendingPlay);
-
-      } else {
-        log('song finished, but we\'re still waiting for next one to return');
-
-        // we're waiting for a request to come in, so kill the current
-        // song and announce that we're waiting
-        this._assignCurrentPlay(null, true);
-      }
+      }).always(_.bind(self._receivePlayCompleted, self));
 
     } else {
       log('finish on non-active or playing song');
       throw new Error('no active or playing song');
+    }
+  };
+
+  Session.prototype._receivePlayCompleted = function() {
+    if (!this.config.pendingRequest) {
+      log('song finished, and no outstanding request, so playing pendingPlay');
+      // if we're not waiting for an incoming request, then we must
+      // have the next play queued up, so play it:
+      var pendingPlay = this.config.pendingPlay;
+      this.config.pendingPlay = null;
+
+      this._assignCurrentPlay(pendingPlay);
+
+    } else {
+      log('song finished, but we\'re still waiting for next one to return');
+
+      // we're waiting for a request to come in, so kill the current
+      // song and announce that we're waiting
+      this._assignCurrentPlay(null, true);
     }
   };
 
@@ -12961,9 +12978,24 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
     }
   };
 
-  Session.prototype._failStartPlay = function(play) {
+  Session.prototype._failStartPlay = function(play, response) {
     // only process if we're still actually waiting for this
     if (this.config.current && (this.config.current.play === play)) {
+
+      if (response.status === 403) {
+        try {
+          var fullResponse = $.parseJSON(response.responseText);
+
+          if (fullResponse.error && fullResponse.error.code === 20) {
+            // we seem to have missed the response to the original start, so
+            // let's assume the start was good and the song is skippable
+            return this._receiveStartPlay(play, { success: true, can_skip: true });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
       log('request failed - trying again in 1 second');
 
       this.config.current.retryCount++;
@@ -13014,6 +13046,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   };
 
   Session.prototype._requestNextPlay = function(delay) {
+
     if (this.config.pendingRequest) {
       if (this.config.pendingRequest.inprogress) {
         log('tried to get another play while we\'re loading one up');
