@@ -489,7 +489,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype._receiveInvalidate = function(play, response) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not holding this song any more - just ignore it
       return;
     }
@@ -519,7 +519,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype._failSkip = function(play) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not playing this song any more - just ignore it
       return;
     }
@@ -529,7 +529,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype._receiveSkip = function(play, response) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not playing this song any more - just ignore it
       return;
     }

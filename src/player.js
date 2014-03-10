@@ -204,8 +204,16 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
 
     this.state.activePlay.soundCompleted = true;
 
-    if (!this.state.activePlay.playStarted && !this.state.activePlay.startReportedToServer) {
-      // if the song failed before we told the server about it, wait
+    if (!this.state.activePlay.playStarted) {
+      // never reported this as started...  mark it as invalidated so
+      // we can advance.
+      this.session.requestInvalidate();
+
+      return;
+    }
+
+    if (!this.state.activePlay.startReportedToServer) {
+      // if the song failed before we recieved start response, wait
       // until word from the server that we started before we say
       // that we completed the song
       return;

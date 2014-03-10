@@ -3074,7 +3074,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   };
 
   Session.prototype._receiveInvalidate = function(play, response) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not holding this song any more - just ignore it
       return;
     }
@@ -3104,7 +3104,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   };
 
   Session.prototype._failSkip = function(play) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not playing this song any more - just ignore it
       return;
     }
@@ -3114,7 +3114,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
   };
 
   Session.prototype._receiveSkip = function(play, response) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not playing this song any more - just ignore it
       return;
     }
@@ -7354,8 +7354,16 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
     this.state.activePlay.soundCompleted = true;
 
-    if (!this.state.activePlay.playStarted && !this.state.activePlay.startReportedToServer) {
-      // if the song failed before we told the server about it, wait
+    if (!this.state.activePlay.playStarted) {
+      // never reported this as started...  mark it as invalidated so
+      // we can advance.
+      this.session.requestInvalidate();
+
+      return;
+    }
+
+    if (!this.state.activePlay.startReportedToServer) {
+      // if the song failed before we recieved start response, wait
       // until word from the server that we started before we say
       // that we completed the song
       return;
