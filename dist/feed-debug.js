@@ -17169,7 +17169,7 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
     var sound = this.state.activePlay.sound,
         position = sound.position(),
-        interval = 5 * 1000,  // ping server every 5 seconds
+        interval = 30 * 1000,  // ping server every 30 seconds
         previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
         currentCount = Math.floor(position / interval);
 
