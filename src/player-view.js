@@ -10,7 +10,7 @@
  *  Create this with:
  *
  *    player = new Feed.Player(token, secret);
- *    playerView = new Feed.PlayerView(player, id);
+ *    playerView = new Feed.PlayerView(id, player);
  *
  *  Where 'id' is the ID of the DOM element containing the player.
  *  The player should have the following elements in it:
