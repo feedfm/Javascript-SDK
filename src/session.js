@@ -489,7 +489,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype._receiveInvalidate = function(play, response) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not holding this song any more - just ignore it
       return;
     }
@@ -519,7 +519,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype._failSkip = function(play) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not playing this song any more - just ignore it
       return;
     }
@@ -529,7 +529,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype._receiveSkip = function(play, response) {
-    if (this.config.current && (this.config.current.play !== play)) {
+    if (!this.config.current || (this.config.current.play !== play)) {
       // not playing this song any more - just ignore it
       return;
     }
@@ -573,8 +573,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
         url: this.config.baseUrl + '/api/v2/play/' + play.id + '/start',
         type: 'POST',
         dataType: 'json',
-        timeout: 3000,
-        data: { id: play.id }
+        timeout: 3000
       })
         .done(_.bind(this._receiveStartPlay, this, play))
         .fail(_.bind(this._failStartPlay, this, play));
@@ -671,50 +670,40 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
   };
 
   Session.prototype._requestNextPlay = function(delay) {
+    var self = this;
 
-    if (this.config.pendingRequest) {
-      if (this.config.pendingRequest.inprogress) {
-        log('tried to get another play while we\'re loading one up');
+    this._getClientId().then(function() {
+      if (self.config.pendingRequest) {
+        if (!delay) {
+          log('already waiting for a request to finish');
+          return;
 
-        // request is currently in progress
-        return;
-      
-      } else if (delay > 60000) {
-        log('giving up on retrieving next play');
+        } else if (delay > 60000) {
+          log('giving up on retrieving next play');
 
-        // we already retried this - let's give up
-        this.config.pendingRequest = null;
+          // we already retried this - let's give up
+          self.config.pendingRequest = null;
 
-        if (this.config.current == null) {
-          // we're not playing anything, so we're waiting. 
-          // set assign play to null again to trigger empty/idle
-          this._assignCurrentPlay(null);
-        }
-        return;
+          if (self.config.current == null) {
+            // we're not playing anything, so we're waiting. 
+            // set assign play to null again to trigger empty/idle
+            self._assignCurrentPlay(null);
+          }
+          return;
 
-      } else {
-        // retry the request
-        this.config.pendingRequest.retryCount++;
+        } else {
+          // retry the request
+          self.config.pendingRequest.retryCount++;
 
-        this._signedAjax(this.config.pendingRequest.ajax)
-          .done(_.bind(this._receiveNextPlay, this, this.config.pendingRequest.ajax))
-          .fail(_.bind(this._failedNextPlay, this, delay, this.config.pendingRequest.ajax));
-        return;
-      }
-      
-    } else {
-      var self = this;
-
-      self.config.pendingRequest = {
-        inprogress: true
-      };
-
-      this._getClientId().then(function() {
-        if (!self.config.pendingRequest || !self.config.pendingRequest.inprogress) {
-          // don't get a new song if we've aborted things
+          self._signedAjax(self.config.pendingRequest.ajax)
+            .done(_.bind(self._receiveNextPlay, self, self.config.pendingRequest.ajax))
+            .fail(_.bind(self._failedNextPlay, self, delay, self.config.pendingRequest.ajax));
           return;
         }
         
+      } else {
+        // create a new request
+
         var ajax = { 
           url: self.config.baseUrl + '/api/v2/play',
           type: 'POST',
@@ -745,8 +734,8 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
         self._signedAjax(ajax)
           .done(_.bind(self._receiveNextPlay, self, ajax))
           .fail(_.bind(self._failedNextPlay, self, delay, ajax));
-      });
-    }
+      }
+    });
   };
 
   // we received a song to play from the server
