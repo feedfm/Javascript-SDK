@@ -73,7 +73,7 @@
  *
  */
 
-define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function(_, getSpeaker, Events, Session) {
+define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ], function(_, $, getSpeaker, Events, Session) {
 
   function supports_html5_storage() {
     try {
@@ -94,10 +94,7 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
 
     _.extend(this, Events);
 
-    this.speaker = getSpeaker(options);
-    this.setMuted(this.isMuted());
-
-    this.session = new Session(token, secret, options);
+    var session = this.session = new Session(token, secret, options);
     this.session.on('play-active', this._onPlayActive, this);
     this.session.on('play-started', this._onPlayStarted, this);
     this.session.on('play-completed', this._onPlayCompleted, this);
@@ -107,6 +104,15 @@ define([ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function
       // propagate all events out to everybody else
       this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
     }, this);
+
+    // create 'speakerInitialized' promise so we can delay things until
+    // the audio subsystem is set up.
+    var initializeSpeaker = $.Deferred();
+
+    this.speaker = getSpeaker(options, function() {
+      initializeSpeaker.resolve();
+    });
+    this.setMuted(this.isMuted());
   };
 
   Player.prototype.setPlacementId = function(placementId) {
