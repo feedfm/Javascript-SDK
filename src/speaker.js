@@ -48,7 +48,7 @@
  * Proper usage looks like this:
  *
  *   require([ 'feed/speaker' ], function(speaker) {
- *     var mySpeaker = speaker(options);
+ *     var mySpeaker = speaker(options, onReady);
  *   });
  *
  * That will make sure that all code uses the same speaker instance. 'options'
@@ -63,6 +63,11 @@
  *   secure: if true, default URLs for the soundmanager2.swf and silence mp3
  *                will come from 'https' locations
  *
+ * 'onReady' is also optional, and is a callback that will be called as
+ * soon as the sond system is initialized (or immediately if it was already
+ * initialized) and it will be given a string that lists supported
+ * audio formats, suitable for passing to Feed.Session.setFormats().
+ *
  * The first function call to 'speaker()' is what configures and defines the
  * speaker - and subsequent calls just return the already-created instance.
  * I think this is a poor interface, but I don't have a better one at the
@@ -73,7 +78,7 @@
  *
  */
 
-define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, log, Events, util, SoundManager) {
+define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, $, log, Events, util, SoundManager) {
 
   var Sound = function(options) { 
     var obj = _.extend(this, Events);
@@ -174,6 +179,8 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
 
     options = options || {};
 
+    this.onReadyPromise = $.Deferred();
+
     var config = {
       wmode: 'transparent',
       useHighPerformance: true,
@@ -184,23 +191,17 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
       preferFlash: options.preferFlash || false,
       url: util.addProtocol(options.swfBase || '//feed.fm/js/latest/', options.secure),
       onready: function() {
-        // swap in the true sound object creation function
-        speaker._createSM2Sound = function(songOptions) {
-          return window.soundManager.createSound(songOptions);
-        };
+        var preferred;
 
-        // create actual sound objects for sounds already queued up
-        _.each(speaker.outstandingPlays, function(sound) {
-          var playing = sound.sm2Sound.playing;
+        if (window.soundManager.canPlayMIME('audio/aac')) {
+          // some clients play aac, and we prefer that
+          preferred = 'aac,mp3';
+        } else {
+          // every client plays mp3
+          preferred = 'mp3';
+        }
 
-          // swap fake song object with real song object
-          speaker._createAndAssignSM2Sound(sound);
-
-          if (playing) {
-            log('playing already created sound');
-            sound.play();
-          }
-        });
+        speaker.onReadyPromise.resolve(preferred);
       }
     };
 
@@ -226,6 +227,7 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
     vol: 100,
     outstandingPlays: { },
     mobileInitialized: false,
+    onReadyPromise: null,
 
     initializeForMobile: function() {
       if (!this.mobileInitialized) {
@@ -257,18 +259,7 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
     },
 
     _createSM2Sound: function(options) { 
-      // this is replaced with a real call to SoundManager upon initialization
-      // the real call just passes everything to the SoundManager.createSound() call
-      return { 
-        fake: true,
-        playing: false,
-        options: options,
-        setVolume: function() { },
-        play: function() { this.playing = true; },
-        pause: function() { this.playing = false; },
-        resume: function() { this.playing = true; },
-        destruct: function() { }
-      };
+      return window.soundManager.createSound(options);
     },
 
     _createAndAssignSM2Sound: function(sound) {
@@ -357,9 +348,15 @@ define([ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ],
   var speaker = null;
 
   // there should only ever be a single instance of 'Speaker'
-  return function(options) {
+  return function(options, onReady) {
     if (speaker === null) {
       speaker = new Speaker(options);
+    }
+
+    if (onReady) {
+      speaker.onReadyPromise.then(function(formats) {
+        onReady(formats);
+      });
     }
 
     return speaker;

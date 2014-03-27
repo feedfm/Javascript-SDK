@@ -18,7 +18,6 @@
  *
  *  session.setPlacementId(placementId);
  *  session.setStationId(stationId);
- *  session.setFormats(formats); // "mp3", "aac", "mp3,aac"
  *
  *  If any of the above calls are made while we're actively tuning (we've
  *  got an active song or a pending song), then any currently active song
@@ -92,6 +91,9 @@
  *  Other misc calls:
  *  
  *  session.likePlay(), session.unlikePlay(), session.dislikePlay(): like handling
+ *  session.setFormats(formats): comma separated list of audio formats to 
+ *                               request, i.e.: 'mp3', 'aac', 'aac,mp3'. Defaults to
+ *                               'mp3,aac'
  *
  *  The optional 'options' argument passed to the constructor can have the following
  *  attributes:
@@ -110,6 +112,9 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
       function getSignature(baseString) {
         var hash = CryptoJS.HmacSHA256(baseString, this.key);
         var signature = hash.toString(CryptoJS.enc.Base64);
+
+        console.log('base, key, signature', baseString, this.key, signature);
+
         return signature;
       }
     ));
