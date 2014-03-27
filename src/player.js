@@ -107,11 +107,13 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
 
     // create 'speakerInitialized' promise so we can delay things until
     // the audio subsystem is set up.
-    var initializeSpeaker = $.Deferred();
+    var initializeSpeaker = this.initializeSpeaker = $.Deferred();
 
-    this.speaker = getSpeaker(options, function() {
+    this.speaker = getSpeaker(options, function(formats) {
+      session.setFormats(formats);
       initializeSpeaker.resolve();
     });
+
     this.setMuted(this.isMuted());
   };
 
@@ -281,30 +283,37 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
   };
 
   Player.prototype.tune = function() {
-    if (!this.session.isTuned()) {
-      this.session.tune();
-    }
+    var player = this;
+
+    this.initializeSpeaker.then(function() {
+      if (!player.session.isTuned()) {
+        player.session.tune();
+      }
+    });
   };
 
   Player.prototype.play = function() {
-    this.speaker.initializeForMobile();
+    var player = this;
 
-    if (!this.session.isTuned()) {
-      // not currently playing music
-      this.state.paused = false;
+    this.initializeSpeaker.then(function() {
+      player.speaker.initializeForMobile();
 
-      return this.session.tune();
+      if (!player.session.isTuned()) {
+        // not currently playing music
+        player.state.paused = false;
 
-    } else if (this.session.getActivePlay() && this.state.activePlay && this.state.paused) {
-      // resume playback of song
-      if (this.state.activePlay.playStarted) {
-        this.state.activePlay.sound.resume();
+        return player.session.tune();
 
-      } else {
-        this.state.activePlay.sound.play();
+      } else if (player.session.getActivePlay() && player.state.activePlay && player.state.paused) {
+        // resume playback of song
+        if (player.state.activePlay.playStarted) {
+          player.state.activePlay.sound.resume();
+
+        } else {
+          player.state.activePlay.sound.play();
+        }
       }
-    }
-
+    });
   };
 
   Player.prototype.pause = function() {
