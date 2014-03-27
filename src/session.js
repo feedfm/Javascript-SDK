@@ -113,8 +113,6 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
         var hash = CryptoJS.HmacSHA256(baseString, this.key);
         var signature = hash.toString(CryptoJS.enc.Base64);
 
-        console.log('base, key, signature', baseString, this.key, signature);
-
         return signature;
       }
     ));
