@@ -12393,7 +12393,6 @@ define("enc-base64", function(){});
  *
  *  session.setPlacementId(placementId);
  *  session.setStationId(stationId);
- *  session.setFormats(formats); // "mp3", "aac", "mp3,aac"
  *
  *  If any of the above calls are made while we're actively tuning (we've
  *  got an active song or a pending song), then any currently active song
@@ -12467,6 +12466,9 @@ define("enc-base64", function(){});
  *  Other misc calls:
  *  
  *  session.likePlay(), session.unlikePlay(), session.dislikePlay(): like handling
+ *  session.setFormats(formats): comma separated list of audio formats to 
+ *                               request, i.e.: 'mp3', 'aac', 'aac,mp3'. Defaults to
+ *                               'mp3,aac'
  *
  *  The optional 'options' argument passed to the constructor can have the following
  *  attributes:
@@ -12485,6 +12487,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
       function getSignature(baseString) {
         var hash = CryptoJS.HmacSHA256(baseString, this.key);
         var signature = hash.toString(CryptoJS.enc.Base64);
+
         return signature;
       }
     ));
@@ -13548,7 +13551,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
  *  Create this with:
  *
  *    player = new Feed.Player(token, secret);
- *    playerView = new Feed.PlayerView(player, id);
+ *    playerView = new Feed.PlayerView(id, player);
  *
  *  Where 'id' is the ID of the DOM element containing the player.
  *  The player should have the following elements in it:
@@ -16619,7 +16622,7 @@ define("Soundmanager", (function (global) {
  * Proper usage looks like this:
  *
  *   require([ 'feed/speaker' ], function(speaker) {
- *     var mySpeaker = speaker(options);
+ *     var mySpeaker = speaker(options, onReady);
  *   });
  *
  * That will make sure that all code uses the same speaker instance. 'options'
@@ -16634,6 +16637,11 @@ define("Soundmanager", (function (global) {
  *   secure: if true, default URLs for the soundmanager2.swf and silence mp3
  *                will come from 'https' locations
  *
+ * 'onReady' is also optional, and is a callback that will be called as
+ * soon as the sond system is initialized (or immediately if it was already
+ * initialized) and it will be given a string that lists supported
+ * audio formats, suitable for passing to Feed.Session.setFormats().
+ *
  * The first function call to 'speaker()' is what configures and defines the
  * speaker - and subsequent calls just return the already-created instance.
  * I think this is a poor interface, but I don't have a better one at the
@@ -16644,7 +16652,7 @@ define("Soundmanager", (function (global) {
  *
  */
 
-define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, log, Events, util, SoundManager) {
+define('feed/speaker',[ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, $, log, Events, util, SoundManager) {
 
   var Sound = function(options) { 
     var obj = _.extend(this, Events);
@@ -16745,6 +16753,8 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
 
     options = options || {};
 
+    this.onReadyPromise = $.Deferred();
+
     var config = {
       wmode: 'transparent',
       useHighPerformance: true,
@@ -16755,23 +16765,17 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
       preferFlash: options.preferFlash || false,
       url: util.addProtocol(options.swfBase || '//feed.fm/js/latest/', options.secure),
       onready: function() {
-        // swap in the true sound object creation function
-        speaker._createSM2Sound = function(songOptions) {
-          return window.soundManager.createSound(songOptions);
-        };
+        var preferred;
 
-        // create actual sound objects for sounds already queued up
-        _.each(speaker.outstandingPlays, function(sound) {
-          var playing = sound.sm2Sound.playing;
+        if (window.soundManager.canPlayMIME('audio/aac')) {
+          // some clients play aac, and we prefer that
+          preferred = 'aac,mp3';
+        } else {
+          // every client plays mp3
+          preferred = 'mp3';
+        }
 
-          // swap fake song object with real song object
-          speaker._createAndAssignSM2Sound(sound);
-
-          if (playing) {
-            log('playing already created sound');
-            sound.play();
-          }
-        });
+        speaker.onReadyPromise.resolve(preferred);
       }
     };
 
@@ -16797,6 +16801,7 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
     vol: 100,
     outstandingPlays: { },
     mobileInitialized: false,
+    onReadyPromise: null,
 
     initializeForMobile: function() {
       if (!this.mobileInitialized) {
@@ -16828,18 +16833,7 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
     },
 
     _createSM2Sound: function(options) { 
-      // this is replaced with a real call to SoundManager upon initialization
-      // the real call just passes everything to the SoundManager.createSound() call
-      return { 
-        fake: true,
-        playing: false,
-        options: options,
-        setVolume: function() { },
-        play: function() { this.playing = true; },
-        pause: function() { this.playing = false; },
-        resume: function() { this.playing = true; },
-        destruct: function() { }
-      };
+      return window.soundManager.createSound(options);
     },
 
     _createAndAssignSM2Sound: function(sound) {
@@ -16928,9 +16922,15 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
   var speaker = null;
 
   // there should only ever be a single instance of 'Speaker'
-  return function(options) {
+  return function(options, onReady) {
     if (speaker === null) {
       speaker = new Speaker(options);
+    }
+
+    if (onReady) {
+      speaker.onReadyPromise.then(function(formats) {
+        onReady(formats);
+      });
     }
 
     return speaker;
@@ -17013,7 +17013,7 @@ define('feed/speaker',[ 'underscore', 'feed/log', 'feed/events', 'feed/util', 'S
  *
  */
 
-define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/session' ], function(_, getSpeaker, Events, Session) {
+define('feed/player',[ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ], function(_, $, getSpeaker, Events, Session) {
 
   function supports_html5_storage() {
     try {
@@ -17034,10 +17034,7 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
 
     _.extend(this, Events);
 
-    this.speaker = getSpeaker(options);
-    this.setMuted(this.isMuted());
-
-    this.session = new Session(token, secret, options);
+    var session = this.session = new Session(token, secret, options);
     this.session.on('play-active', this._onPlayActive, this);
     this.session.on('play-started', this._onPlayStarted, this);
     this.session.on('play-completed', this._onPlayCompleted, this);
@@ -17047,6 +17044,17 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
       // propagate all events out to everybody else
       this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
     }, this);
+
+    // create 'speakerInitialized' promise so we can delay things until
+    // the audio subsystem is set up.
+    var initializeSpeaker = this.initializeSpeaker = $.Deferred();
+
+    this.speaker = getSpeaker(options, function(formats) {
+      session.setFormats(formats);
+      initializeSpeaker.resolve();
+    });
+
+    this.setMuted(this.isMuted());
   };
 
   Player.prototype.setPlacementId = function(placementId) {
@@ -17223,30 +17231,37 @@ define('feed/player',[ 'underscore', 'feed/speaker', 'feed/events', 'feed/sessio
   };
 
   Player.prototype.tune = function() {
-    if (!this.session.isTuned()) {
-      this.session.tune();
-    }
+    var player = this;
+
+    this.initializeSpeaker.then(function() {
+      if (!player.session.isTuned()) {
+        player.session.tune();
+      }
+    });
   };
 
   Player.prototype.play = function() {
-    this.speaker.initializeForMobile();
+    var player = this;
 
-    if (!this.session.isTuned()) {
-      // not currently playing music
-      this.state.paused = false;
+    this.initializeSpeaker.then(function() {
+      player.speaker.initializeForMobile();
 
-      return this.session.tune();
+      if (!player.session.isTuned()) {
+        // not currently playing music
+        player.state.paused = false;
 
-    } else if (this.session.getActivePlay() && this.state.activePlay && this.state.paused) {
-      // resume playback of song
-      if (this.state.activePlay.playStarted) {
-        this.state.activePlay.sound.resume();
+        return player.session.tune();
 
-      } else {
-        this.state.activePlay.sound.play();
+      } else if (player.session.getActivePlay() && player.state.activePlay && player.state.paused) {
+        // resume playback of song
+        if (player.state.activePlay.playStarted) {
+          player.state.activePlay.sound.resume();
+
+        } else {
+          player.state.activePlay.sound.play();
+        }
       }
-    }
-
+    });
   };
 
   Player.prototype.pause = function() {
