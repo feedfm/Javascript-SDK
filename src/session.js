@@ -301,6 +301,8 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
 
     if (this.config.placement && (this.config.placement.id === this.config.placementId)) {
       // already have placement info
+      // kick off request for next play
+      this._requestNextPlay();
       return;
     }
 
