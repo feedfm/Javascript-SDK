@@ -13172,7 +13172,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
 
           if (fullResponse.error && fullResponse.error.code === 19) {
             // user isn't in the US any more, so let the call fail
-            this.trigger('not-in-us');
+            this.trigger('not-in-us', fullResponse.error.message);
             return;
           }
         } catch (e) {
@@ -13289,7 +13289,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
 
             if (fullResponse.error && fullResponse.error.code === 19) {
               // user isn't in the US any more, so let the call fail
-              self.trigger('not-in-us');
+              self.trigger('not-in-us', fullResponse.error.message);
               return;
             }
           } catch (e) {
