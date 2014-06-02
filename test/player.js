@@ -407,6 +407,39 @@
       }, 600);
     });
 
+    it('will continue playing when we switch stations', function(done) {
+      this.timeout(4000);
+
+      var player = new Feed.Player('token', 'secret', speakerOptions);
+      player.setPlacementId('10000');
+
+      // play a long clip so we can test out timing
+      var hutz = validPlay();
+      hutz.audio_file.url = 'hutz.mp3';
+      plays.push(hutz);
+
+      // the player should request another song while the first plays
+      var queued = validPlay();
+      plays.push(queued);
+
+      // .. and then finally request a third song when we switch stations
+      queued = validPlay();
+      plays.push(queued);
+
+      player.play();
+
+      setTimeout(function() {
+        player.setStationId('333');
+
+        setTimeout(function() {
+          assert.equal(plays.length, 0, 'should have started playing second song');
+
+          done();
+        }, 800);
+        
+      }, 800);
+    });
+
     it('will allow us to suspend and unsuspend the player while playing a song', function(done) {
       // run player.play(). wait for 3 seconds. then suspend. then create a new
       // player. unsuspend it (with play = true). pause it after a fraction of
