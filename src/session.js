@@ -622,10 +622,11 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
           }
         } catch (e) {
           // ignore
+          log('unable to parse start play response', e.message);
         }
       }
 
-      log('request failed - trying again in 1 second');
+      log('request failed - trying again in 1 second', response.status);
 
       this.config.current.retryCount++;
 
@@ -697,6 +698,8 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
           return;
 
         } else {
+          log('retrying pending request');
+
           // retry the request
           self.config.pendingRequest.retryCount++;
 
@@ -802,10 +805,11 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
           }
         } catch (e) {
           // some other response - fall through and try again
+          log('problem parsing 403 response', e.message);
         }
       }
 
-      log('request failed - trying again');
+      log('request failed - trying again', response.status);
 
       delay = delay ? (delay * 2) : 500;
       _.delay(_.bind(this._requestNextPlay, this, delay), delay);
@@ -919,7 +923,11 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
             }
           } catch (e) {
             // some other response - fall through and try again
+            log('unknown response for client id request', e.message);
           }
+
+        } else {
+          log('unknown client id response status', response.status);
         }
 
         repeatAfter(delay, 2000, function(newDelay) { 
@@ -1064,6 +1072,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
     try {
       return 'localStorage' in window && window['localStorage'] !== null;
     } catch (e) {
+      log('browser does not support html5 localstorage', e.message);
       return false;
     }
   }
