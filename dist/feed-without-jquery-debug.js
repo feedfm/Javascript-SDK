@@ -2069,7 +2069,7 @@ define("OAuth", (function (global) {
     };
 }(this)));
 
-/*global console:true, define:false */
+/*global console:true, define:false, feedLogger:false */
 
 /**
  * Console wrapper.
@@ -2099,6 +2099,11 @@ define("OAuth", (function (global) {
  **/
 
 define('feed/log',[],function() {
+  // allow external code to swap in their own logger
+  if (typeof feedLogger === 'function') {
+    return feedLogger;
+  }
+
   // Tell IE9 to use its built-in console
   if (Function.prototype.bind && (typeof console === 'object' || typeof console === 'function') && typeof console.log === 'object') {
     var fields = ['log','info','warn','error','assert','dir','clear','profile','profileEnd'];
