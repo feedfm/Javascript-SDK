@@ -2625,6 +2625,8 @@ define("enc-base64", function(){});
  *    the user won't be allowed to play any music. This check is made
  *    every time we try to retrieve a song. Once you get this event, you
  *    should assume nothing further will work.
+ *  invalid-credentials: the token and secret passed to this function
+ *    are not valid.
  *  placement: after we tune in to a placement or station,
  *    this passes on information about the placement we
  *    tuned in to.
@@ -2854,7 +2856,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
     log('requesting default placement information from server');
     self._signedAjax(ajax)
       .done(_.bind(self._receiveDefaultPlacementInformation, self))
-      .fail(_.bind(self._failedDefaultPlacementInformation, self, delay, ajax));
+      .fail(_.bind(self._failedDefaultPlacementInformation, self, delay));
   };
 
   Session.prototype._receiveDefaultPlacementInformation = function(placementInformation) {
@@ -2879,7 +2881,20 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
     }
   };
 
-  Session.prototype._failedDefaultPlacementInformation = function(delay) {
+  Session.prototype._failedDefaultPlacementInformation = function(delay, response) {
+    if (response.status === 401) {
+      try {
+        var fullResponse = $.parseJSON(response.responseText);
+        if (fullResponse.error && fullResponse.error.code === 5) {
+          this.trigger('invalid-credentials');
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // otherwise, try again in a bit
     delay = delay ? (delay * 2) : 500;
     _.delay(_.bind(this._getDefaultPlacementInformation, this, delay), delay);
   };
