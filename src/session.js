@@ -35,6 +35,8 @@
  *    the user won't be allowed to play any music. This check is made
  *    every time we try to retrieve a song. Once you get this event, you
  *    should assume nothing further will work.
+ *  invalid-credentials: the token and secret passed to this function
+ *    are not valid.
  *  placement: after we tune in to a placement or station,
  *    this passes on information about the placement we
  *    tuned in to.
@@ -264,7 +266,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
     log('requesting default placement information from server');
     self._signedAjax(ajax)
       .done(_.bind(self._receiveDefaultPlacementInformation, self))
-      .fail(_.bind(self._failedDefaultPlacementInformation, self, delay, ajax));
+      .fail(_.bind(self._failedDefaultPlacementInformation, self, delay));
   };
 
   Session.prototype._receiveDefaultPlacementInformation = function(placementInformation) {
@@ -289,7 +291,20 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
     }
   };
 
-  Session.prototype._failedDefaultPlacementInformation = function(delay) {
+  Session.prototype._failedDefaultPlacementInformation = function(delay, response) {
+    if (response.status === 401) {
+      try {
+        var fullResponse = $.parseJSON(response.responseText);
+        if (fullResponse.error && fullResponse.error.code === 5) {
+          this.trigger('invalid-credentials');
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // otherwise, try again in a bit
     delay = delay ? (delay * 2) : 500;
     _.delay(_.bind(this._getDefaultPlacementInformation, this, delay), delay);
   };
@@ -622,10 +637,11 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
           }
         } catch (e) {
           // ignore
+          log('unable to parse start play response', e.message);
         }
       }
 
-      log('request failed - trying again in 1 second');
+      log('request failed - trying again in 1 second', response.status);
 
       this.config.current.retryCount++;
 
@@ -697,6 +713,8 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
           return;
 
         } else {
+          log('retrying pending request');
+
           // retry the request
           self.config.pendingRequest.retryCount++;
 
@@ -802,10 +820,11 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
           }
         } catch (e) {
           // some other response - fall through and try again
+          log('problem parsing 403 response', e.message);
         }
       }
 
-      log('request failed - trying again');
+      log('request failed - trying again', response.status);
 
       delay = delay ? (delay * 2) : 500;
       _.delay(_.bind(this._requestNextPlay, this, delay), delay);
@@ -919,7 +938,11 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
             }
           } catch (e) {
             // some other response - fall through and try again
+            log('unknown response for client id request', e.message);
           }
+
+        } else {
+          log('unknown client id response status', response.status);
         }
 
         repeatAfter(delay, 2000, function(newDelay) { 
@@ -1064,6 +1087,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
     try {
       return 'localStorage' in window && window['localStorage'] !== null;
     } catch (e) {
+      log('browser does not support html5 localstorage', e.message);
       return false;
     }
   }
