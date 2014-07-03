@@ -55,7 +55,25 @@
 
 <script>
   require([ 'feed/feed', 'jquery' ], function(Feed, $) {
-    var player = new Feed.Player('7bed4d09839c2743e3eeccd493202fc3d8dd656a', '319f82e863918f6bd3e6d9154a2f22c4ed457441', { debug: true, swfBase: '../dist' });
+    var player = new Feed.Player('da98b62e3cc781b6d196ff2582385eff96591dd7', '3a0aab7259d84a9a066aa15afba6351e6ea5959a', { debug: true, swfBase: '../dist' });
+
+    player.on('stations', function(stations) {
+      console.log('got the stations:', stations);
+      if (stations.length > 1) {
+        var options = '';
+        for (var x = 0; x < stations.length; x++) {
+          options += '<option value=' + stations[x].id + '>' + stations[x].name + '</option>';
+        }
+      }
+      $('#player-view').append('<select>' + options + '</select>');
+
+      $('select').on('change', function(event) {
+        var $el = $(event.currentTarget);
+        console.log('now playing', $el.val());
+        player.setStationId($el.val());
+        player.play();
+      });
+    });
 
     $('#delete').on('click', function() {
       // remove any pre-existing client id
