@@ -132,10 +132,10 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
   Player.prototype._onPlayActive = function(play) {
     // create a new sound object
     var options = {
-      play: _.bind(this._onSoundPlay, this),
-      pause: _.bind(this._onSoundPause, this),
-      finish:  _.bind(this._onSoundFinish, this),
-      elapse: _.bind(this._onSoundElapse, this)
+      play: _.bind(this._onSoundPlay, this, play.id),
+      pause: _.bind(this._onSoundPause, this, play.id),
+      finish:  _.bind(this._onSoundFinish, this, play.id),
+      elapse: _.bind(this._onSoundElapse, this, play.id)
     };
 
     if (play.startPosition) {
@@ -164,10 +164,10 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
     }
   };
 
-  Player.prototype._onSoundPlay = function() {
+  Player.prototype._onSoundPlay = function(playId) {
     // sound started playing
-    if (!this.state.activePlay) {
-      throw new Error('got an onSoundPlay, but no active play?');
+    if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+      return;
     }
     
     this.state.paused = false;
@@ -194,10 +194,10 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
     return this.session.getActivePlacement();
   };
 
-  Player.prototype._onSoundPause = function() {
+  Player.prototype._onSoundPause = function(playId) {
     // sound paused playback
-    if (!this.state.activePlay) {
-      throw new Error('got an onSoundPause, but no active play?');
+    if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+      return;
     }
     
     this.state.paused = true;
@@ -205,9 +205,9 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
     this.trigger('play-paused', this.session.getActivePlay());
   };
 
-  Player.prototype._onSoundFinish = function() {
-    if (!this.state.activePlay) {
-      throw new Error('got an onSoundFinished, but no active play?');
+  Player.prototype._onSoundFinish = function(playId) {
+    if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+      return;
     }
 
     this.state.activePlay.soundCompleted = true;
@@ -230,9 +230,9 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
     this.session.reportPlayCompleted();
   };
 
-  Player.prototype._onSoundElapse = function() {
-    if (!this.state.activePlay) {
-      throw new Error('got an onSoundPause, but no active play?');
+  Player.prototype._onSoundElapse = function(playId) {
+    if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+      return;
     }
 
     var sound = this.state.activePlay.sound,
