@@ -105,13 +105,33 @@ module.exports = function(grunt) {
             }
           }
         }
+      },
+
+      'feed-remote-log': {
+        options: {
+          out: 'dist/feed-remote-log.js',
+
+          optimize: 'none',
+
+          map: {
+            '*': {
+              // use our own jQuery, with noConflict(true) to we don't break things
+              'jquery': 'feed/jquery-noconflict',
+              // use the remote logger
+              'feed/log': 'feed/remote-log'
+            },
+            'feed/jquery-noconflict': {
+              'jquery': 'jquery'
+            }
+          }
+        }
       }
     },
 
     exec: {
       noConsole: {
         // look for debugging calls to console.log in the code
-        command: 'grep console.log src/* | grep -v src/log.js',
+        command: 'grep console.log src/* | grep -v log.js',
         stderr: false,
         exitCode: 1
       }
@@ -140,7 +160,8 @@ module.exports = function(grunt) {
   // Default task.
   grunt.registerTask('default', ['exec:noConsole', 'jshint', 
     'requirejs:feed', 'requirejs:feed-without-jquery', 
-    'requirejs:feed-debug', 'requirejs:feed-without-jquery-debug' ]);
+    'requirejs:feed-debug', 'requirejs:feed-without-jquery-debug',
+    'requirejs:feed-remote-log' ]);
 
 };
 

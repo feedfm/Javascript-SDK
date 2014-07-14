@@ -7676,6 +7676,7 @@ define('feed/feed',[ 'feed/session', 'feed/log', 'feed/player-view', 'feed/playe
     Session: Session,
     Player: Player,
     PlayerView: PlayerView,
+    log: log,
 
     // this is only sticking around for legacy reasons.
     getSpeaker: getSpeaker

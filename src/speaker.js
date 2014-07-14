@@ -272,6 +272,7 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundm
         autoPlay: false,
         type: 'audio/mp3',
         onfinish: function() {
+          log(sound.id + ': onfinish');
           this.destruct();
           delete speaker.outstandingPlays[sound.id];
           sound._nonRepeatTrigger('finish');

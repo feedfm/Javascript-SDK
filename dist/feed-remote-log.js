@@ -11859,100 +11859,42 @@ define("OAuth", (function (global) {
     };
 }(this)));
 
-/*global console:true, define:false, feedLogger:false */
+/*global JSON:false, define:false*/
 
-/**
- * Console wrapper.
- *
- * Originally from 
- *
- *   https://github.com/cpatik/console.log-wrapper
- *
- * by Craig Patik
- *
- * MIT License ----
- *
- * Copyright (c) 2012 Craig Patik
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- **/
+define('feed/remote-log',[ 'jquery' ], function($) {
 
-define('feed/log',[],function() {
-  // allow external code to swap in their own logger
-  if (typeof feedLogger === 'function') {
-    return feedLogger;
+  var buffer = [];
+
+  function now() {
+    var date = new Date();
+
+    return date.toString() + '.' + date.getMilliseconds();
   }
 
-  // Tell IE9 to use its built-in console
-  if (Function.prototype.bind && (typeof console === 'object' || typeof console === 'function') && typeof console.log === 'object') {
-    var fields = ['log','info','warn','error','assert','dir','clear','profile','profileEnd'];
-    for (var x = 0; x < fields.length; x++) {
-      var method = fields[x];
+  function log() {
+    var entry = now() + ': ' + arguments[0];
 
-      console[method] = Function.prototype.bind.call(console, console[method]);
+    for (var x = 1; x < arguments.length; x++) {
+      entry += ' ' + JSON.stringify(arguments[x]);
     }
+
+    buffer.push(entry);
   }
 
-  // log() -- The complete, cross-browser (we don't judge!) console.log wrapper for his or her logging pleasure
-  var log = function () {
-    log.history = log.history || [];  // store logs to an array for reference
-    log.history.push(arguments);
-    // Modern browsers
-    if (typeof console !== 'undefined' && typeof console.log === 'function') { // Opera 11
-      if (window.opera) {
-        var i = 0;
-        while (i < arguments.length) {
-          console.log('Item ' + (i+1) + ': ' + arguments[i]);
-          i++;
-        }
-      }
-
-      // All other modern browsers
-      else if ((Array.prototype.slice.call(arguments)).length === 1 && typeof Array.prototype.slice.call(arguments)[0] === 'string') {
-        console.log( (Array.prototype.slice.call(arguments)).toString() );
-      }
-      else {
-        console.log.apply( console, Array.prototype.slice.call(arguments) );
-      }
-
+  log.submit = function() {
+    var message = '';
+    for (var x = 0; x < buffer.length; x++) {
+      message += buffer[x] + '\n';
     }
 
-    // IE8
-    else if (!Function.prototype.bind && typeof console !== 'undefined' && typeof console.log === 'object') {
-      Function.prototype.call.call(console.log, console, Array.prototype.slice.call(arguments));
-    }
+    $.ajax({
+      type: 'POST',
+      url: 'https://feed.fm/api/v2/internal/log',
+      contentType: 'text/plain',
+      data: message
+    });
 
-    // IE7 and lower, and other old browsers
-    else {
-      // Inject Firebug lite
-      if (!document.getElementById('firebug-lite')) {
-        // Include the script
-        var script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.id = 'firebug-lite';
-        // If you run the script locally, point to /path/to/firebug-lite/build/firebug-lite.js
-        script.src = 'https://getfirebug.com/firebug-lite.js';
-        // If you want to expand the console window by default, uncomment this line
-        //document.getElementsByTagName('HTML')[0].setAttribute('debug','true');
-        document.getElementsByTagName('HEAD')[0].appendChild(script);
-        setTimeout(function () { log( Array.prototype.slice.call(arguments) ); }, 2000);
-      }
-      else {
-        // FBL was included but it hasn't finished loading yet, so try again momentarily
-        setTimeout(function () { log( Array.prototype.slice.call(arguments) ); }, 500);
-      }
-    }
+    buffer = [];
   };
 
   return log;
@@ -17473,4 +17415,4 @@ define('feed/feed',[ 'feed/session', 'feed/log', 'feed/player-view', 'feed/playe
   };
 
 });
-require.config({ map: {"*":{"jquery":"feed/jquery-noconflict"},"feed/jquery-noconflict":{"jquery":"jquery"}} }); window.Feed = require("feed/feed");
+require.config({ map: {"*":{"jquery":"feed/jquery-noconflict","feed/log":"feed/remote-log"},"feed/jquery-noconflict":{"jquery":"jquery"}} }); window.Feed = require("feed/feed");
