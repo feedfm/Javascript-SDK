@@ -73,7 +73,7 @@
  *
  */
 
-define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ], function(_, $, getSpeaker, Events, Session) {
+define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'feed/session' ], function(_, $, log, getSpeaker, Events, Session) {
 
   function supports_html5_storage() {
     try {
@@ -210,6 +210,7 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
       return;
     }
 
+    log('completed playback of', playId);
     this.state.activePlay.soundCompleted = true;
 
     if (!this.state.activePlay.playStarted) {
@@ -248,26 +249,29 @@ define([ 'underscore', 'jquery', 'feed/speaker', 'feed/events', 'feed/session' ]
     }
   };
 
-  Player.prototype._onPlayStarted = function() {
+  Player.prototype._onPlayStarted = function(play) {
     var session = this.session;
 
-    if (!this.state.activePlay) {
-      throw new Error('got onPlayStarted, but no active play!');
+    if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
+      log('received play started, but it does not match active play', play, this.state.activePlay);
+      return;
     }
 
     this.state.activePlay.startReportedToServer = true;
 
     if (this.state.activePlay.soundCompleted) {
       // the sound completed before the session announced the play started
+      log('sound completed before we finished reporting start', this.state.activePlay);
       _.defer(function() {
         session.reportPlayCompleted();
       });
     }
   };
 
-  Player.prototype._onPlayCompleted = function() {
-    if (!this.state.activePlay) {
-      throw new Error('got onPlayCompleted, but no active play!');
+  Player.prototype._onPlayCompleted = function(play) {
+    if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
+      log('received play completed, but it does not match active play', play, this.state.activePlay);
+      return;
     }
 
     this.state.activePlay.sound.destroy();
