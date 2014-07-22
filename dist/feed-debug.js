@@ -17124,6 +17124,7 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
       playStarted: false,           // wether playback started on the sound object yet
       previousPosition: 0           // last time we got an 'elapse' callback
     };
+    log('created new active play', this.state.activePlay);
 
     // if we're not paused, then start it
     if (!this.state.paused) {
@@ -17139,6 +17140,7 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
   Player.prototype._onSoundPlay = function(playId) {
     // sound started playing
     if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+      log('received sound play, but active play does not match', this.state.activePlay, playId);
       return;
     }
     
@@ -17169,6 +17171,7 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
   Player.prototype._onSoundPause = function(playId) {
     // sound paused playback
     if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+      log('received sound pause, but active play does not match', this.state.activePlay, playId);
       return;
     }
     
@@ -17179,6 +17182,7 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
 
   Player.prototype._onSoundFinish = function(playId) {
     if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+      log('received sound finish, but active play does not match', this.state.activePlay, playId);
       return;
     }
 
@@ -17205,6 +17209,7 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
 
   Player.prototype._onSoundElapse = function(playId) {
     if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+      log('received sound elapse, but active play does not match', this.state.activePlay, playId);
       return;
     }
 
@@ -17245,6 +17250,8 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
       log('received play completed, but it does not match active play', play, this.state.activePlay);
       return;
     }
+
+    log('deleting active play', this.state.activePlay);
 
     this.state.activePlay.sound.destroy();
     delete this.state.activePlay;
