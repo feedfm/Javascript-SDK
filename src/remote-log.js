@@ -107,8 +107,15 @@ define([ 'jquery' ], function($) {
   })();
   }
 
+  var buffer;
 
-  var buffer = [];
+  function initializeBuffer() {
+    buffer = [
+      navigator.userAgent
+    ];
+  }
+
+  initializeBuffer();
 
   function now() {
     var date = new Date();
@@ -139,7 +146,7 @@ define([ 'jquery' ], function($) {
       data: message
     });
 
-    buffer = [];
+    initializeBuffer();
   };
 
   return log;
