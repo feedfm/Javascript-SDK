@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+
+<button id="tune">tune</button>
+<button id="play">play</button>
+<button id="pause">pause</button>
+<button id="skip">skip</button>
+<button id="popout">popout</button>
+
+<button id="submit">submit</button>
+
+<br/>
+<br/>
+<br/>
+
+<button id="delete">delete client cookie</button>
+
+<script>
+var require = {
+  /* base is set to the 3rd party libs dir because many 3rd party
+   * modules (*cough* jquery *cough*) use define('myname', [ .. ], function() ..)
+   * rather than the more portable define([ .. ], function() ..)
+   */
+  baseUrl: '../vendor',
+
+  paths: {
+    // all our stuff is in the 'feed/' namespace
+    'feed' : '../src'
+  },
+
+  map: {
+    '*' : {
+      'jquery': 'feed/jquery-noconflict',
+      'feed/log': 'feed/remote-log'
+    },
+    'feed/jquery-noconflict': {
+      'jquery': 'jquery'
+    }
+  },
+
+  shim: {
+    'json2': { exports: 'JSON' },
+    'underscore': { exports: '_' },
+    'OAuth': { exports: 'OAuth' },
+    'CryptoJS': { exports: 'CryptoJS' },
+    'enc-base64': [ 'CryptoJS' ],
+    'Soundmanager': { exports: 'SoundManager' }
+  }
+
+};
+</script>
+<script src="../vendor/require.js" type="application/javascript"></script>
+
+<script src="../vendor/json2.js" type="application/javascript"></script>
+
+<script>
+require([ 'jquery', 'feed/feed' ], function($, Feed) {
+  
+   var player = new Feed.Player(
+    // production
+    '7bed4d09839c2743e3eeccd493202fc3d8dd656a', 
+    '319f82e863918f6bd3e6d9154a2f22c4ed457441', 
+    { 
+      debug: true, 
+      swfBase: '../dist' 
+    }
+    /*
+    // localhost dev
+    '7fcef228d85f96746d7c290eb9056d6ee5411d5e', 
+    '84bead07460f549894197b4cf60becde93121c11', 
+    { 
+      debug: true, 
+      swfBase: '../dist',
+      baseUrl: '//feed.localdomain:8000'
+    }
+    */
+  );
+
+  player.on('all', function() {
+    console.log('event sprung!', arguments);
+  });
+
+  var state = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)player\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
+
+  if (state) {
+    // unsuspend and nuke suspend cookie if it was set
+    player.unsuspend(JSON.parse(state), true);
+    document.cookie = 'player=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  }
+
+  $('#popout').on('click', function() {
+    var state = player.suspend();
+
+    // save the current state as a session cookie
+    document.cookie = 'player=' + encodeURIComponent(JSON.stringify(state));
+
+    window.open(window.location, '_blank');
+  });
+
+  $('#delete').on('click', function() {
+    // delete client identifier to get past skip limits
+    player.session._deleteStoredCid();
+  });
+
+  $('#tune').on('click', function() {
+    player.tune();
+  });
+
+  $('#play').on('click', function() {
+    player.play();
+  });
+
+  $('#pause').on('click', function() {
+    player.pause();
+  });
+
+  $('#skip').on('click', function() {
+    player.skip();
+  });
+
+  $('#submit').on('click', function() {
+    Feed.log.submit();
+  });
+});
+</script>
+
+</body>
+</html>
