@@ -44,7 +44,8 @@ var require = {
     'OAuth': { exports: 'OAuth' },
     'CryptoJS': { exports: 'CryptoJS' },
     'enc-base64': [ 'CryptoJS' ],
-    'Soundmanager': { exports: 'SoundManager' }
+    'Soundmanager': { exports: 'SoundManager' },
+    'Soundmanager-debug': { exports: 'SoundManager' }
   }
 
 };

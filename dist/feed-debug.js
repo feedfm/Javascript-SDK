@@ -19930,7 +19930,12 @@ window.soundManager = soundManager; // public API, flash callbacks etc.
 
 }(window));
 
-define("Soundmanager-debug", function(){});
+define("Soundmanager-debug", (function (global) {
+    return function () {
+        var ret, fn;
+        return ret || global.SoundManager;
+    };
+}(this)));
 
 /*global define:false */
 
