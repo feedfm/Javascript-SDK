@@ -110,7 +110,11 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
     var initializeSpeaker = this.initializeSpeaker = $.Deferred();
 
     this.speaker = getSpeaker(options, function(formats) {
-      session.setFormats(formats);
+      if (options.formats) {
+        session.setFormats(options.formats);
+      } else {
+        session.setFormats(formats);
+      }
       initializeSpeaker.resolve();
     });
 
@@ -265,8 +269,15 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
     this.state.activePlay.startReportedToServer = true;
 
     if (this.state.activePlay.soundCompleted) {
-      // the sound completed before the session announced the play started
+      // the audio completed playback before the session announced the play started
       log('sound completed before we finished reporting start', this.state.activePlay);
+
+      // In the normal case we'd just quit here, but since the audio completed playback
+      // already, we've got to make sure a 'session.reportPlayCompleted()' gets kicked
+      // off to record the completion of this song.
+      // Defer the reporting so other 'play-started' handlers can complete as normal
+      // before a 'play-completed' gets triggered
+
       _.defer(function() {
         session.reportPlayCompleted();
       });

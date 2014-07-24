@@ -25,6 +25,7 @@ function SoundManager(smURL, smID) {
     'debugFlash': false,
     'useConsole': true,
     'consoleOnly': true,
+    'console': null,
     'waitForWindowLoad': false,
     'bgColor': '#ffffff',
     'useHighPerformance': false,
@@ -530,6 +531,7 @@ function SoundManager(smURL, smID) {
     }
     return result;
   };
+  this.console = { log: false };
   this._writeDebug = function(sText, sTypeOrObject) {
     return true;
   };
@@ -1579,7 +1581,8 @@ function SoundManager(smURL, smID) {
     'ontimeout': 1,
     'defaultOptions': 1,
     'flash9Options': 1,
-    'movieStarOptions': 1
+    'movieStarOptions': 1,
+    'console': 1
   };
   assign = function(o, oParent) {
     var i,
@@ -1608,7 +1611,7 @@ function SoundManager(smURL, smID) {
           if (bonusOptions[i] === _undefined) {
             result = false;
           } else {
-            return assign(o[i], i);
+            assign(o[i], i);
           }
         }
       }

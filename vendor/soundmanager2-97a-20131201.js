@@ -1170,6 +1170,8 @@ function SoundManager(smURL, smID) {
    * @param {object} nType Optional log level (number), or object. Number case: Log type/style where 0 = 'info', 1 = 'warn', 2 = 'error'. Object case: Object to be dumped.
    */
 
+  this.console = { log: false }; // placeholder for configuration
+
   this._writeDebug = function(sText, sTypeOrObject) {
 
     // pseudo-private console.log()-style output
@@ -1181,14 +1183,16 @@ function SoundManager(smURL, smID) {
       return false;
     }
 
-    if (hasConsole && sm2.useConsole) {
+    if ((sm2.console.log || hasConsole) && sm2.useConsole) {
+      var c = (sm2.console.log ? sm2.console : console);
+
       if (sTypeOrObject && typeof sTypeOrObject === 'object') {
         // object passed; dump to console.
-        console.log(sText, sTypeOrObject);
+        c.log(sText, sTypeOrObject);
       } else if (debugLevels[sTypeOrObject] !== _undefined) {
-        console[debugLevels[sTypeOrObject]](sText);
+        c[debugLevels[sTypeOrObject]](sText);
       } else {
-        console.log(sText);
+        c.log(sText);
       }
       if (sm2.consoleOnly) {
         return true;
@@ -3475,7 +3479,8 @@ function SoundManager(smURL, smID) {
     'ontimeout': 1,
     'defaultOptions': 1,
     'flash9Options': 1,
-    'movieStarOptions': 1
+    'movieStarOptions': 1,
+    'console': 1
   };
 
   assign = function(o, oParent) {
@@ -3602,7 +3607,7 @@ function SoundManager(smURL, smID) {
           } else {
 
             // recurse through object
-            return assign(o[i], i);
+            assign(o[i], i);
 
           }
 
@@ -5904,6 +5909,7 @@ function SoundManager(smURL, smID) {
 
     // catch edge case of initComplete() firing after window.load()
     windowLoaded = true;
+    domContentLoaded();
     event.remove(window, 'load', winOnLoad);
 
   };

@@ -80,6 +80,14 @@
 
 define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundmanager' ], function(_, $, log, Events, util, SoundManager) {
 
+  // fake console to redirect soundmanager2 to the feed logger
+  var feedConsole = {
+    log: log,
+    info: log,
+    warn: log,
+    error: log
+  };
+
   var Sound = function(options) { 
     var obj = _.extend(this, Events);
 
@@ -187,6 +195,7 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundm
       flashPollingInterval: 500,
       html5PollingInterval: 500,
       debugMode: options.debug || false,
+      console: options.debug ? feedConsole : null,
       debugFlash: options.debug || false,
       preferFlash: options.preferFlash || false,
       url: util.addProtocol(options.swfBase || '//feed.fm/js/latest/', options.secure),

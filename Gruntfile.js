@@ -83,7 +83,9 @@ module.exports = function(grunt) {
           map: {
             '*': {
               // use jquery already in page
-              'jquery': 'feed/jquery-external'
+              'jquery': 'feed/jquery-external',
+              // use the debug soundmanager
+              'Soundmanager': 'Soundmanager-debug'
             }
           }
         }
@@ -98,7 +100,9 @@ module.exports = function(grunt) {
           map: {
             '*': {
               // use our own jQuery, with noConflict(true) to we don't break things
-              'jquery': 'feed/jquery-noconflict'
+              'jquery': 'feed/jquery-noconflict',
+              // use the debug soundmanager
+              'Soundmanager': 'Soundmanager-debug'
             },
             'feed/jquery-noconflict': {
               'jquery': 'jquery'
@@ -118,7 +122,9 @@ module.exports = function(grunt) {
               // use our own jQuery, with noConflict(true) to we don't break things
               'jquery': 'feed/jquery-noconflict',
               // use the remote logger
-              'feed/log': 'feed/remote-log'
+              'feed/log': 'feed/remote-log',
+              // use the debug soundmanager
+              'Soundmanager': 'Soundmanager-debug'
             },
             'feed/jquery-noconflict': {
               'jquery': 'jquery'
