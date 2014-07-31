@@ -109,11 +109,21 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
     // the audio subsystem is set up.
     var initializeSpeaker = this.initializeSpeaker = $.Deferred();
 
-    this.speaker = getSpeaker(options, function(formats) {
+    this.speaker = getSpeaker(options, function(supportedFormats) {
       if (options.formats) {
-        session.setFormats(options.formats);
+        var reqFormatList = options.formats.split(','),
+            suppFormatList = supportedFormats.split(','),
+            reqAndSuppFormatList = _.intersection(reqFormatList, suppFormatList),
+            reqAndSuppFormats = reqAndSuppFormatList.join(',');
+
+        if (reqAndSuppFormatList.length === 0) {
+          reqAndSuppFormats = supportedFormats;
+        }
+
+        session.setFormats(reqAndSuppFormats);
+
       } else {
-        session.setFormats(formats);
+        session.setFormats(supportedFormats);
       }
       initializeSpeaker.resolve();
     });
@@ -156,7 +166,6 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
       playStarted: false,           // wether playback started on the sound object yet
       previousPosition: 0           // last time we got an 'elapse' callback
     };
-    log('created new active play', this.state.activePlay);
 
     // if we're not paused, then start it
     if (!this.state.paused) {
@@ -218,7 +227,6 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
       return;
     }
 
-    log('completed playback of', playId);
     this.state.activePlay.soundCompleted = true;
 
     if (!this.state.activePlay.playStarted) {
@@ -289,8 +297,6 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
       log('received play completed, but it does not match active play', play, this.state.activePlay);
       return;
     }
-
-    log('deleting active play', this.state.activePlay);
 
     this.state.activePlay.sound.destroy();
     delete this.state.activePlay;
