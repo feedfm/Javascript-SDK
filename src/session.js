@@ -100,8 +100,9 @@
  *  The optional 'options' argument passed to the constructor can have the following
  *  attributes:
  *
- *    secure: if true, the default URLs for accessing the feed API will be
- *       over 'https' rather than 'http' (the default).
+ *    secure: if true, the default URLs for accessing the feed API and
+ *       audio files will be over 'https' rather than 'http'. The default
+ *       is true if the window.location.protocol is 'https', and false otherwise.
  *    baseUrl: defines the base host that responds to API calls - defaults
  *       to '//feed.fm'. Really only used with local testing.
  */
@@ -131,6 +132,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
       // stations
       // clientId
       baseUrl: util.addProtocol(options.baseUrl || '//feed.fm', options.secure),
+      secure: !!options.secure,
       formats: 'mp3,aac',
       maxBitrate: 128,
       timeOffset: 0,
@@ -735,7 +737,8 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
           data: {
             formats: self.config.formats,
             client_id: self.config.clientId,
-            max_bitrate: self.config.maxBitrate
+            max_bitrate: self.config.maxBitrate,
+            secure: self.config.secure
           }
         };
 
@@ -753,7 +756,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
         };
 
         // request new play from server
-        log('requesting new play from server');
+        log('requesting new play from server', ajax);
         self._signedAjax(ajax)
           .done(_.bind(self._receiveNextPlay, self, ajax))
           .fail(_.bind(self._failedNextPlay, self, delay, ajax));
