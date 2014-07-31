@@ -13,8 +13,11 @@ define(function() {
       } else if (secure === false) {
         url = 'http:' + url;
       
-      } else {
+      } else if (window.location.protocol.substr(0, 4) === 'http') {
         url = window.location.protocol + url;
+
+      } else {
+        url = 'http';
       }
     }
     
