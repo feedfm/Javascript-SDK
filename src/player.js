@@ -13,10 +13,11 @@
  *  Create this with:
  *    player = new Feed.Player(token, secret[, options])
  *
- *  (where 'options' is an optional object that is passed to the
- *   feed/speaker function and the feed/session constructor. Normally
- *   you'd only use a value of '{ secure: true }' to use HTTPS for all
- *   communications)
+ *  'options' may be one of the following:
+ *    skipPlayDelay: set to true if you notice skips periodically cause the
+ *                   next play to fail. This appears to happen when on Android
+ *                   in an embedded WebView
+ *    .. or any option that 'Feed.Session' and 'Feed.Speaker' accept
  *
  *  Then set the optional placement and station that we're pulling
  *  from:
@@ -91,6 +92,8 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
     };
 
     options = options || {};
+
+    this.skipPlayDelay = !!options.skipPlayDelay;
 
     _.extend(this, Events);
 
@@ -170,11 +173,18 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
     // if we're not paused, then start it
     if (!this.state.paused) {
       var s = this.state.activePlay.sound;
+
       // flash freaks if you do this in the finish handler for a sound, so
-      // schedule it for the next event loop
-      setTimeout(function() {
+      // schedule it for the next event loop. On the other hand, android
+      // webview periodically fails if you delay this.
+
+      if (this.skipPlayDelay) {
         s.play();
-      }, 1);
+      } else {
+        setTimeout(function() {
+          s.play();
+        }, 1);
+      }
     }
   };
 

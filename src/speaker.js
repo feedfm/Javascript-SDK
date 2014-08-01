@@ -313,12 +313,14 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundm
            log(sound.id + ' failure!');
             sound._nonRepeatTrigger('finish');
             // consider this a failure
+            log('destroying after onload failure');
             sound.destroy();
           }
         },
         ondataerror: function() {
           log(sound.id + ': ondataerror');
           sound._nonRepeatTrigger('finish');
+          log('destroying after ondataerr');
           sound.destroy();
         },
         onconnect: function() {

@@ -3711,6 +3711,8 @@ function SoundManager(smURL, smID) {
       var s = this._s,
           result;
 
+      sm2._wD('****** event: ' + e.type + ' *******', { src: e.target.src, event: e });
+
       if (!s || !s._a) {
         // <d>
         if (s && s.id) {

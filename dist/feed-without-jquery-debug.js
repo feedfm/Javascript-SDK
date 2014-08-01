@@ -2366,8 +2366,11 @@ define('feed/util',[],function() {
       } else if (secure === false) {
         url = 'http:' + url;
       
-      } else {
+      } else if (window.location.protocol.substr(0, 4) === 'http') {
         url = window.location.protocol + url;
+
+      } else {
+        url = 'http';
       }
     }
     
@@ -2690,8 +2693,9 @@ define("enc-base64", function(){});
  *  The optional 'options' argument passed to the constructor can have the following
  *  attributes:
  *
- *    secure: if true, the default URLs for accessing the feed API will be
- *       over 'https' rather than 'http' (the default).
+ *    secure: if true, the default URLs for accessing the feed API and
+ *       audio files will be over 'https' rather than 'http'. The default
+ *       is true if the window.location.protocol is 'https', and false otherwise.
  *    baseUrl: defines the base host that responds to API calls - defaults
  *       to '//feed.fm'. Really only used with local testing.
  */
@@ -2721,6 +2725,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
       // stations
       // clientId
       baseUrl: util.addProtocol(options.baseUrl || '//feed.fm', options.secure),
+      secure: !!options.secure,
       formats: 'mp3,aac',
       maxBitrate: 128,
       timeOffset: 0,
@@ -3325,7 +3330,8 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
           data: {
             formats: self.config.formats,
             client_id: self.config.clientId,
-            max_bitrate: self.config.maxBitrate
+            max_bitrate: self.config.maxBitrate,
+            secure: self.config.secure
           }
         };
 
@@ -3343,7 +3349,7 @@ define('feed/session',[ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log',
         };
 
         // request new play from server
-        log('requesting new play from server');
+        log('requesting new play from server', ajax);
         self._signedAjax(ajax)
           .done(_.bind(self._receiveNextPlay, self, ajax))
           .fail(_.bind(self._failedNextPlay, self, delay, ajax));
@@ -7857,6 +7863,8 @@ function SoundManager(smURL, smID) {
       var s = this._s,
           result;
 
+      sm2._wD('****** event: ' + e.type + ' *******', { src: e.target.src, event: e });
+
       if (!s || !s._a) {
         // <d>
         if (s && s.id) {
@@ -10462,12 +10470,14 @@ define('feed/speaker',[ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed
            log(sound.id + ' failure!');
             sound._nonRepeatTrigger('finish');
             // consider this a failure
+            log('destroying after onload failure');
             sound.destroy();
           }
         },
         ondataerror: function() {
           log(sound.id + ': ondataerror');
           sound._nonRepeatTrigger('finish');
+          log('destroying after ondataerr');
           sound.destroy();
         },
         onconnect: function() {
@@ -10538,10 +10548,11 @@ define('feed/speaker',[ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed
  *  Create this with:
  *    player = new Feed.Player(token, secret[, options])
  *
- *  (where 'options' is an optional object that is passed to the
- *   feed/speaker function and the feed/session constructor. Normally
- *   you'd only use a value of '{ secure: true }' to use HTTPS for all
- *   communications)
+ *  'options' may be one of the following:
+ *    skipPlayDelay: set to true if you notice skips periodically cause the
+ *                   next play to fail. This appears to happen when on Android
+ *                   in an embedded WebView
+ *    .. or any option that 'Feed.Session' and 'Feed.Speaker' accept
  *
  *  Then set the optional placement and station that we're pulling
  *  from:
@@ -10617,6 +10628,8 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
 
     options = options || {};
 
+    this.skipPlayDelay = !!options.skipPlayDelay;
+
     _.extend(this, Events);
 
     var session = this.session = new Session(token, secret, options);
@@ -10634,11 +10647,21 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
     // the audio subsystem is set up.
     var initializeSpeaker = this.initializeSpeaker = $.Deferred();
 
-    this.speaker = getSpeaker(options, function(formats) {
+    this.speaker = getSpeaker(options, function(supportedFormats) {
       if (options.formats) {
-        session.setFormats(options.formats);
+        var reqFormatList = options.formats.split(','),
+            suppFormatList = supportedFormats.split(','),
+            reqAndSuppFormatList = _.intersection(reqFormatList, suppFormatList),
+            reqAndSuppFormats = reqAndSuppFormatList.join(',');
+
+        if (reqAndSuppFormatList.length === 0) {
+          reqAndSuppFormats = supportedFormats;
+        }
+
+        session.setFormats(reqAndSuppFormats);
+
       } else {
-        session.setFormats(formats);
+        session.setFormats(supportedFormats);
       }
       initializeSpeaker.resolve();
     });
@@ -10681,16 +10704,22 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
       playStarted: false,           // wether playback started on the sound object yet
       previousPosition: 0           // last time we got an 'elapse' callback
     };
-    log('created new active play', this.state.activePlay);
 
     // if we're not paused, then start it
     if (!this.state.paused) {
       var s = this.state.activePlay.sound;
+
       // flash freaks if you do this in the finish handler for a sound, so
-      // schedule it for the next event loop
-      setTimeout(function() {
+      // schedule it for the next event loop. On the other hand, android
+      // webview periodically fails if you delay this.
+
+      if (this.skipPlayDelay) {
         s.play();
-      }, 1);
+      } else {
+        setTimeout(function() {
+          s.play();
+        }, 1);
+      }
     }
   };
 
@@ -10743,7 +10772,6 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
       return;
     }
 
-    log('completed playback of', playId);
     this.state.activePlay.soundCompleted = true;
 
     if (!this.state.activePlay.playStarted) {
@@ -10814,8 +10842,6 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
       log('received play completed, but it does not match active play', play, this.state.activePlay);
       return;
     }
-
-    log('deleting active play', this.state.activePlay);
 
     this.state.activePlay.sound.destroy();
     delete this.state.activePlay;
