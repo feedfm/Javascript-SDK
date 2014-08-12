@@ -20055,6 +20055,8 @@ define('feed/speaker',[ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed
 
   Sound.prototype = {
     play: function() {
+      var sound = this;
+
       if (this.sm2Sound) {
         if (!this.sm2Sound.fake && this.startPosition) {
           var startPosition = this.startPosition;
@@ -20068,8 +20070,13 @@ define('feed/speaker',[ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed
               }
             }
           });
-        } else {
+        } else if (this.sm2Sound.isHTML5) {
           this.sm2Sound.play();
+        } else {
+          // deal with Flash callback issues
+          setTimeout(function() {
+            sound.sm2Sound.play();
+          }, 1);
         }
       }
     },
@@ -20338,11 +20345,7 @@ define('feed/speaker',[ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed
  *  Create this with:
  *    player = new Feed.Player(token, secret[, options])
  *
- *  'options' may be one of the following:
- *    skipPlayDelay: set to true if you notice skips periodically cause the
- *                   next play to fail. This appears to happen when on Android
- *                   in an embedded WebView
- *    .. or any option that 'Feed.Session' and 'Feed.Speaker' accept
+ *  'options' may be any option that 'Feed.Session' and 'Feed.Speaker' accept
  *
  *  Then set the optional placement and station that we're pulling
  *  from:
@@ -20499,17 +20502,7 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
     if (!this.state.paused) {
       var s = this.state.activePlay.sound;
 
-      // flash freaks if you do this in the finish handler for a sound, so
-      // schedule it for the next event loop. On the other hand, android
-      // webview periodically fails if you delay this.
-
-      if (this.skipPlayDelay) {
-        s.play();
-      } else {
-        setTimeout(function() {
-          s.play();
-        }, 1);
-      }
+      s.play();
     }
   };
 

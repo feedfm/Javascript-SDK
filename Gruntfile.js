@@ -38,7 +38,10 @@ module.exports = function(grunt) {
         mainConfigFile: 'src/config.js',
         baseUrl: 'vendor',
         name: 'almond',
-        include: [ 'feed/feed' ]
+        include: [ 'feed/feed' ],
+        uglify: {
+          'ascii_only': true
+        }
       },
 
       'feed-without-jquery': {

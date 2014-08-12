@@ -13,11 +13,7 @@
  *  Create this with:
  *    player = new Feed.Player(token, secret[, options])
  *
- *  'options' may be one of the following:
- *    skipPlayDelay: set to true if you notice skips periodically cause the
- *                   next play to fail. This appears to happen when on Android
- *                   in an embedded WebView
- *    .. or any option that 'Feed.Session' and 'Feed.Speaker' accept
+ *  'options' may be any option that 'Feed.Session' and 'Feed.Speaker' accept
  *
  *  Then set the optional placement and station that we're pulling
  *  from:
@@ -174,17 +170,7 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
     if (!this.state.paused) {
       var s = this.state.activePlay.sound;
 
-      // flash freaks if you do this in the finish handler for a sound, so
-      // schedule it for the next event loop. On the other hand, android
-      // webview periodically fails if you delay this.
-
-      if (this.skipPlayDelay) {
-        s.play();
-      } else {
-        setTimeout(function() {
-          s.play();
-        }, 1);
-      }
+      s.play();
     }
   };
 

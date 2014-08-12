@@ -108,6 +108,8 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundm
 
   Sound.prototype = {
     play: function() {
+      var sound = this;
+
       if (this.sm2Sound) {
         if (!this.sm2Sound.fake && this.startPosition) {
           var startPosition = this.startPosition;
@@ -121,8 +123,13 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundm
               }
             }
           });
-        } else {
+        } else if (this.sm2Sound.isHTML5) {
           this.sm2Sound.play();
+        } else {
+          // deal with Flash callback issues
+          setTimeout(function() {
+            sound.sm2Sound.play();
+          }, 1);
         }
       }
     },
