@@ -42,6 +42,26 @@
       assert.isNotNull(song);
     });
 
+    it('will play a bad song object and trigger a finish event with failure', function(done) {
+      var playCalled = false;
+
+      var song = Feed.getSpeaker(speakerOptions).create('/sample/bad.m4a', { 
+        play: function() { playCalled = true; },
+        finish: function(withError) {
+          assert.equal(playCalled, true, 'should have triggered play event');
+          assert.equal(withError, true, 'should have reported a finish error');
+
+          song.destroy();
+
+          done();
+        }
+      });
+
+      song.play();
+
+      assert.isNotNull(song);
+    });
+
     it('will play a long song object and respond to pause events', function(done) {
       var playCalled = false;
 

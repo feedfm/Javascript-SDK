@@ -366,6 +366,45 @@
       }, 600);
     });
 
+    it('will invalidate a play with a bad finish result', function(done) {
+      var player = new Feed.Player('token', 'secret', speakerOptions);
+
+      var mock = sinon.mock(player);
+
+      var invalidPlay = validPlay();
+      invalidPlay.audio_file.codec = 'aac';
+      invalidPlay.audio_file.url = 'bad.m4a';
+
+      plays.push(invalidPlay);
+      plays.push(validPlay());
+
+      mock.expects('trigger').withArgs('placement-changed');
+      mock.expects('trigger').withArgs('placement');
+      mock.expects('trigger').withArgs('station-changed');
+      mock.expects('trigger').withArgs('stations');
+      mock.expects('trigger').withArgs('play-active');
+      mock.expects('trigger').withArgs('play-started');
+      mock.expects('trigger').withArgs('play-completed');
+      mock.expects('trigger').withArgs('play-active');
+      mock.expects('trigger').withArgs('play-started');
+
+      player.setPlacementId('10000');
+
+      player.play();
+
+      setTimeout(function() {
+        mock.verify();
+
+        player.destroy();
+
+        // make sure there's an 'invalidate' call in there
+        assert.deepEqual(requests, ['oauth/time', 'placement', 'client', 'play', 'start', 'play', 'invalidate', 'start', 'play'], 'invalidate call should have been called');
+
+        done();
+
+      }, 400);
+    });
+
     it('if we skip a play that is being paused, it will start up the next play immediately', function(done) {
       var player = new Feed.Player('token', 'secret', speakerOptions);
 

@@ -217,13 +217,16 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
     this.trigger('play-paused', this.session.getActivePlay());
   };
 
-  Player.prototype._onSoundFinish = function(playId) {
+  Player.prototype._onSoundFinish = function(playId, withError) {
     if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
       log('received sound finish, but active play does not match', this.state.activePlay, playId);
       return;
     }
 
     this.state.activePlay.soundCompleted = true;
+    if (withError) {
+      this.state.activePlay.soundCompletedWithError = true;
+    }
 
     if (!this.state.activePlay.playStarted) {
       // never reported this as started...  mark it as invalidated so
@@ -240,7 +243,13 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
       return;
     }
 
-    this.session.reportPlayCompleted();
+    if (withError) {
+      log('song completed with error - marking as invalid');
+      this.session.requestInvalidate();
+
+    } else {
+      this.session.reportPlayCompleted();
+    }
   };
 
   Player.prototype._onSoundElapse = function(playId) {
@@ -282,9 +291,16 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'fee
       // Defer the reporting so other 'play-started' handlers can complete as normal
       // before a 'play-completed' gets triggered
 
-      _.defer(function() {
-        session.reportPlayCompleted();
-      });
+      if (this.state.activePlay.soundCompletedWithError) {
+        _.defer(function() {
+          session.requestInvalidate();
+        });
+
+      } else {
+        _.defer(function() {
+          session.reportPlayCompleted();
+        });
+      }
     }
   };
 

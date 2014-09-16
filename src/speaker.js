@@ -34,7 +34,9 @@
  *         ( play -> ( pause | play )* -> )? finish
  *
  *       Note that I represent play failures as a 'finish' call, so if
- *       we can't load a song, it will just get a 'finish' and no 'play'
+ *       we can't load a song, it will just get a 'finish' and no 'play'.
+ *       The 'finish' event will have a 'true' argument passed to it on
+ *       some kind of error, so you can treat those differently.
  *
  *       The returned song object has this following api:
  *         play: start playback (at the 'startPosition', if specified)
@@ -318,7 +320,7 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundm
           log(sound.id + ': onload', success);
           if (!success) {
            log(sound.id + ' failure!');
-            sound._nonRepeatTrigger('finish');
+            sound._nonRepeatTrigger('finish', true);
             // consider this a failure
             log('destroying after onload failure');
             sound.destroy();
@@ -326,7 +328,7 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundm
         },
         ondataerror: function() {
           log(sound.id + ': ondataerror');
-          sound._nonRepeatTrigger('finish');
+          sound._nonRepeatTrigger('finish', true);
           log('destroying after ondataerr');
           sound.destroy();
         },

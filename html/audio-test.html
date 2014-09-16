@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+#player-view .play-button.button-enabled,
+#player-view .pause-button.button-enabled {
+  color: green;
+}
+
+#player-view .play-button.button-disabled,
+#player-view .pause-button.button-disabled {
+  display: none;
+}
+
+#player-view .skip-button.button-disabled {
+  color: red;
+}
+
+#player-view .skip-button.button-enabled {
+  color: green;
+}
+
+#player-view .track, 
+#player-view .release, 
+#player-view .artist {
+  font-weight: bold;
+}
+
+#player-view.state-suspended {
+  display: none;
+}
+
+</style>
+</head>
+<body>
+
+<div id="player-view">
+<div>
+  <span class='position'></span> <span class='status'></span>
+</div>
+<button class='start-button'>start</button>
+<button class='resume-button'>resume</button>
+<button class="play-button">play</button>
+<button class="pause-button">pause</button>
+<button class="skip-button">skip</button>
+</div>
+
+<button id='delete'>delete client id</button>
+<button id='popout'>popout</button>
+
+<div id="log"></div>
+
+<!-- dependencies -->
+<script src="../src/config.js" type="application/javascript"></script>
+<script src="../vendor/require.js" type="application/javascript"></script>
+
+<script>
+  require([ 'feed/feed', 'jquery' ], function(Feed, $) {
+    var player = new Feed.Player('da98b62e3cc781b6d196ff2582385eff96591dd7', '3a0aab7259d84a9a066aa15afba6351e6ea5959a', { debug: true, swfBase: '../dist' });
+
+    player.on('stations', function(stations) {
+      if (stations.length > 1) {
+        var options = '';
+        for (var x = 0; x < stations.length; x++) {
+          options += '<option value=' + stations[x].id + '>' + stations[x].name + '</option>';
+        }
+      }
+      $('#player-view').append('<select>' + options + '</select>');
+
+      $('select').on('change', function(event) {
+        var $el = $(event.currentTarget);
+        console.log('now playing', $el.val());
+        player.setStationId($el.val());
+        player.play();
+      });
+    });
+
+    player.on('play-started', function(play) {
+      $('#log').append('<p>New song: <a href="' + play.audio_file.url + '">' + play.audio_file.url + '</a></p>');
+    });
+
+    $('#log').on('click', 'a', function(e) {
+      e.preventDefault();
+
+      var $el = $(e.currentTarget);
+      var url = $el.attr('href');
+
+      var sound = $el.data('sound');
+      if (!sound) {
+        sound = Feed.getSpeaker().create(url, { });
+        
+        $el.data('sound', sound);
+        sound.play();
+
+      } else {
+        sound.destroy();
+        $el.removeData('sound');
+
+      }
+
+    });
+
+    $('#delete').on('click', function() {
+      // remove any pre-existing client id
+      player.session._deleteStoredCid();
+    });
+
+    $('#popout').on('click', function() {
+      var state = player.suspend();
+
+      // save the current state as a session cookie
+      document.cookie = 'player=' + encodeURIComponent(JSON.stringify(state));
+
+      window.open(window.location, '_blank');
+    });
+
+    var playerView = new Feed.PlayerView('player-view', player);
+
+    var state = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)player\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
+
+    if (state) {
+      // unsuspend and nuke suspend cookie if it was set
+      player.unsuspend(JSON.parse(state), true);
+      document.cookie = 'player=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+    } else {
+      player.tune();
+
+    }
+
+  });
+
+</script>
+
+</body>
+</html>
