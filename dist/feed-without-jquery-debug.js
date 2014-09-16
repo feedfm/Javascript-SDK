@@ -10191,7 +10191,9 @@ define("Soundmanager-debug", (function (global) {
  *         ( play -> ( pause | play )* -> )? finish
  *
  *       Note that I represent play failures as a 'finish' call, so if
- *       we can't load a song, it will just get a 'finish' and no 'play'
+ *       we can't load a song, it will just get a 'finish' and no 'play'.
+ *       The 'finish' event will have a 'true' argument passed to it on
+ *       some kind of error, so you can treat those differently.
  *
  *       The returned song object has this following api:
  *         play: start playback (at the 'startPosition', if specified)
@@ -10475,7 +10477,7 @@ define('feed/speaker',[ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed
           log(sound.id + ': onload', success);
           if (!success) {
            log(sound.id + ' failure!');
-            sound._nonRepeatTrigger('finish');
+            sound._nonRepeatTrigger('finish', true);
             // consider this a failure
             log('destroying after onload failure');
             sound.destroy();
@@ -10483,7 +10485,7 @@ define('feed/speaker',[ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed
         },
         ondataerror: function() {
           log(sound.id + ': ondataerror');
-          sound._nonRepeatTrigger('finish');
+          sound._nonRepeatTrigger('finish', true);
           log('destroying after ondataerr');
           sound.destroy();
         },
@@ -10759,13 +10761,16 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
     this.trigger('play-paused', this.session.getActivePlay());
   };
 
-  Player.prototype._onSoundFinish = function(playId) {
+  Player.prototype._onSoundFinish = function(playId, withError) {
     if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
       log('received sound finish, but active play does not match', this.state.activePlay, playId);
       return;
     }
 
     this.state.activePlay.soundCompleted = true;
+    if (withError) {
+      this.state.activePlay.soundCompletedWithError = true;
+    }
 
     if (!this.state.activePlay.playStarted) {
       // never reported this as started...  mark it as invalidated so
@@ -10782,7 +10787,13 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
       return;
     }
 
-    this.session.reportPlayCompleted();
+    if (withError) {
+      log('song completed with error - marking as invalid');
+      this.session.requestInvalidate();
+
+    } else {
+      this.session.reportPlayCompleted();
+    }
   };
 
   Player.prototype._onSoundElapse = function(playId) {
@@ -10824,9 +10835,16 @@ define('feed/player',[ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed
       // Defer the reporting so other 'play-started' handlers can complete as normal
       // before a 'play-completed' gets triggered
 
-      _.defer(function() {
-        session.reportPlayCompleted();
-      });
+      if (this.state.activePlay.soundCompletedWithError) {
+        _.defer(function() {
+          session.requestInvalidate();
+        });
+
+      } else {
+        _.defer(function() {
+          session.reportPlayCompleted();
+        });
+      }
     }
   };
 
