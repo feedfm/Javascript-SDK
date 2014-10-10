@@ -205,7 +205,7 @@ define([ 'underscore', 'jquery', 'feed/log', 'feed/events', 'feed/util', 'Soundm
       console: options.debug ? feedConsole : null,
       debugFlash: options.debug || false,
       preferFlash: options.preferFlash || false,
-      url: util.addProtocol(options.swfBase || '//feed.fm/js/latest/', options.secure),
+      url: util.addProtocol(('swfBase' in options) ? options.swfBase : '//feed.fm/js/latest/', options.secure),
       onready: function() {
         var preferred;
 

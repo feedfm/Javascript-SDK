@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+#player-view .play-button.button-enabled,
+#player-view .pause-button.button-enabled {
+  color: green;
+}
+
+#player-view .play-button.button-disabled,
+#player-view .pause-button.button-disabled {
+  display: none;
+}
+
+#player-view .skip-button.button-disabled {
+  color: red;
+}
+
+#player-view .skip-button.button-enabled {
+  color: green;
+}
+
+#player-view .track, 
+#player-view .release, 
+#player-view .artist {
+  font-weight: bold;
+}
+
+#player-view.state-suspended {
+  display: none;
+}
+
+</style>
+</head>
+<body>
+
+<div id="player-view">
+<div>
+  <span class='position'></span> <span class='status'></span>
+</div>
+<button class='start-button'>start</button>
+<button class='resume-button'>resume</button>
+<button class="play-button">play</button>
+<button class="pause-button">pause</button>
+<button class="skip-button">skip</button>
+</div>
+
+<button id='delete'>delete client id</button>
+
+<!-- dependencies -->
+<script src="../src/config.js" type="application/javascript"></script>
+<script src="../vendor/require.js" type="application/javascript"></script>
+
+<script>
+  require([ 'feed/broadcast-player', 'feed/player-view', 'jquery' ], function(BroadcastPlayer, PlayerView, $) {
+    var player = new BroadcastPlayer('da98b62e3cc781b6d196ff2582385eff96591dd7', '3a0aab7259d84a9a066aa15afba6351e6ea5959a', { debug: true, swfBase: '../dist', formats: 'mp3' });
+    console.log('hello again');
+
+    $('#delete').on('click', function() {
+      // remove any pre-existing client id
+      player.session._deleteStoredCid();
+    });
+
+    var playerView = new PlayerView('player-view', player);
+
+    var state = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)player\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
+
+    player.tune();
+
+  });
+
+</script>
+
+</body>
+</html>

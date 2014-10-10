@@ -55,7 +55,8 @@
 
 <script>
   require([ 'feed/feed', 'jquery' ], function(Feed, $) {
-    var player = new Feed.Player('da98b62e3cc781b6d196ff2582385eff96591dd7', '3a0aab7259d84a9a066aa15afba6351e6ea5959a', { debug: true, swfBase: '../dist' });
+    var player = new Feed.Player('da98b62e3cc781b6d196ff2582385eff96591dd7', '3a0aab7259d84a9a066aa15afba6351e6ea5959a', { debug: true, swfBase: '../dist', formats: 'mp3' });
+    console.log('hello again');
 
     player.on('stations', function(stations) {
       console.log('got the stations:', stations);
