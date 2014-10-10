@@ -1,0 +1,17 @@
+<html>
+<body>
+
+<iframe src="frame.html"></iframe>
+
+<script>
+
+function receiveMessage(event) {
+  console.log("message received! ", event);
+}
+
+window.addEventListener("message", receiveMessage, false);
+
+</script>
+
+</body>
+</html>

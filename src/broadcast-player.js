@@ -1,5 +1,18 @@
 /*global define:false */
 
+/*
+ * On creation of the player, we send out a message asking if 
+ * anybody has the mic. If nobody responds within some period
+ * of time, then we assume nobody has the mic and we try to
+ * take it. If we get the mic, then we create a local Player
+ * object and proxy all user commands to it. If we don't get
+ * the mic, we shout out the user commands in the hope that
+ * whoever does have the mic listens to them.
+ *
+ *
+ *
+ */
+
 define([ 'underscore', 'feed/mic', 'feed/player', 'feed/events' ], function(_, Mic, Player, Events) {
 
   // When user requests come in from the view to play/pause,
@@ -25,8 +38,10 @@ define([ 'underscore', 'feed/mic', 'feed/player', 'feed/events' ], function(_, M
     // events a new listener should get if just joining up
     this.welcomeMessage = { };
 
-    this.mic = new Mic(_.bind(this.welcomeMessageGenerator, this),
-                       _.bind(this.welcomeMessageReceiver, this));
+    this.mic = new Mic(_.bind(this.audienceOfOne, this),
+                       _.bind(this.welcomeMessageGenerator, this),
+                       _.bind(this.welcomeMessageReceiver, this),
+                       _.bind(this.micDropReceiver, this));
 
     // capture incoming commands
     this.mic.on('pc', function() {
@@ -37,6 +52,14 @@ define([ 'underscore', 'feed/mic', 'feed/player', 'feed/events' ], function(_, M
     this.mic.on('pe', function() {
       bp.onPlayerEvent.apply(bp, Array.prototype.slice.call(arguments, 0));
     });
+
+    this.session = {
+      _deleteStoredCid: function() {
+        if (bp.mic.grab()) {
+          bp.getPlayer().session._deleteStoredCid();
+        }
+      }
+    };
 
     // handle and trigger events
     _.extend(this, Events);
@@ -60,6 +83,28 @@ define([ 'underscore', 'feed/mic', 'feed/player', 'feed/events' ], function(_, M
         case 'dislike': player.dislike(); break;
         case 'skip':    player.skip();    break;
       }
+      
+    } else if (this.player) {
+      // We don't have the mic, but somehow we have
+      // a player. This must be due to a race condition.
+      // Nuke the player so we don't end up with background music.
+ 
+      this.player.pause();
+      this.player = null;
+    }
+  };
+
+  BroadcastPlayer.prototype.audienceOfOne = function() {
+    if (this.tuneOnAudienceOfOne) {
+      if (this.mic.grab()) {
+        this.getPlayer().tune();
+      }
+
+    } else if (this.playOnAudienceOfOne) {
+      if (this.mic.grab()) {
+        this.getPlayer().play();
+      }
+
     }
   };
 
@@ -91,6 +136,49 @@ define([ 'underscore', 'feed/mic', 'feed/player', 'feed/events' ], function(_, M
     }
   };
 
+  BroadcastPlayer.prototype.micDropReceiver = function() {
+console.log('mike drop receiver');
+    // whoever was holding the mike just dropped it
+    // if we were playing a song, then send out a fake 'play-completed'
+    // message, and change to an idle state
+    var idleState = {
+      state: 'idle',
+      maybeCanSkip: false,
+      duration: 0,
+      position: 0
+    };
+
+    // kill active song
+    if ('play-active' in this.welcomeMessage) {
+      this.onPlayerEvent({ 
+        state: idleState,
+        event: [ 
+          'play-completed', 
+          this.welcomeMessage['play-active'][1]
+        ]
+      });
+    }
+
+    // simulate a 'tune' call by re-using existing tune info
+    var eventsOrder = [ 'placement-changed', 'placement', 'station-changed', 'stations' ];
+    var events = [];
+
+    for (var i = 0; i < eventsOrder.length; i++) {
+      if (eventsOrder[i] in this.welcomeMessage) {
+        events.push(this.welcomeMessage[eventsOrder[i]]);
+      }
+    }
+
+    var state = {
+      state: 'idle',
+      maybeCanSkip: false,
+      position: 0,
+      duration: 0
+    };
+
+    this.welcomeMessageReceiver({ state: state, events: events });
+  };
+
   BroadcastPlayer.prototype.onPlayerEvent = function(arg) {
     // update local state to match actual player, then forward out event to view
     this.remotePlayerState = arg.state;
@@ -107,7 +195,7 @@ define([ 'underscore', 'feed/mic', 'feed/player', 'feed/events' ], function(_, M
         break;
 
       case 'play-completed':
-        delete this.welcomeMessage['play-completed'];
+        delete this.welcomeMessage['play-active'];
         delete this.welcomeMessage['play-started'];
         break;
     }
@@ -150,13 +238,23 @@ define([ 'underscore', 'feed/mic', 'feed/player', 'feed/events' ], function(_, M
   };
 
   BroadcastPlayer.prototype.tune = function() {
-    if (this.mic.grab()) {
-      this.getPlayer().tune();
+    if (this.mic.isStartupCheckCompleted()) {
+      if (this.mic.grab()) {
+        this.getPlayer().tune();
+      }
+    } else {
+      this.tuneOnAudienceOfOne = true;
     }
   };
 
   BroadcastPlayer.prototype.play = function() {
-    this.mic.shout('pc', { cmd: 'play' });
+    if (this.mic.isStartupCheckCompleted()) {
+      this.mic.shout('pc', { cmd: 'play' });
+
+    } else {
+      this.playOnAudienceOfOne = true;
+    }
+        
   };
 
   BroadcastPlayer.prototype.pause = function() {
@@ -199,19 +297,10 @@ define([ 'underscore', 'feed/mic', 'feed/player', 'feed/events' ], function(_, M
     return this.remotePlayerState.position;
   };
 
-  var bp = this;
-  BroadcastPlayer.prototype.session = {
-    _deleteStoredCid: function() {
-      if (bp.mic.grab()) {
-        bp.getPlayer().session._deleteStoredCid();
-      }
-    }
-  };
-
   return BroadcastPlayer;
 });
 
 /*
- * What to do when the original mic holder disappears?
+ * What to do when the original mic holder disappears
  *
  */

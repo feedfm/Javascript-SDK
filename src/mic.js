@@ -2,7 +2,7 @@
 
 define([ 'intercom' ], function(Intercom) {
 
-  var Mic = function(welcomeMessageGenerator, welcomeMessageReceiver) {
+  var Mic = function(audienceOfOne, welcomeMessageGenerator, welcomeMessageReceiver, micDropReceiver) {
     var intercom = Intercom.getInstance();
 
     var id = (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
@@ -18,17 +18,18 @@ define([ 'intercom' ], function(Intercom) {
      */
 
     var activeMic = 'checking',
-        activeMicTimestamp = new Date().getTime();
+        activeMicTimestamp = new Date().getTime(),
+        startupCheckCompleted = false;
 
     function onMicCheck() {
       if (activeMic && iHaveMic()) {
-        activeMicTimestamp = new Date().getTime();
         intercom.emit('iHaveMic', { id: id, welcome: welcomeMessageGenerator() });
       }
     }
     intercom.on('micCheck', onMicCheck);
 
     function iHaveMic() {
+      console.log('active, my id', activeMic, id);
       return activeMic === id;
     }
 
@@ -66,23 +67,28 @@ define([ 'intercom' ], function(Intercom) {
     intercom.emit('micCheck');
 
     function onStartupIHaveMicTimeout() {
+      startupCheckCompleted = true;
+
       if (activeMic && (activeMic !== 'checking')) {
         console.log('the mic is held at startup by ', activeMic);
 
       } else {
-        console.log('nobody seems to have the mic at startup');
+        console.log('nobody seems to have the mic at startup', new Date().getTime());
         activeMic = false;
         activeMicTimestamp = 0;
 
+        audienceOfOne();
+
       }
     }
+    console.log('startup check', new Date().getTime());
     setTimeout(onStartupIHaveMicTimeout, 900);
 
     /*
      * Periodically see if the person with the mic has disappeared.
      */
 
-    var MIC_TIMEOUT = 2000;
+    var MIC_TIMEOUT = 4000;
     function onIHaveMicTimeout() {
       if (activeMic) {
         var expires = new Date().getTime() - MIC_TIMEOUT;
@@ -93,6 +99,7 @@ define([ 'intercom' ], function(Intercom) {
           activeMicTimestamp = 0;
 
           console.log('mic holder has gone away!');
+          micDropReceiver();
         }
       }
     }
@@ -105,10 +112,13 @@ define([ 'intercom' ], function(Intercom) {
      */
 
     function repeatIHaveMic() {
+console.log('testing for mic');
       if (iHaveMic()) {
+console.log('seem to have the mic');
         var elapsed = new Date().getTime() - activeMicTimestamp;
 
         if (elapsed > (MIC_TIMEOUT / 2)) {
+          console.log('I have the mic, dude!', new Date().getTime());
           intercom.emit('iHaveMic', { id: id });
           setTimeout(repeatIHaveMic, MIC_TIMEOUT / 2);
           
@@ -152,9 +162,10 @@ define([ 'intercom' ], function(Intercom) {
 
     this.speak = function(name, msg) {
       intercom.emit(name, msg);
+    };
 
-      // it is assumed I have the mic
-      activeMicTimestamp = new Date().getTime();
+    this.isStartupCheckCompleted = function() {
+      return startupCheckCompleted;
     };
 
   };

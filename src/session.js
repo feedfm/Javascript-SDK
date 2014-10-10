@@ -547,6 +547,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
     }
     // technically the skip wasn't denied - we just couldn't confirm wether
     // it was ok, but this is the best we can return at the moment
+    this.config.current.canSkip = false;
     this.trigger('skip-denied');
   };
 
@@ -558,6 +559,7 @@ define([ 'underscore', 'jquery', 'CryptoJS', 'OAuth', 'feed/log', 'feed/events',
 
     if (!response.success) {
       log('failed skip!');
+      this.config.current.canSkip = false;
       this.trigger('skip-denied');
       return;
     }
