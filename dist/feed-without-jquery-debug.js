@@ -3930,7 +3930,7 @@ define('feed/player-view',[ 'underscore', 'jquery' ], function(_, $) {
   };
 
   PlayerView.prototype._onPlacement = function(placement) {
-    if (!this._originalDisplayText) {
+    if (!this.originalDisplayText) {
       this.originalDisplayText = this.formatPlacement(placement);
 
       this.renderStatus(this.originalDisplayText);
