@@ -8,14 +8,14 @@
   describe('speaker', function() {
 
     it('exports the base API', function() {
-      assert.property(Feed, 'getSpeaker');
+      assert.property(Feed, '_getSpeaker');
 
-      var speaker = Feed.getSpeaker(speakerOptions);
+      var speaker = Feed._getSpeaker(speakerOptions);
       assert.property(speaker, 'create');
     });
 
     it('will create a song object, if requested to', function() {
-      var speaker = Feed.getSpeaker(speakerOptions);
+      var speaker = Feed._getSpeaker(speakerOptions);
       var song = speaker.create('/sample/chirp.mp3', { });
 
       assert.isNotNull(song);
@@ -26,7 +26,7 @@
     it('will play a song object and trigger play and finish events', function(done) {
       var playCalled = false;
 
-      var song = Feed.getSpeaker(speakerOptions).create('/sample/chirp.mp3', { 
+      var song = Feed._getSpeaker(speakerOptions).create('/sample/chirp.mp3', { 
         play: function() { playCalled = true; },
         finish: function() {
           assert.equal(playCalled, true, 'should have triggered play event');
@@ -45,7 +45,7 @@
     it('will play a bad song object and trigger a finish event with failure', function(done) {
       var playCalled = false;
 
-      var song = Feed.getSpeaker(speakerOptions).create('/sample/bad.m4a', { 
+      var song = Feed._getSpeaker(speakerOptions).create('/sample/bad.m4a', { 
         play: function() { playCalled = true; },
         finish: function(withError) {
           assert.equal(playCalled, true, 'should have triggered play event');
@@ -65,7 +65,7 @@
     it('will play a long song object and respond to pause events', function(done) {
       var playCalled = false;
 
-      var song = Feed.getSpeaker(speakerOptions).create('hutz.mp3', { 
+      var song = Feed._getSpeaker(speakerOptions).create('hutz.mp3', { 
         play: function() { 
           playCalled = true; 
         },
@@ -91,7 +91,7 @@
     it('will play a long song object with a start offset', function(done) {
       var playCalled = false;
 
-      var song = Feed.getSpeaker(speakerOptions).create('hutz.mp3', { 
+      var song = Feed._getSpeaker(speakerOptions).create('hutz.mp3', { 
         play: function() { 
           playCalled = true; 
         },
@@ -120,7 +120,7 @@
     it('will play a long song object and respond to pause and unpause events', function(done) {
       var playCount = 0, pauseCount = 0;
 
-      var song = Feed.getSpeaker(speakerOptions).create('hutz.mp3', { 
+      var song = Feed._getSpeaker(speakerOptions).create('hutz.mp3', { 
         play: function() { 
           playCount++;
         },

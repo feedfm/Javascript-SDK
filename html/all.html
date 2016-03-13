@@ -7,7 +7,8 @@
 <body>
   <div id="mocha"></div>
 
-  <script src="../vendor/jquery-1.10.2.js" type="text/javascript"></script>
+  <!-- script src="https://code.jquery.com/jquery-2.2.1.min.js"></script -->
+  <script src="../vendor/jquery.js"></script>
   <script src="../vendor/mocha.js" type="text/javascript"></script>
   <script src="../vendor/chai.js" type="text/javascript"></script>
   <script src="../vendor/sinon.js" type="text/javascript"></script>
@@ -36,35 +37,29 @@
   <!-- tests -->
   <script src="../test/mocha.js" type="text/javascript"></script>
   <script src="../test/session.js" type="text/javascript"></script>
-  <script src="../test/session-auth.js" type="text/javascript"></script>
   <script src="../test/speaker.js" type="text/javascript"></script>
   <script src="../test/player.js" type="text/javascript"></script>
 
   <!-- code-->
-  <script src="../src/config.js" type="application/javascript"></script>
-  <script src="../vendor/require.js" type="application/javascript"></script>
+  <script src="../dist/feed.js" type="application/javascript"></script>
 
   <script>
-    require([ 'jquery', 'feed/feed' ], function($, Feed) {
-      window.Feed = Feed;
+    if (/iPod|iPhone|iPad/.test(window.navigator.userAgent)) {
+      var $el = $('<button>Click me to start test</button>');
 
-      if (/iPod|iPhone|iPad/.test(window.navigator.userAgent)) {
-        var $el = $('<button>Click me to start test</button>');
+      $el.appendTo($('body'));
+      $el.on('click', function() {
+      /*
+        var speaker = Feed.getSpeaker({}) 
+        speaker.initializeForMobile();
+        */
 
-        $el.appendTo($('body'));
-        $el.on('click', function() {
-        /*
-          var speaker = Feed.getSpeaker({}) 
-          speaker.initializeForMobile();
-          */
-
-          mocha.run();
-        });
-
-      } else {
         mocha.run();
-      }
-    });
-  </script>
+      });
+
+    } else {
+      mocha.run();
+    }
+</script>
 </body>
 </html>

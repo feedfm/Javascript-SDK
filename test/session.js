@@ -66,13 +66,13 @@
     });
 
     it('will request a play from the server when tune is called', function() {
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
       var playResponse = validPlayResponse();
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
       });
       
@@ -98,20 +98,20 @@
           gotClient = false,
           clientId = 'this is the client id';
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/oauth/time', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/oauth/time', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, time: Math.floor(Date.now() / 1000) }));
       });
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/client', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/client', function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
 
         gotClient = true;
@@ -150,17 +150,17 @@
       var playResponses = [],
           mock;
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         var pr = validPlayResponse();
         playResponses.push(pr);
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(pr));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
@@ -199,22 +199,22 @@
       var playResponses = [],
           mock;
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         var pr = validPlayResponse();
         playResponses.push(pr);
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(pr));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       });
@@ -285,11 +285,11 @@
         }
       };
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
       });
       
@@ -322,16 +322,16 @@
           ],
         mock;
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
@@ -374,7 +374,7 @@
     });
 
     it('will successfully skip a song', function() {
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
@@ -385,16 +385,16 @@
         mock;
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       });
@@ -439,7 +439,7 @@
     });
 
     it('will not skip a song is has no permission to skip', function() {
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
@@ -450,11 +450,11 @@
         mock;
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: false }));
       });
@@ -498,7 +498,7 @@
     });
 
     it('will not skip a song if the server denies the skip', function() {
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
@@ -509,16 +509,16 @@
         mock;
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 7, message: 'skip limit reached' } }));
       });
@@ -562,7 +562,7 @@
     });
 
     it('will not let you skip a song the song is not playing', function() {
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
@@ -570,16 +570,16 @@
         mock;
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 7, message: 'skip limit reached' } }));
       });
@@ -616,7 +616,7 @@
     });
 
     it('will let you invalidate an active (and not playing) song', function() {
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
@@ -624,16 +624,16 @@
         mock;
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       });
@@ -667,7 +667,7 @@
     });
 
     it('will let you invalidate a playing song', function() {
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
@@ -675,16 +675,16 @@
         mock;
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       });
@@ -727,7 +727,7 @@
     });
 
     it('will let you report the elapsed playback time', function() {
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
@@ -735,16 +735,16 @@
           mock;
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/elapse/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/elapse/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       });
@@ -784,7 +784,7 @@
       // need some extra time due to retry timeouts
       this.timeout(4000);
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
@@ -792,12 +792,12 @@
           mock;
 
       var i = 0;
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
       // simulate a failed 'start' request
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(500, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 500, message: 'internal error' } }));
       });
@@ -828,12 +828,12 @@
       server = sinon.fakeServer.create();
       
       // hey - we started already!
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(403, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 20, message: 'already started' } }));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
       });
 
@@ -916,11 +916,11 @@
       var playResponses = [],
           mock;
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         var pr = validPlayResponse();
         playResponses.push(pr);
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(pr));
@@ -953,17 +953,17 @@
       var playResponses = [],
           mock;
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/1234', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         var pr = validPlayResponse();
         playResponses.push(pr);
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(pr));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
@@ -1037,7 +1037,7 @@
             },
             'codec': 'aac',
             'bitrate': '128',
-            'url': 'http://feed.fm/audiofile-665-original.aac'
+            'url': 'https://feed.fm/audiofile-665-original.aac'
           }
         }
       };

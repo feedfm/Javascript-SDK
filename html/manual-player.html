@@ -16,75 +16,70 @@
 
 <button id="delete">delete client cookie</button>
 
-<script src="../src/config.js" type="application/javascript"></script>
-<script src="../vendor/require.js" type="application/javascript"></script>
-
-<script src="../vendor/json2.js" type="application/javascript"></script>
+<script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+<script src="../dist/feed.js" type="application/javascript"></script>
 
 <script>
-require([ 'jquery', 'feed/feed' ], function($, Feed) {
-  
-   var player = new Feed.Player(
-    // production
-    '7bed4d09839c2743e3eeccd493202fc3d8dd656a', 
-    '319f82e863918f6bd3e6d9154a2f22c4ed457441', 
-    { 
-      debug: true, 
-      swfBase: '../dist' 
-    }
-    /*
-    // localhost dev
-    '7fcef228d85f96746d7c290eb9056d6ee5411d5e', 
-    '84bead07460f549894197b4cf60becde93121c11', 
-    { 
-      debug: true, 
-      swfBase: '../dist',
-      baseUrl: '//feed.localdomain:8000'
-    }
-    */
-  );
-
-  player.on('all', function() {
-    console.log('event sprung!', arguments);
-  });
-
-  var state = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)player\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
-
-  if (state) {
-    // unsuspend and nuke suspend cookie if it was set
-    player.unsuspend(JSON.parse(state), true);
-    document.cookie = 'player=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+ var player = new Feed.Player(
+  // production
+  'demo', 
+  'demo', 
+  { 
+    debug: true, 
+    swfBase: '../dist' 
   }
+  /*
+  // localhost dev
+  '7fcef228d85f96746d7c290eb9056d6ee5411d5e', 
+  '84bead07460f549894197b4cf60becde93121c11', 
+  { 
+    debug: true, 
+    swfBase: '../dist',
+    baseUrl: '//feed.localdomain:8000'
+  }
+  */
+);
 
-  $('#popout').on('click', function() {
-    var state = player.suspend();
+player.on('all', function() {
+  console.log('event sprung!', arguments);
+});
 
-    // save the current state as a session cookie
-    document.cookie = 'player=' + encodeURIComponent(JSON.stringify(state));
+var state = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)player\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
 
-    window.open(window.location, '_blank');
-  });
+if (state) {
+  // unsuspend and nuke suspend cookie if it was set
+  player.unsuspend(JSON.parse(state), true);
+  document.cookie = 'player=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+}
 
-  $('#delete').on('click', function() {
-    // delete client identifier to get past skip limits
-    player.session._deleteStoredCid();
-  });
+$('#popout').on('click', function() {
+  var state = player.suspend();
 
-  $('#tune').on('click', function() {
-    player.tune();
-  });
+  // save the current state as a session cookie
+  document.cookie = 'player=' + encodeURIComponent(JSON.stringify(state));
 
-  $('#play').on('click', function() {
-    player.play();
-  });
+  window.open(window.location, '_blank');
+});
 
-  $('#pause').on('click', function() {
-    player.pause();
-  });
+$('#delete').on('click', function() {
+  // delete client identifier to get past skip limits
+  player.session._deleteStoredCid();
+});
 
-  $('#skip').on('click', function() {
-    player.skip();
-  });
+$('#tune').on('click', function() {
+  player.tune();
+});
+
+$('#play').on('click', function() {
+  player.play();
+});
+
+$('#pause').on('click', function() {
+  player.pause();
+});
+
+$('#skip').on('click', function() {
+  player.skip();
 });
 </script>
 

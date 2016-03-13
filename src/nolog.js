@@ -1,8 +1,4 @@
-/*global define:false */
+/*global module:false */
 
-define(function() {
-  // no loggy!
-  return function() { };
-
-});
+module.exports = function() { };
 

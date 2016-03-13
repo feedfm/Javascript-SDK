@@ -1,4 +1,4 @@
-/*global define:false */
+/*global module:false */
 /*jshint camelcase:false */
 
 /*
@@ -70,453 +70,457 @@
  *
  */
 
-define([ 'underscore', 'jquery', 'feed/log', 'feed/speaker', 'feed/events', 'feed/session' ], function(_, $, log, getSpeaker, Events, Session) {
+var _ = require('underscore');
+var $ = require('jquery');
+var log = require('./log');
+var getSpeaker = require('./speaker');
+var Events = require('./events');
+var Session = require('./session');
 
-  function supports_html5_storage() {
-    try {
-      return 'localStorage' in window && window['localStorage'] !== null;
-    } catch (e) {
-      return false;
+function supports_html5_storage() {
+  try {
+    return 'localStorage' in window && window['localStorage'] !== null;
+  } catch (e) {
+    return false;
+  }
+}
+
+var Player = function(token, secret, options) {
+  this.state = {
+    paused: true,
+    suspended: false
+    // activePlay
+  };
+
+  options = options || {};
+
+  this.skipPlayDelay = !!options.skipPlayDelay;
+
+  _.extend(this, Events);
+
+  var session = this.session = new Session(token, secret, options);
+  this.session.on('play-active', this._onPlayActive, this);
+  this.session.on('play-started', this._onPlayStarted, this);
+  this.session.on('play-completed', this._onPlayCompleted, this);
+  this.session.on('plays-exhausted', this._onPlaysExhausted, this);
+
+  this.session.on('all', function() {
+    // propagate all events out to everybody else
+    this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
+  }, this);
+
+  // create 'speakerInitialized' promise so we can delay things until
+  // the audio subsystem is set up.
+  var initializeSpeaker = this.initializeSpeaker = $.Deferred();
+
+  this.speaker = getSpeaker(options, function(supportedFormats) {
+    if (options.formats) {
+      var reqFormatList = options.formats.split(','),
+          suppFormatList = supportedFormats.split(','),
+          reqAndSuppFormatList = _.intersection(reqFormatList, suppFormatList),
+          reqAndSuppFormats = reqAndSuppFormatList.join(',');
+
+      if (reqAndSuppFormatList.length === 0) {
+        reqAndSuppFormats = supportedFormats;
+      }
+
+      session.setFormats(reqAndSuppFormats);
+
+    } else {
+      session.setFormats(supportedFormats);
+    }
+    initializeSpeaker.resolve();
+  });
+
+  this.setMuted(this.isMuted());
+};
+
+Player.prototype.setPlacementId = function(placementId) {
+  this.session.setPlacementId(placementId);
+};
+
+Player.prototype.setStationId = function(stationId) {
+  this.session.setStationId(stationId);
+};
+
+Player.prototype.setBaseUrl = function(baseUrl) {
+  this.session.setBaseUrl(baseUrl);
+};
+
+Player.prototype._onPlayActive = function(play) {
+  // create a new sound object
+  var options = {
+    play: _.bind(this._onSoundPlay, this, play.id),
+    pause: _.bind(this._onSoundPause, this, play.id),
+    finish:  _.bind(this._onSoundFinish, this, play.id),
+    elapse: _.bind(this._onSoundElapse, this, play.id)
+  };
+
+  if (play.startPosition) {
+    options.startPosition = play.startPosition;
+  }
+
+  var sound = this.speaker.create(play.audio_file.url, options);
+
+  this.state.activePlay = {
+    id: play.id,
+    sound: sound,
+    startReportedToServer: false, // wether we got a 'play-started' event from session
+    soundCompleted: false,        // wether the sound object told us it finished playback
+    playStarted: false,           // wether playback started on the sound object yet
+    previousPosition: 0           // last time we got an 'elapse' callback
+  };
+
+  // if we're not paused, then start it
+  if (!this.state.paused) {
+    var s = this.state.activePlay.sound;
+
+    s.play();
+  }
+};
+
+Player.prototype._onSoundPlay = function(playId) {
+  // sound started playing
+  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+    log('received sound play, but active play does not match', this.state.activePlay, playId);
+    return;
+  }
+  
+  this.state.paused = false;
+  this.state.activePlay.playStarted = true;
+
+  // on the first play, tell the server we're good to go
+  if (!this.state.activePlay.startReportedToServer) {
+    return this.session.reportPlayStarted();
+  }
+
+  // subsequent plays are considered 'resumed' events
+  this.trigger('play-resumed', this.session.getActivePlay());
+};
+
+Player.prototype.getActivePlay = function() {
+  return this.session.getActivePlay();
+};
+
+Player.prototype.hasActivePlayStarted = function() {
+  return this.session.hasActivePlayStarted();
+};
+
+Player.prototype.getActivePlacement = function() {
+  return this.session.getActivePlacement();
+};
+
+Player.prototype._onSoundPause = function(playId) {
+  // sound paused playback
+  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+    log('received sound pause, but active play does not match', this.state.activePlay, playId);
+    return;
+  }
+  
+  this.state.paused = true;
+
+  this.trigger('play-paused', this.session.getActivePlay());
+};
+
+Player.prototype._onSoundFinish = function(playId, withError) {
+  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+    log('received sound finish, but active play does not match', this.state.activePlay, playId);
+    return;
+  }
+
+  this.state.activePlay.soundCompleted = true;
+  if (withError) {
+    this.state.activePlay.soundCompletedWithError = true;
+  }
+
+  if (!this.state.activePlay.playStarted) {
+    // never reported this as started...  mark it as invalidated so
+    // we can advance.
+    this.session.requestInvalidate();
+
+    return;
+  }
+
+  if (!this.state.activePlay.startReportedToServer) {
+    // if the song failed before we recieved start response, wait
+    // until word from the server that we started before we say
+    // that we completed the song
+    return;
+  }
+
+  if (withError) {
+    log('song completed with error - marking as invalid');
+    this.session.requestInvalidate();
+
+  } else {
+    this.session.reportPlayCompleted();
+  }
+};
+
+Player.prototype._onSoundElapse = function(playId) {
+  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
+    log('received sound elapse, but active play does not match', this.state.activePlay, playId);
+    return;
+  }
+
+  var sound = this.state.activePlay.sound,
+      position = sound.position(),
+      interval = 30 * 1000,  // ping server every 30 seconds
+      previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
+      currentCount = Math.floor(position / interval);
+
+  this.state.activePlay.previousPosition = position;
+
+  if (currentCount !== previousCount) {
+    this.session.reportPlayElapsed(Math.floor(position / 1000));
+  }
+};
+
+Player.prototype._onPlayStarted = function(play) {
+  var session = this.session;
+
+  if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
+    log('received play started, but it does not match active play', play, this.state.activePlay);
+    return;
+  }
+
+  this.state.activePlay.startReportedToServer = true;
+
+  if (this.state.activePlay.soundCompleted) {
+    // the audio completed playback before the session announced the play started
+    log('sound completed before we finished reporting start', this.state.activePlay);
+
+    // In the normal case we'd just quit here, but since the audio completed playback
+    // already, we've got to make sure a 'session.reportPlayCompleted()' gets kicked
+    // off to record the completion of this song.
+    // Defer the reporting so other 'play-started' handlers can complete as normal
+    // before a 'play-completed' gets triggered
+
+    if (this.state.activePlay.soundCompletedWithError) {
+      _.defer(function() {
+        session.requestInvalidate();
+      });
+
+    } else {
+      _.defer(function() {
+        session.reportPlayCompleted();
+      });
+    }
+  }
+};
+
+Player.prototype._onPlayCompleted = function(play) {
+  if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
+    log('received play completed, but it does not match active play', play, this.state.activePlay);
+    return;
+  }
+
+  this.state.activePlay.sound.destroy();
+  delete this.state.activePlay;
+
+  // Force us into play mode in case we were paused and hit
+  // skip to complete the current song.
+  this.state.paused = false;
+};
+
+Player.prototype._onPlaysExhausted = function() {
+  this.state.paused = false;
+};
+
+Player.prototype.isPaused = function() {
+  return this.session.isTuned() && this.state.paused;
+};
+
+Player.prototype.getStationInformation = function(stationInformationCallback) {
+  return this.session.getStationInformation(stationInformationCallback);
+};
+
+Player.prototype.tune = function() {
+  var player = this;
+
+  this.initializeSpeaker.then(function() {
+    if (!player.session.isTuned()) {
+      player.session.tune();
+    }
+  });
+};
+
+Player.prototype.play = function() {
+  var player = this;
+
+  this.initializeSpeaker.then(function() {
+    player.speaker.initializeForMobile();
+
+    if (!player.session.isTuned()) {
+      // not currently playing music
+      player.state.paused = false;
+
+      return player.session.tune();
+
+    } else if (player.session.getActivePlay() && player.state.activePlay && player.state.paused) {
+      // resume playback of song
+      if (player.state.activePlay.playStarted) {
+        player.state.activePlay.sound.resume();
+
+      } else {
+        player.state.activePlay.sound.play();
+      }
+    }
+  });
+};
+
+Player.prototype.pause = function() {
+  if (!this.session.hasActivePlayStarted() || 
+      !this.state.activePlay ||
+      this.state.paused) {
+    return;
+  }
+
+  // pause current song
+  this.state.activePlay.sound.pause();
+};
+
+Player.prototype.like = function() {
+  if (!this.session.hasActivePlayStarted()) {
+    return;
+  }
+
+  this.session.likePlay(this.state.activePlay.id);
+
+  this.trigger('play-liked');
+};
+
+Player.prototype.unlike = function() {
+  if (!this.session.hasActivePlayStarted()) {
+    return;
+  }
+
+  this.session.unlikePlay(this.state.activePlay.id);
+
+  this.trigger('play-unliked');
+};
+
+Player.prototype.dislike = function() {
+  if (!this.session.hasActivePlayStarted()) {
+    return;
+  }
+
+  this.session.dislikePlay(this.state.activePlay.id);
+
+  this.trigger('play-disliked');
+
+  this.skip();
+};
+
+Player.prototype.skip = function() {
+  if (!this.session.hasActivePlayStarted()) {
+    // can't skip non-playing song
+    return;
+  }
+
+  this.session.requestSkip();
+};
+
+Player.prototype.destroy = function() {
+  this.session = null;
+
+  if (this.state.activePlay && this.state.activePlay.sound) {
+    this.state.activePlay.sound.destroy();
+  }
+};
+
+Player.prototype.getCurrentState = function() {
+  if (this.state.suspended) {
+    return 'suspended';
+
+  } else if (!this.session.hasActivePlayStarted()) {
+    // nothing started, so we're idle
+    return 'idle';
+
+  } else {
+    if (this.state.paused) {
+      return 'paused';
+
+    } else {
+      return 'playing';
+    }
+  }
+};
+
+Player.prototype.getPosition = function() {
+  if (this.state.activePlay && this.state.activePlay.sound) {
+    return this.state.activePlay.sound.position();
+
+  } else {
+    return 0;
+  }
+};
+
+Player.prototype.getDuration = function() {
+  if (this.state.activePlay && this.state.activePlay.sound) {
+    return this.state.activePlay.sound.duration();
+
+  } else {
+    return 0;
+  }
+};
+
+Player.prototype.maybeCanSkip = function() {
+  return this.session.maybeCanSkip();
+};
+
+var mutedKey = 'muted';
+Player.prototype.isMuted = function() {
+  if (supports_html5_storage()) {
+    if (mutedKey in localStorage) {
+      return localStorage[mutedKey] === 'true';
     }
   }
 
-  var Player = function(token, secret, options) {
-    this.state = {
-      paused: true,
-      suspended: false
-      // activePlay
-    };
+  return false;
+};
 
-    options = options || {};
-
-    this.skipPlayDelay = !!options.skipPlayDelay;
-
-    _.extend(this, Events);
-
-    var session = this.session = new Session(token, secret, options);
-    this.session.on('play-active', this._onPlayActive, this);
-    this.session.on('play-started', this._onPlayStarted, this);
-    this.session.on('play-completed', this._onPlayCompleted, this);
-    this.session.on('plays-exhausted', this._onPlaysExhausted, this);
-
-    this.session.on('all', function() {
-      // propagate all events out to everybody else
-      this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
-    }, this);
-
-    // create 'speakerInitialized' promise so we can delay things until
-    // the audio subsystem is set up.
-    var initializeSpeaker = this.initializeSpeaker = $.Deferred();
-
-    this.speaker = getSpeaker(options, function(supportedFormats) {
-      if (options.formats) {
-        var reqFormatList = options.formats.split(','),
-            suppFormatList = supportedFormats.split(','),
-            reqAndSuppFormatList = _.intersection(reqFormatList, suppFormatList),
-            reqAndSuppFormats = reqAndSuppFormatList.join(',');
-
-        if (reqAndSuppFormatList.length === 0) {
-          reqAndSuppFormats = supportedFormats;
-        }
-
-        session.setFormats(reqAndSuppFormats);
-
-      } else {
-        session.setFormats(supportedFormats);
-      }
-      initializeSpeaker.resolve();
-    });
-
-    this.setMuted(this.isMuted());
-  };
-
-  Player.prototype.setPlacementId = function(placementId) {
-    this.session.setPlacementId(placementId);
-  };
-
-  Player.prototype.setStationId = function(stationId) {
-    this.session.setStationId(stationId);
-  };
-
-  Player.prototype.setBaseUrl = function(baseUrl) {
-    this.session.setBaseUrl(baseUrl);
-  };
-
-  Player.prototype._onPlayActive = function(play) {
-    // create a new sound object
-    var options = {
-      play: _.bind(this._onSoundPlay, this, play.id),
-      pause: _.bind(this._onSoundPause, this, play.id),
-      finish:  _.bind(this._onSoundFinish, this, play.id),
-      elapse: _.bind(this._onSoundElapse, this, play.id)
-    };
-
-    if (play.startPosition) {
-      options.startPosition = play.startPosition;
-    }
-
-    var sound = this.speaker.create(play.audio_file.url, options);
-
-    this.state.activePlay = {
-      id: play.id,
-      sound: sound,
-      startReportedToServer: false, // wether we got a 'play-started' event from session
-      soundCompleted: false,        // wether the sound object told us it finished playback
-      playStarted: false,           // wether playback started on the sound object yet
-      previousPosition: 0           // last time we got an 'elapse' callback
-    };
-
-    // if we're not paused, then start it
-    if (!this.state.paused) {
-      var s = this.state.activePlay.sound;
-
-      s.play();
-    }
-  };
-
-  Player.prototype._onSoundPlay = function(playId) {
-    // sound started playing
-    if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-      log('received sound play, but active play does not match', this.state.activePlay, playId);
-      return;
-    }
+Player.prototype.setMuted = function(isMuted) {
+  if (isMuted) {
+    this.speaker.setVolume(0);
     
-    this.state.paused = false;
-    this.state.activePlay.playStarted = true;
-
-    // on the first play, tell the server we're good to go
-    if (!this.state.activePlay.startReportedToServer) {
-      return this.session.reportPlayStarted();
-    }
-
-    // subsequent plays are considered 'resumed' events
-    this.trigger('play-resumed', this.session.getActivePlay());
-  };
-
-  Player.prototype.getActivePlay = function() {
-    return this.session.getActivePlay();
-  };
-
-  Player.prototype.hasActivePlayStarted = function() {
-    return this.session.hasActivePlayStarted();
-  };
-
-  Player.prototype.getActivePlacement = function() {
-    return this.session.getActivePlacement();
-  };
-
-  Player.prototype._onSoundPause = function(playId) {
-    // sound paused playback
-    if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-      log('received sound pause, but active play does not match', this.state.activePlay, playId);
-      return;
-    }
-    
-    this.state.paused = true;
-
-    this.trigger('play-paused', this.session.getActivePlay());
-  };
-
-  Player.prototype._onSoundFinish = function(playId, withError) {
-    if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-      log('received sound finish, but active play does not match', this.state.activePlay, playId);
-      return;
-    }
-
-    this.state.activePlay.soundCompleted = true;
-    if (withError) {
-      this.state.activePlay.soundCompletedWithError = true;
-    }
-
-    if (!this.state.activePlay.playStarted) {
-      // never reported this as started...  mark it as invalidated so
-      // we can advance.
-      this.session.requestInvalidate();
-
-      return;
-    }
-
-    if (!this.state.activePlay.startReportedToServer) {
-      // if the song failed before we recieved start response, wait
-      // until word from the server that we started before we say
-      // that we completed the song
-      return;
-    }
-
-    if (withError) {
-      log('song completed with error - marking as invalid');
-      this.session.requestInvalidate();
-
-    } else {
-      this.session.reportPlayCompleted();
-    }
-  };
-
-  Player.prototype._onSoundElapse = function(playId) {
-    if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-      log('received sound elapse, but active play does not match', this.state.activePlay, playId);
-      return;
-    }
-
-    var sound = this.state.activePlay.sound,
-        position = sound.position(),
-        interval = 30 * 1000,  // ping server every 30 seconds
-        previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
-        currentCount = Math.floor(position / interval);
-
-    this.state.activePlay.previousPosition = position;
-
-    if (currentCount !== previousCount) {
-      this.session.reportPlayElapsed(Math.floor(position / 1000));
-    }
-  };
-
-  Player.prototype._onPlayStarted = function(play) {
-    var session = this.session;
-
-    if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
-      log('received play started, but it does not match active play', play, this.state.activePlay);
-      return;
-    }
-
-    this.state.activePlay.startReportedToServer = true;
-
-    if (this.state.activePlay.soundCompleted) {
-      // the audio completed playback before the session announced the play started
-      log('sound completed before we finished reporting start', this.state.activePlay);
-
-      // In the normal case we'd just quit here, but since the audio completed playback
-      // already, we've got to make sure a 'session.reportPlayCompleted()' gets kicked
-      // off to record the completion of this song.
-      // Defer the reporting so other 'play-started' handlers can complete as normal
-      // before a 'play-completed' gets triggered
-
-      if (this.state.activePlay.soundCompletedWithError) {
-        _.defer(function() {
-          session.requestInvalidate();
-        });
-
-      } else {
-        _.defer(function() {
-          session.reportPlayCompleted();
-        });
-      }
-    }
-  };
-
-  Player.prototype._onPlayCompleted = function(play) {
-    if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
-      log('received play completed, but it does not match active play', play, this.state.activePlay);
-      return;
-    }
-
-    this.state.activePlay.sound.destroy();
-    delete this.state.activePlay;
-
-    // Force us into play mode in case we were paused and hit
-    // skip to complete the current song.
-    this.state.paused = false;
-  };
-
-  Player.prototype._onPlaysExhausted = function() {
-    this.state.paused = false;
-  };
-
-  Player.prototype.isPaused = function() {
-    return this.session.isTuned() && this.state.paused;
-  };
-
-  Player.prototype.getStationInformation = function(stationInformationCallback) {
-    return this.session.getStationInformation(stationInformationCallback);
-  };
-
-  Player.prototype.tune = function() {
-    var player = this;
-
-    this.initializeSpeaker.then(function() {
-      if (!player.session.isTuned()) {
-        player.session.tune();
-      }
-    });
-  };
-
-  Player.prototype.play = function() {
-    var player = this;
-
-    this.initializeSpeaker.then(function() {
-      player.speaker.initializeForMobile();
-
-      if (!player.session.isTuned()) {
-        // not currently playing music
-        player.state.paused = false;
-
-        return player.session.tune();
-
-      } else if (player.session.getActivePlay() && player.state.activePlay && player.state.paused) {
-        // resume playback of song
-        if (player.state.activePlay.playStarted) {
-          player.state.activePlay.sound.resume();
-
-        } else {
-          player.state.activePlay.sound.play();
-        }
-      }
-    });
-  };
-
-  Player.prototype.pause = function() {
-    if (!this.session.hasActivePlayStarted() || 
-        !this.state.activePlay ||
-        this.state.paused) {
-      return;
-    }
-
-    // pause current song
-    this.state.activePlay.sound.pause();
-  };
-
-  Player.prototype.like = function() {
-    if (!this.session.hasActivePlayStarted()) {
-      return;
-    }
-
-    this.session.likePlay(this.state.activePlay.id);
-
-    this.trigger('play-liked');
-  };
-
-  Player.prototype.unlike = function() {
-    if (!this.session.hasActivePlayStarted()) {
-      return;
-    }
-
-    this.session.unlikePlay(this.state.activePlay.id);
-
-    this.trigger('play-unliked');
-  };
-
-  Player.prototype.dislike = function() {
-    if (!this.session.hasActivePlayStarted()) {
-      return;
-    }
-
-    this.session.dislikePlay(this.state.activePlay.id);
-
-    this.trigger('play-disliked');
-
-    this.skip();
-  };
-
-  Player.prototype.skip = function() {
-    if (!this.session.hasActivePlayStarted()) {
-      // can't skip non-playing song
-      return;
-    }
-
-    this.session.requestSkip();
-  };
-
-  Player.prototype.destroy = function() {
-    this.session = null;
-
-    if (this.state.activePlay && this.state.activePlay.sound) {
-      this.state.activePlay.sound.destroy();
-    }
-  };
-
-  Player.prototype.getCurrentState = function() {
-    if (this.state.suspended) {
-      return 'suspended';
-
-    } else if (!this.session.hasActivePlayStarted()) {
-      // nothing started, so we're idle
-      return 'idle';
-
-    } else {
-      if (this.state.paused) {
-        return 'paused';
-
-      } else {
-        return 'playing';
-      }
-    }
-  };
-
-  Player.prototype.getPosition = function() {
-    if (this.state.activePlay && this.state.activePlay.sound) {
-      return this.state.activePlay.sound.position();
-
-    } else {
-      return 0;
-    }
-  };
-
-  Player.prototype.getDuration = function() {
-    if (this.state.activePlay && this.state.activePlay.sound) {
-      return this.state.activePlay.sound.duration();
-
-    } else {
-      return 0;
-    }
-  };
-
-  Player.prototype.maybeCanSkip = function() {
-    return this.session.maybeCanSkip();
-  };
-
-  var mutedKey = 'muted';
-  Player.prototype.isMuted = function() {
     if (supports_html5_storage()) {
-      if (mutedKey in localStorage) {
-        return localStorage[mutedKey] === 'true';
-      }
+      localStorage[mutedKey] = true;
     }
 
-    return false;
-  };
+    this.trigger('muted');
 
-  Player.prototype.setMuted = function(isMuted) {
-    if (isMuted) {
-      this.speaker.setVolume(0);
-      
-      if (supports_html5_storage()) {
-        localStorage[mutedKey] = true;
-      }
+  } else {
+    this.speaker.setVolume(100);
 
-      this.trigger('muted');
-
-    } else {
-      this.speaker.setVolume(100);
-
-      if (supports_html5_storage()) {
-        localStorage[mutedKey] = false;
-      }
-
-      this.trigger('unmuted');
+    if (supports_html5_storage()) {
+      localStorage[mutedKey] = false;
     }
-  };
 
-  Player.prototype.suspend = function() {
-    var playing = (this.state.activePlay && this.state.activePlay.sound),
-        state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
+    this.trigger('unmuted');
+  }
+};
 
-    this.pause();
+Player.prototype.suspend = function() {
+  var playing = (this.state.activePlay && this.state.activePlay.sound),
+      state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
 
-    this.state.suspended = true;
-    this.trigger('suspend');
+  this.pause();
 
-    return state;
-  };
+  this.state.suspended = true;
+  this.trigger('suspend');
 
-  Player.prototype.unsuspend = function(state, startPlayback) {
-    this.session.unsuspend(state);
+  return state;
+};
 
-    if (startPlayback) {
-      this.play();
-    }
-  };
+Player.prototype.unsuspend = function(state, startPlayback) {
+  this.session.unsuspend(state);
 
-  return Player;
+  if (startPlayback) {
+    this.play();
+  }
+};
 
-});
+module.exports = Player;
+
 

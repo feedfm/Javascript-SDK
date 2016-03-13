@@ -5,7 +5,7 @@
   "forin": true,
   "quotmark": true,
   "immed": true,
-  "latedef": true,
+  "latedef": false,
   "newcap": true,
   "noarg": true,
   "sub": true,
@@ -15,6 +15,7 @@
   "eqnull": true,
   "browser": true,
   "globals": {
-    "console": false
+    "console": false,
+    "require": false
   }
 }

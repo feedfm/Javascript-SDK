@@ -16,17 +16,7 @@
       requests = [];
       plays = [];
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/oauth/time', function(response) {
-        console.log('oauth/time');
-        requests.push('oauth/time');
-
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ 
-          success: true, 
-          time: Math.floor(Date.now() / 1000) 
-        }));
-      });
-
-      server.respondWith('POST', 'http://feed.fm/api/v2/client', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/client', function(response) {
         console.log('client');
         requests.push('client');
 
@@ -36,7 +26,7 @@
         }));
       });
       
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement/10000', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement/10000', function(response) {
         console.log('placement');
         requests.push('placement');
 
@@ -54,13 +44,13 @@
         }));
       });
 
-      server.respondWith('GET', 'http://feed.fm/missing', function(response) {
+      server.respondWith('GET', 'https://feed.fm/missing', function(response) {
         console.log('missing');
 
         response.respond(404,  { }, 'Sorry, that is missing');
       });
 
-      server.respondWith('GET', 'http://feed.fm/api/v2/placement', function(response) {
+      server.respondWith('GET', 'https://feed.fm/api/v2/placement', function(response) {
         console.log('placement');
         requests.push('placement');
 
@@ -78,7 +68,7 @@
         }));
       });
 
-      server.respondWith('POST', 'http://feed.fm/api/v2/play', function(response) {
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
         console.log('play');
         requests.push('play');
 
@@ -91,28 +81,28 @@
         }
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         console.log('start');
         requests.push('start');
 
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
         console.log('complete');
         requests.push('complete');
 
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
         console.log('skip');
         requests.push('skip');
 
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       });
 
-      server.respondWith('POST', /http:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
+      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
         console.log('invalidate');
         requests.push('invalidate');
 
@@ -398,7 +388,7 @@
         player.destroy();
 
         // make sure there's an 'invalidate' call in there
-        assert.deepEqual(requests, ['oauth/time', 'placement', 'client', 'play', 'start', 'play', 'invalidate', 'start', 'play'], 'invalidate call should have been called');
+        assert.deepEqual(requests, ['placement', 'client', 'play', 'start', 'play', 'invalidate', 'start', 'play'], 'invalidate call should have been called');
 
         done();
 
@@ -549,7 +539,7 @@
       setTimeout(function() {
         var state = player.suspend();
 
-        state.play.audio_file.url = 'http://feed.fm/missing';
+        state.play.audio_file.url = 'https://feed.fm/missing';
 
         var newPlayer = new Feed.Player('token', 'secret', speakerOptions);
 
@@ -558,7 +548,7 @@
 
         newPlayer.on('play-started', function(play) {
           // confirm that the next song starts up
-          assert.notEqual(play.audio_file.url, 'http://feed.fm/missing', 'should start next song after old one failed to start');
+          assert.notEqual(play.audio_file.url, 'https://feed.fm/missing', 'should start next song after old one failed to start');
 
           newPlayer.pause();
 

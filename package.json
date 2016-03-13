@@ -1,16 +1,28 @@
 {
   "name": "feed-javascript-player",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "devDependencies": {
-    "grunt": "",
-    "grunt-contrib-watch": "~0.2.0",
-    "grunt-contrib-jshint": "~0.1.1",
-    "grunt-contrib-concat": "~0.3.0",
-    "grunt-exec": "~0.4.2"
+    "browserify": "^13.0.0",
+    "gulp": "^3.9.1",
+    "gulp-header": "^1.7.1",
+    "gulp-sourcemaps": "^1.6.0",
+    "gulp-uglify": "^1.5.3",
+    "gulp-util": "^3.0.7",
+    "lodash.assign": "^4.0.6",
+    "tiny-cookie": "^0.5.5",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-source-stream": "^1.1.0",
+    "vinyl-transform": "^1.0.0",
+    "watchify": "^3.7.0"
   },
   "dependencies": {
-    "grunt-contrib-concat": "~0.3.0",
-    "grunt-contrib-requirejs": "~0.4.1",
-    "underscore": "~1.5.2"
+    "browserify-shim": "^3.8.12",
+    "jquery": "^2.2.1",
+    "js-base64": "^2.1.9",
+    "soundmanager2": "^2.97.20150601-a",
+    "underscore": "^1.8.3"
+  },
+  "browserify-shim": {
+    "jquery": "global:jQuery"
   }
 }

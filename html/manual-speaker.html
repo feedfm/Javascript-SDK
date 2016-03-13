@@ -11,40 +11,39 @@
 <br/>
 <br/>
 
-<script src="../src/config.js" type="application/javascript"></script>
-<script src="../vendor/require.js" type="application/javascript"></script>
-<script src="../vendor/json2.js" type="application/javascript"></script>
+<script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+<script src="../dist/feed.js" type="application/javascript"></script>
 
 <script>
-require([ 'jquery', 'feed/speaker' ], function($, getSpeaker) {
-  
-  var speaker = getSpeaker({ }, function() {
-    console.log('on ready!', arguments);
-  });
 
-  $('#play').on('click', function() {
-    var url = $('#url').val();
+var getSpeaker = Feed._getSpeaker;
 
-    console.log('trying to play', url);
-
-    var sound = speaker.create(url, {
-      play: function() {
-        console.log('play ', url);
-      },
-
-      pause: function() {
-        console.log('pause ', url);
-      },
-
-      finish: function() {
-        console.log('finish ', url);
-      }
-    });
-
-    sound.play();
-  });
-
+var speaker = getSpeaker({ }, function() {
+  console.log('on ready!', arguments);
 });
+
+$('#play').on('click', function() {
+  var url = $('#url').val();
+
+  console.log('trying to play', url);
+
+  var sound = speaker.create(url, {
+    play: function() {
+      console.log('play ', url);
+    },
+
+    pause: function() {
+      console.log('pause ', url);
+    },
+
+    finish: function() {
+      console.log('finish ', url);
+    }
+  });
+
+  sound.play();
+});
+
 </script>
 
 </body>
