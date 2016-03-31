@@ -7,17 +7,22 @@
  */
 
 var Session = require('./session');
+var Auth = require('./auth');
+
+/*
 var log = require('./log');
 var PlayerView = require('./player-view');
 var Player = require('./player');
 var getSpeaker = require('./speaker');
+*/
 
 module.exports = {
   Session: Session,
-  Player: Player,
-  PlayerView: PlayerView,
-  log: log,
+  Auth: Auth
+//  Player: Player,
+//  PlayerView: PlayerView,
+//  log: log,
 
-  _getSpeaker: getSpeaker
+//  _getSpeaker: getSpeaker
 };
 

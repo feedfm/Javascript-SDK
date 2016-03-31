@@ -18,8 +18,6 @@
  *  Then set the optional placement and station that we're pulling
  *  from:
  *
- *    player.setPlacementId(xxx);
- *      set placement on session, which should stop any current plays
  *    player.setStationId(xxx);
  *      set station on session, which should stop any current plays
  *
@@ -133,10 +131,6 @@ var Player = function(token, secret, options) {
   });
 
   this.setMuted(this.isMuted());
-};
-
-Player.prototype.setPlacementId = function(placementId) {
-  this.session.setPlacementId(placementId);
 };
 
 Player.prototype.setStationId = function(stationId) {

@@ -14,10 +14,12 @@
 <script src="../dist/feed.js" type="application/javascript"></script>
 
 <script>
+
 var session = new Feed.Session();
 
 session.setCredentials('demo', 'demo');
 
+/*
 session.on('all', function() {
   console.log('event sprung!', arguments);
 });
@@ -41,6 +43,7 @@ $('#invalid').on('click', function() {
 $('#complete').on('click', function() {
   session.reportPlayCompleted();
 });
+*/
 
 </script>
 

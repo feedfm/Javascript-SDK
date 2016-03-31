@@ -16,55 +16,323 @@
     afterEach(function() {
       server.restore();
 
-      Feed.Session.prototype._deleteStoredCid();
+      // delete the stored cid
+      Feed.Auth.deleteClientUUID();
     });
 
-    it('exports the base API', function() {
+    describe('base API', function() {
+      var api = ['playStarted', 'updatePlay', 'playCompleted',
+                 'requestSkip', 'rejectItem', 'requestLike', 'requestUnlike',
+                 'requestDislike', 'resetAndRequestNextItem' ];
+
+      it('exports the base API', function() {
+        var session = new Feed.Session();
+
+        assert.property(session, 'setCredentials');
+
+        for (var i = 0; i < api.length; i++) {
+          assert.property(session, api[i]);
+        }
+      });
+
+      it('requires credentials or will throw', function() {
+        var session = new Feed.Session(),
+            exceptionThrown = false;
+
+        for (var i = 0; i < api.length; i++) {
+          try {
+            session[api[i]]();
+
+            exceptionThrown = false;
+
+          } catch (e) { 
+            exceptionThrown = true;
+          }
+
+          assert.equal(exceptionThrown, true, api[i] + ' should require credentials');
+        }
+      });
+    });
+
+    it('will trigger a session-available event after setting credentials', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ 
+          success: true, 
+          session: {
+            available: true,
+            client_id: 'client id',
+            timestamp: Math.floor(Date.now() / 1000)
+          },
+          stations: [
+            { id: 'first-station', name: 'first station' }
+          ]
+        }));
+      });
+
       var session = new Feed.Session();
-
-      assert.property(session, 'setCredentials');
-      assert.property(session, 'setPlacementId');
-      assert.property(session, 'setStationId');
-      assert.property(session, 'setFormats');
-      assert.property(session, 'reportPlayStarted');
-      assert.property(session, 'reportPlayCompleted');
-      assert.property(session, 'tune');
-      assert.property(session, 'on');
-      assert.property(session, 'off');
-      assert.property(session, 'trigger');
-    });
-
-    it('requires credentials and placement for a tune call or will throw', function() {
-      var session = new Feed.Session(),
-          exceptionThrown = false;
-
-      try {
-        session.tune();
-
-        exceptionThrown = false;
-
-      } catch (e) { 
-        exceptionThrown = true;
-      }
-
-      assert.equal(exceptionThrown, true, 'tune requires credentials');
+      session.on('session-available', done);
 
       session.setCredentials('x', 'y');
-
-      try {
-        session.tune();
-
-        exceptionThrown = true;
-
-
-      } catch (e) { 
-        exceptionThrown = false;
-      
-      }
-
-      assert.equal(exceptionThrown, true, 'should have thrown an exception with bad credentials');
     });
 
+    it('will trigger a session-not-available event when the server says no session is available', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ 
+          success: true, 
+          session: {
+            available: false,
+            client_id: 'client id',
+            timestamp: Math.floor(Date.now() / 1000)
+          }
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.on('session-not-available', done);
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will trigger a session-not-available event when the server returns an unsuccessful response', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ 
+          success: false, 
+          error: {
+            message: 'just testing',
+            code: 123
+          }
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.on('session-not-available', done);
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will return a session-not-available event when the server returns an error', function(done) {
+      this.timeout(5000);
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(500, { 'Content-Type': 'text/html' }, 'nothing good!');
+      });
+
+      var session = new Feed.Session();
+      session.on('session-not-available', done);
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will tell us when next item is received', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var play = validPlayResponse();
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextItem();
+      });
+
+      session.once('next-item-available', function(nextPlay) {
+        assert.isNotNull(nextPlay);
+        assert.equal(nextPlay.id, play.play.id, 'play id passed in should match what server returned');
+
+        assert.equal(session.nextItem.id, nextPlay.id, 'nextItem held by session should match play');
+
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+    
+    it('will make multiple requests to get a play when the first attemps fail', function(done) {
+      this.timeout(5000);
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var play = validPlayResponse();
+      var requestCount = 0;
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        requestCount++;
+
+        if (requestCount <= 2) {
+          // first two responses are bad
+          response.respond(500, { 'Content-Type': 'text/html' }, 'not a good response!');
+        } else {
+          response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+        }
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextItem();
+      });
+
+      session.once('next-item-available', function(nextPlay) {
+        assert.isNotNull(nextPlay);
+
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    // TODO: what alternate errors can come back from the server when
+    //       requesting a play, and how do we handle those?
+
+    it('will not re-request a nextItem when one exists', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ 
+          success: true, 
+          session: {
+            available: true,
+            client_id: 'client id',
+            timestamp: Math.floor(Date.now() / 1000)
+          },
+          stations: [
+            { id: 'first-station', name: 'first station' }
+          ]
+        }));
+      });
+
+      var play = validPlayResponse();
+      var playCount = 0;
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        playCount++;
+
+        assert(playCount < 2, 'should only make one play');
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+
+      });
+
+      var session = new Feed.Session();
+      session.on('session-available', function() {
+        session.requestNextItem();
+      });
+
+      session.on('next-item-available', function(nextPlay) {
+        assert.isNotNull(nextPlay);
+        assert.equal(nextPlay.id, play.play.id, 'play id passed in should match what server returned');
+
+        assert.equal(session.nextItem.id, nextPlay.id, 'nextItem held by session should match play');
+
+        // should be ignored
+        session.requestNextItem();
+
+        // give code a chance to call requestNextItem again
+        setTimeout(done, 1000);
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+
+    it('will promote a play from next to current when reported as started', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextItem();
+      });
+
+      session.once('next-item-available', function(nextPlay) {
+        assert.isNotNull(nextPlay);
+
+        session.playStarted();
+      });
+
+      session.once('current-item-did-change', function(nowPlaying) {
+        assert.isNotNull(nowPlaying);
+
+        assert(plays.length > 0, 'should have served up at least one play');
+        assert.equal(plays[0].play.id, nowPlaying.id, 'current play should be the first one generated');
+        assert.equal(nowPlaying.id, session.currentItem.id, 'current item should match');
+
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it.only('after a play is started, a request goes out for the next play', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextItem();
+      });
+      
+      var startCount = 0;
+      session.on('next-item-available', function() {
+        startCount++;
+
+        if (startCount <= 1) {
+          session.playStarted();
+
+        } else {
+          // we got to the second song!
+          done();
+        }
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    /*** check the session request to make sure it has cookies/auth stuff ****/
+
+/**** HERE ******/
+ 
     it('will request a play from the server when tune is called', function() {
       server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
@@ -1058,5 +1326,18 @@
       };
     }
 
+    function validSessionResponse() {
+      return {
+        success: true, 
+        session: {
+          available: true,
+          client_id: 'client id',
+          timestamp: Math.floor(Date.now() / 1000)
+        },
+        stations: [
+          { id: 'first-station', name: 'first station' }
+        ]
+      };
+    }
   });
 })();
