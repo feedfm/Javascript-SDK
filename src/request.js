@@ -5,6 +5,7 @@ var Base64 = require('js-base64').Base64;
 var Cookie = require('tiny-cookie');
 var $ = require('jquery');
 var FMError = require('./fmerror');
+var Client = require('./client');
 
 var Request = function() {
   this.type = null;
@@ -71,8 +72,11 @@ Request.prototype.send = function() {
   ajax.url = Request.serviceEndpoint() + this.endpoint;
   ajax.data = this.data;
 
-  if (!Request._cookiesEnabled() && this.auth.cid) {
-    ajax.data.client_id = this.auth.cid;
+  if (!Client.cookiesEnabled()) {
+    var cid = Client.getClientUUID();
+    if (cid) {
+      ajax.data.client_id = cid;
+    }
   }
 
   log(this.toString() + ': sending request to ' + ajax.url);

@@ -6,27 +6,21 @@ var Cookie = require('tiny-cookie');
 var COOKIE_NAME = 'cid';
 
 /**
- * The Auth class holds 'token' and 'secret'
- * values, plus exports the interface to the client
- * UUID (or 'vid') value that should be unique
- * to this client.
+ * The Client class keeps track of the client's
+ * UUID value.
  */
 
 var localCid = '';
 
-var Auth = function(token, secret) {
-  this.token = token;
-  this.secret = secret;
-};
+var Client = { };
 
 /**
- * True if the client will let us set cookies.
- * This value is 
+ * Returns true if the client will let us set cookies.
  */
 
-Auth._cookiesEnabled = Cookie.enabled();
-Auth.cookiesEnabled = function() {
-  return Auth._cookiesEnabled;
+Client._cookiesEnabled = Cookie.enabled();
+Client.cookiesEnabled = function() {
+  return Client._cookiesEnabled;
 };
 
 /**
@@ -34,8 +28,8 @@ Auth.cookiesEnabled = function() {
  * requests.
  */
 
-Auth.setClientUUID = function(cid) {
-  if (Auth.cookiesEnabled()) {
+Client.setClientUUID = function(cid) {
+  if (Client.cookiesEnabled()) {
     log('cookies are enabled, so setting cookie "' + COOKIE_NAME + '"="' + cid + '"');
 
     Cookie.set(COOKIE_NAME, cid, { expires: 3650, path: '/' });
@@ -47,8 +41,8 @@ Auth.setClientUUID = function(cid) {
   }
 };
 
-Auth.getClientUUID = function() {
-  if (Auth.cookiesEnabled()) {
+Client.getClientUUID = function() {
+  if (Client.cookiesEnabled()) {
     return Cookie.get(COOKIE_NAME);
   } else {
     return localCid;
@@ -59,13 +53,13 @@ Auth.getClientUUID = function() {
  * Delete the persisted UUID cookie
  */
 
-Auth.deleteClientUUID = function() {
-  if (Auth.cookiesEnabled()) {
+Client.deleteClientUUID = function() {
+  if (Client.cookiesEnabled()) {
     Cookie.remove(COOKIE_NAME);
   } else {
     localCid = null;
   }
 };
 
-module.exports = Auth;
+module.exports = Client;
 

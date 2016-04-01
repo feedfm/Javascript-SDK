@@ -221,7 +221,7 @@ Session.prototype._requestSession = function() {
     }
 
     var cid = res.session.client_id;
-    session.auth.setClientUUID(cid);
+    Auth.setClientUUID(cid);
 
     if (res.session.available) {
       // session is available!
