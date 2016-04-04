@@ -22,8 +22,8 @@
 
     describe('base API', function() {
       var api = ['playStarted', 'updatePlay', 'playCompleted',
-                 'requestSkip', 'rejectItem', 'requestLike', 'requestUnlike',
-                 'requestDislike', 'resetAndRequestNextItem' ];
+                 'requestSkip', 'rejectPlay', 'requestLike', 'requestUnlike',
+                 'requestDislike', 'resetAndRequestNextPlay' ];
 
       it('exports the base API', function() {
         var session = new Feed.Session();
@@ -130,7 +130,7 @@
       session.setCredentials('x', 'y');
     });
 
-    it('will tell us when next item is received', function(done) {
+    it('will tell us when next play is received', function(done) {
       server.autoRespond = true;
 
       server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
@@ -144,14 +144,14 @@
 
       var session = new Feed.Session();
       session.once('session-available', function() {
-        session.requestNextItem();
+        session.requestNextPlay();
       });
 
-      session.once('next-item-available', function(nextPlay) {
+      session.once('next-play-available', function(nextPlay) {
         assert.isNotNull(nextPlay);
         assert.equal(nextPlay.id, play.play.id, 'play id passed in should match what server returned');
 
-        assert.equal(session.nextItem.id, nextPlay.id, 'nextItem held by session should match play');
+        assert.equal(session.nextPlay.id, nextPlay.id, 'nextPlay held by session should match play');
 
         done();
       });
@@ -159,7 +159,7 @@
       session.setCredentials('x', 'y');
     });
     
-    it('will make multiple requests to get a play when the first attemps fail', function(done) {
+    it('will make multiple requests to get a play when the first attempts fail', function(done) {
       this.timeout(5000);
       server.autoRespond = true;
 
@@ -182,10 +182,10 @@
 
       var session = new Feed.Session();
       session.once('session-available', function() {
-        session.requestNextItem();
+        session.requestNextPlay();
       });
 
-      session.once('next-item-available', function(nextPlay) {
+      session.once('next-play-available', function(nextPlay) {
         assert.isNotNull(nextPlay);
 
         done();
@@ -197,7 +197,7 @@
     // TODO: what alternate errors can come back from the server when
     //       requesting a play, and how do we handle those?
 
-    it('will not re-request a nextItem when one exists', function(done) {
+    it('will not re-request a nextPlay when one exists', function(done) {
       server.autoRespond = true;
 
       server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
@@ -227,19 +227,19 @@
 
       var session = new Feed.Session();
       session.on('session-available', function() {
-        session.requestNextItem();
+        session.requestNextPlay();
       });
 
-      session.on('next-item-available', function(nextPlay) {
+      session.on('next-play-available', function(nextPlay) {
         assert.isNotNull(nextPlay);
         assert.equal(nextPlay.id, play.play.id, 'play id passed in should match what server returned');
 
-        assert.equal(session.nextItem.id, nextPlay.id, 'nextItem held by session should match play');
+        assert.equal(session.nextPlay.id, nextPlay.id, 'nextPlay held by session should match play');
 
         // should be ignored
-        session.requestNextItem();
+        session.requestNextPlay();
 
-        // give code a chance to call requestNextItem again
+        // give code a chance to call requestNextPlay again
         setTimeout(done, 1000);
       });
 
@@ -264,21 +264,21 @@
 
       var session = new Feed.Session();
       session.once('session-available', function() {
-        session.requestNextItem();
+        session.requestNextPlay();
       });
 
-      session.once('next-item-available', function(nextPlay) {
+      session.once('next-play-available', function(nextPlay) {
         assert.isNotNull(nextPlay);
 
         session.playStarted();
       });
 
-      session.once('current-item-did-change', function(nowPlaying) {
+      session.once('current-play-did-change', function(nowPlaying) {
         assert.isNotNull(nowPlaying);
 
         assert(plays.length > 0, 'should have served up at least one play');
         assert.equal(plays[0].play.id, nowPlaying.id, 'current play should be the first one generated');
-        assert.equal(nowPlaying.id, session.currentItem.id, 'current item should match');
+        assert.equal(nowPlaying.id, session.currentPlay.id, 'current play should match');
 
         done();
       });
@@ -286,7 +286,7 @@
       session.setCredentials('x', 'y');
     });
 
-    it.only('after a play is started, a request goes out for the next play', function(done) {
+    it('after a play is started, a request goes out for the next play automatically', function(done) {
       server.autoRespond = true;
 
       server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
@@ -310,11 +310,11 @@
 
       var session = new Feed.Session();
       session.once('session-available', function() {
-        session.requestNextItem();
+        session.requestNextPlay();
       });
       
       var startCount = 0;
-      session.on('next-item-available', function() {
+      session.on('next-play-available', function() {
         startCount++;
 
         if (startCount <= 1) {
@@ -329,952 +329,610 @@
       session.setCredentials('x', 'y');
     });
 
-    /*** check the session request to make sure it has cookies/auth stuff ****/
+    it('after a play is completed, the current play is set to null', function(done) {
+      server.autoRespond = true;
 
-/**** HERE ******/
- 
-    it('will request a play from the server when tune is called', function() {
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
       });
 
-      var playResponse = validPlayResponse();
-
+      var plays = [];
       server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
-      });
-      
-      var session = newSessionWithClientAndCredentials();
-      var mock = sinon.mock(session);
+        var play = validPlayResponse();
+        plays.push(play);
 
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponse.play, 'should return play we got from server');
-    });
-
-    it('will request and cache new client id when creating first play', function() {
-      var playResponse = validPlayResponse(),
-          gotClient = false,
-          clientId = 'this is the client id';
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/oauth/time', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, time: Math.floor(Date.now() / 1000) }));
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
       });
 
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
-      });
-
-      server.respondWith('POST', 'https://feed.fm/api/v2/client', function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-
-        gotClient = true;
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
           success: true,
-          client_id: clientId
+          can_skip: false
+        }));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
         }));
       });
 
       var session = new Feed.Session();
-      var mock = sinon.mock(session);
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
 
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
+        if (startCount === 1) {
+          // start playback of first incoming play
+          session.playStarted();
 
-      mock.expects('_getStoredCid').returns(null);
-      mock.expects('_setStoredCid').withArgs(clientId).returns(null);
+        } // don't care about subsequent plays at the moment
+      });
 
-      mock.expects('trigger').withArgs('play-active');
+      var currentCount = 0;
+      session.on('current-play-did-change', function() {
+        currentCount++;
+
+        if (currentCount === 1) {
+          assert.isNotNull(session.currentPlay, 'should have a current play now');
+
+          setTimeout(function() {
+            // report this play as completed after a bit
+            session.playCompleted();
+          }, 10);
+
+        } else if (currentCount === 2) {
+          // after the first play completes, currentPlay will be set to null
+          assert.isNull(session.currentPlay, 'should clear out current play upon song completion');
+
+          done();
+
+        } else {
+          assert.fail('should not have changed current play again');
+
+        }
+
+      });
 
       session.setCredentials('x', 'y');
-      session.setPlacementId('1234');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert(gotClient, true, 'should have made request for client id');
     });
 
-    it('will begin looking for a second song once the first has started', function() {
-      var playResponses = [],
-          mock;
+    it('still trigger the active-station-did-change event after changing the station', function(done) {
+      server.autoRespond = true;
 
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
       });
 
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        var pr = validPlayResponse();
-        playResponses.push(pr);
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(pr));
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.setStation(session.stations[1]);
       });
 
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-      assert.isNull(session.config.pendingPlay, 'nothing queued up yet');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.isNotNull(session.config.pendingPlay, 'should have a pending play now');
-      assert.deepEqual(session.config.pendingPlay, playResponses[1].play, 'should return second play we got from server');
-
-    });
-
-    it('will continue pulling plays as they are started', function() {
-      var playResponses = [],
-          mock;
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        var pr = validPlayResponse();
-        playResponses.push(pr);
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(pr));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      // tune to station, get an active play
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      // start playing the active play
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.isNotNull(session.config.pendingPlay, 'should have a pending play now');
-      assert.deepEqual(session.config.pendingPlay, playResponses[1].play, 'should return second play we got from server');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('play-active');
-
-      // complete playing the active play, and get a new active play
-      session.reportPlayCompleted();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.isNull(session.config.pendingPlay, 'no pending play any more');
-      assert.deepEqual(session.getActivePlay(), playResponses[1].play, 'second song should be active now');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      // start playing the next play...
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.isNotNull(session.config.pendingPlay, 'should have a pending play again');
-      assert.deepEqual(session.config.pendingPlay, playResponses[2].play, 'should return third play we got from server');
-    });
-
-    it('will emit plays-exhausted when the first play cannot satisfy DMCA rules', function() {
-      var playResponse = {
-        success: false,
-        error: {
-          code: 9,
-          message: 'no more muzak!'
-        }
-      };
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
-      });
-      
-      var session = newSessionWithClientAndCredentials();
-      var mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('plays-exhausted');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.isNull(session.getActivePlay(), 'should return play we got from server');
-    });
-
-    it('will emit plays-exhausted when the second play cannot satisfy DMCA rules', function() {
-      var playResponses = [
-            validPlayResponse(),
-            {
-              success: false,
-              error: {
-                code: 9,
-                message: 'no more muzak!'
-              }
-            }
-          ],
-        mock;
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.isNull(session.config.pendingPlay, 'should have no pending play');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('plays-exhausted');
-
-      session.reportPlayCompleted();
-
-      server.respond();
-
-      mock.verify();
-    });
-
-    it('will successfully skip a song', function() {
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var playResponses = [
-            validPlayResponse(),
-            validPlayResponse()
-          ],
-        mock;
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.config.pendingPlay, playResponses[1].play, 'should have pending play');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.requestSkip();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[1].play, 'should return next play we got from server');
-    });
-
-    it('will not skip a song is has no permission to skip', function() {
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var playResponses = [
-            validPlayResponse(),
-            validPlayResponse()
-          ],
-        mock;
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: false }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.config.pendingPlay, playResponses[1].play, 'should have pending play');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('skip-denied');
-
-      session.requestSkip();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return original play we got from server');
-    });
-
-    it('will not skip a song if the server denies the skip', function() {
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var playResponses = [
-            validPlayResponse(),
-            validPlayResponse()
-          ],
-        mock;
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 7, message: 'skip limit reached' } }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.config.pendingPlay, playResponses[1].play, 'should have pending play');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('skip-denied');
-
-      session.requestSkip();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return original play we got from server');
-    });
-
-    it('will not let you skip a song the song is not playing', function() {
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var playResponses = [ validPlayResponse() ],
-        mock;
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 7, message: 'skip limit reached' } }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-
-      var thrown = false;
-
-      try {
-        session.requestSkip();
-
-        thrown = false;
-
-
-      } catch (e) {
-        // success!
-        thrown = true;
-      }
-
-      assert.equal(thrown, true, 'should not be able to skip a song if not playing it');
-    });
-
-    it('will let you invalidate an active (and not playing) song', function() {
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var playResponses = [ validPlayResponse(), validPlayResponse() ],
-        mock;
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.requestInvalidate();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[1].play, 'should return play we got from server');
-    });
-
-    it('will let you invalidate a playing song', function() {
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var playResponses = [ validPlayResponse(), validPlayResponse(), validPlayResponse() ],
-        mock;
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.requestInvalidate();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[1].play, 'should return play we got from server');
-    });
-
-    it('will let you report the elapsed playback time', function() {
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var playResponses = [ validPlayResponse(), validPlayResponse() ],
-          mock;
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/elapse/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-      assert.isNull(session.config.pendingPlay, 'nothing queued up yet');
-
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('play-started');
-
-      session.reportPlayStarted();
-
-      server.respond();
-
-      mock.verify();
-
-      session.reportPlayElapsed(10);
-
-      server.respond();
-
-    });
-
-    it('will handle a "started playback already" error properly', function(done) {
-      // need some extra time due to retry timeouts
-      this.timeout(4000);
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
-      });
-
-      var playResponses = [ validPlayResponse(), validPlayResponse() ],
-          mock;
-
-      var i = 0;
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      // simulate a failed 'start' request
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(500, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 500, message: 'internal error' } }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      mock = sinon.mock(session);
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      session.tune();
-
-      server.respond();
-
-      mock.verify();
-
-      assert.deepEqual(session.getActivePlay(), playResponses[0].play, 'should return play we got from server');
-      assert.isNull(session.config.pendingPlay, 'nothing queued up yet');
-
-      session.reportPlayStarted();
-      // respond to first failed 'start' request
-      server.respond();
-
-      // swap in the successful start response
-      server.restore();
-
-      server = sinon.fakeServer.create();
-      
-      // hey - we started already!
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(403, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 20, message: 'already started' } }));
-      });
-
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponses[i++]));
-      });
-
-      // wait 2 seconds for the 'start' retry to happen
-      setTimeout(function() {
-        mock = sinon.mock(session);
-        mock.expects('trigger').withArgs('play-started');
-
-        // respond to second 'start' request
-        server.respond();
-
-        mock.verify();
+      session.once('active-station-did-change', function(station) {
+        assert.equal(session.stations[1], station);
+        assert.equal(session.activeStation, station);
 
         done();
-      }, 2000);
-
+      });
+      
+      session.setCredentials('x', 'y');
     });
 
-    it('trying to do anything without an active play will throw an exception', function() {
-      var session = newSessionWithClientAndCredentials(),
-          exceptionThrown = false;
+    it('will reset the current and next plays after changing the station', function(done) {
+      server.autoRespond = true;
 
-      try {
-        session.reportPlayStarted();
-
-        exceptionThrown = false;
-
-      } catch (e) { 
-        exceptionThrown = true;
-      }
-
-      assert.equal(exceptionThrown, true, 'should throw exception when there is no active play');
-
-      try {
-        session.reportPlayElapsed();
-
-        exceptionThrown = false;
-
-      } catch (e) { 
-        exceptionThrown = true;
-      }
-
-      assert.equal(exceptionThrown, true, 'should throw exception when there is no active play');
-
-      try {
-        session.reportPlayCompleted();
-
-        exceptionThrown = false;
-
-      } catch (e) { 
-        exceptionThrown = true;
-      }
-
-      assert.equal(exceptionThrown, true, 'should throw exception when there is no active play');
-
-      try {
-        session.requestSkip();
-
-        exceptionThrown = false;
-
-      } catch (e) { 
-        exceptionThrown = true;
-      }
-
-      assert.equal(exceptionThrown, true, 'should throw exception when there is no active play');
-
-      try {
-        session.requestInvalidate();
-
-        exceptionThrown = false;
-
-      } catch (e) { 
-        exceptionThrown = true;
-      }
-
-      assert.equal(exceptionThrown, true, 'should throw exception when there is no active play');
-    });
-
-    it('can suspend itself and unsuspend to the same state', function() {
-      var playResponses = [],
-          mock;
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
       });
 
+      var plays = [];
       server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        var pr = validPlayResponse();
-        playResponses.push(pr);
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(pr));
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
       });
 
-      var session = newSessionWithClientAndCredentials();
-      session.tune();
-
-      server.respond();
-
-      var state = session.suspend(123);
-
-      var secondSession = newSessionWithClientAndCredentials();
-
-      mock = sinon.mock(secondSession);
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-
-      secondSession.unsuspend(state);
-
-      server.respond();
-
-      mock.verify();
-    });
-
-    it('can suspend itself and unsuspend to the same state after a play has started', function() {
-      var playResponses = [],
-          mock;
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/1234', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
       });
 
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        var pr = validPlayResponse();
-        playResponses.push(pr);
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(pr));
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
       });
 
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        assert.deepProperty(response, 'requestHeaders.Authorization', 'Request should be signed');
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      var session = newSessionWithClientAndCredentials();
-      session.tune();
-
-      server.respond();
-
-      session.reportPlayStarted();
-
-      server.respond();
-
-      var state = session.suspend(123);
-
-      var secondSession = newSessionWithClientAndCredentials();
-
-      mock = sinon.mock(secondSession);
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-
-      secondSession.unsuspend(state);
-
-      server.respond();
-
-      mock.verify();
-    });
-
-    function newSessionWithClientAndCredentials() {
       var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
 
-      session._requestServerTime = function(deferred) { deferred.resolve(100); };
-      session._requestClientId = function(cb)   { cb('cookie-value'); };
+        if (startCount === 1) {
+          // start playback of first incoming play and kick off
+          // request for a new next-play
+          session.playStarted();
+
+        } else {
+          // second play has been queued up - now change the station
+          session.setStation(session.stations[1]);
+
+        }
+      });
+
+      session.on('active-station-did-change', function() {
+        assert.isNull(session.currentPlay);
+        assert.isNull(session.nextPlay);
+
+        done();
+      });
 
       session.setCredentials('x', 'y');
-      session.setPlacementId('1234');
+    });
 
-      return session;
-    }
+    it('will send out a skip-status event when the skip status changes', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: true    // should trigger skip status change
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
+
+        if (startCount === 1) {
+          // start playback of first incoming play
+          session.playStarted();
+
+        } // don't care about subsequent plays at the moment
+      });
+
+      session.on('skip-status-did-change', function() {
+        assert.isTrue(session.canSkip);
+
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will send out a no-more-music event when a play request says we have no more music to give out', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        response.respond(500, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: false, 
+          error: {
+            code: 9,
+            message: 'There is no more music available',
+            status: 500
+          }
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      session.on('no-more-music', function() {
+        // success!
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will only send out a no-more-music event when the current play has completed', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var playCount = 0;
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        playCount++;
+
+        if (playCount === 1) {
+          response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlayResponse()));
+
+        } else {
+          response.respond(500, { 'Content-Type': 'application/json' }, JSON.stringify({
+            success: false, 
+            error: {
+              code: 9,
+              message: 'There is no more music available',
+              status: 500
+            }
+          }));
+        }
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+
+      session.on('next-play-available', function() {
+        if (!session.currentPlay) {
+          session.playStarted();
+        }
+      });
+
+      session.on('current-play-did-change', function(play) {
+        if (play !== null) {
+          // report play completed after the session should have received
+          // word that there is no more music available.
+          setTimeout(function() {
+            session.playCompleted();
+          }, 500);
+        }
+      });
+      
+      session.on('no-more-music', function() {
+        // success!
+        assert.isNull(session.currentPlay, 'no-more-music should only be emitted after current song completed');
+
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will set current play to null when a skip request succeeds', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
+
+        if (startCount === 1) {
+          // start playback of first incoming play
+          session.playStarted();
+
+        } // don't care about subsequent plays at the moment
+      });
+
+      var currentCount = 0;
+      session.on('current-play-did-change', function() {
+        currentCount++;
+
+        if (currentCount === 1) {
+          assert.isNotNull(session.currentPlay, 'should have a current play now');
+
+          setTimeout(function() {
+            // ask to skip this song
+            session.requestSkip();
+          }, 10);
+
+        } else if (currentCount === 2) {
+          // after the first play is skipped, currentPlay will be set to null
+          assert.isNull(session.currentPlay, 'should clear out current play upon successful skip');
+
+          done();
+
+        } else {
+          assert.fail('should not have changed current play again');
+
+        }
+
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will not update currentPlay when the current song may not be skipped, but it will change skip status', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: true  // when we got the song, a skip was ok
+        }));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
+      console.log('responding to post');
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: false, // no skippy
+          error: {
+            code: 9,
+            message: 'no more skips!',
+            status: 500
+          }
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
+
+        if (startCount === 1) {
+          // start playback of first incoming play
+          session.playStarted();
+
+        } // don't care about subsequent plays at the moment
+      });
+
+      var currentCount = 0;
+      session.on('current-play-did-change', function() {
+        currentCount++;
+
+        if (currentCount === 1) {
+          assert.isNotNull(session.currentPlay, 'should have a current play now');
+
+          setTimeout(function() {
+            // ask to skip this song
+            session.requestSkip();
+          }, 10);
+
+        } else {
+          assert.fail('when the skip fails, the currentPlay should not be updated');
+        }
+
+      });
+
+      var skipChangeCount = 0;
+      session.on('skip-status-did-change', function() {
+        skipChangeCount++;
+
+        // first change is canSkip value going from initial value of false to true (from start)
+        // second change is canSkip value going from true to false
+
+        if (skipChangeCount === 2) {
+          assert.isFalse(session.canSkip, 'user may not skip!');
+          done();
+        }
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+
+    it('will set the next play to null and request a new play when the next play is rejected', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/invalid/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
+
+        if (startCount === 1) {
+          // reject this song - we can't play it
+          session.rejectPlay();
+
+        } else if (startCount === 2) {
+          // we rejected the first play and got a new one - win!
+          assert.isNull(session.currentPlay);
+          assert.isNotNull(session.nextPlay);
+
+          done();
+        }
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will swallow a \'play already started\' error', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(403, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: false,
+          error: {
+            code: 20,
+            message: 'Playback already started!',
+            status: 403
+          }
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+
+      session.once('next-play-available', function(nextPlay) {
+        assert.isNotNull(nextPlay);
+
+        session.playStarted();
+      });
+
+      session.once('current-play-did-change', function(nowPlaying) {
+        assert.isNotNull(nowPlaying, 'should have swallowed the start error');
+
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will allow us to report elapsed playback time', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/elapse/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+
+        // this is what we wanted!
+        done();
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      session.once('next-play-available', function() {
+        // start playback of first incoming play
+        session.playStarted();
+      });
+
+      var elapsed = Math.floor(Math.random() * 1000);
+
+      session.once('current-play-did-change', function() {
+        assert.isNotNull(session.currentPlay, 'should have a current play now');
+
+        // report this play as completed
+        session.updatePlay(elapsed);
+      });
+
+      session.setCredentials('x', 'y');
+    });
 
     var counter = 0;
     function validPlayResponse(id) {
@@ -1311,21 +969,6 @@
       };
     }
 
-    function validPlacementResponse() {
-      return {
-        success: true,
-
-        placement: {
-          id: '1234',
-          name: 'Test station'
-        },
-        stations: [
-          { id: '222', name: 'Station 1' },
-          { id: '333', name: 'Station 2' }
-        ]
-      };
-    }
-
     function validSessionResponse() {
       return {
         success: true, 
@@ -1335,7 +978,8 @@
           timestamp: Math.floor(Date.now() / 1000)
         },
         stations: [
-          { id: 'first-station', name: 'first station' }
+          { id: 'first-station', name: 'first station' },
+          { id: 'second-station', name: 'second station' }
         ]
       };
     }

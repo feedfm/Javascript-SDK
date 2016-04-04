@@ -5,20 +5,52 @@
  *
  *  This class is based on the iOS FMSession class.
  *
- *  This class talks to the Feed.fm REST API to pull audio items for playback. It holds a 'currentItem'
- *  that represents the song that has started playback for the user, and the 'nextItem', which will
- *  be the next song to play when the current one is completed or skipped. Clients of this class
- *  should 'requestNextItem' and listen for 'next-item-available' events to know
- *  when the next item has been retrieved. Clients should then call 'playStarted' when they start
- *  playback of the 'nextItem', which will make it the 'currentItem' and kick off a background task
- *  to call 'requestNextItem' to retrieve a new 'nextItem'. When playback of the currentItem is
- *  completed or the client wants to skip the current item, a call to 'playCompleted' or 'requestSkip'
- *  should be made; then the client should try to start playback of 'nextItem' if it exists, or call
- *  'requestNextItem' otherwise.
+ *  This class talks to the Feed.fm REST API to pull audio items for playback. It holds a 'currentPlay'
+ *  that represents the song that has started playback for the user, and the 'nextPlay', which will
+ *  be the next song to play. 
+ *
+ *  The general usage of this class is:
+ *
+ *  var session = new Feed.Session();
+ *
+ *  session.on('session-available', function() {
+ *    // music is available for the user.
+ *    // session.getStations() will return list of available stations.
+ *    // use session.setStation() to pick station, if we don't want default
+ *    session.requestNextPlay();   // start retrieving songs
+ *  });
+ *
+ *  session.on('session-not-available', function() {
+ *    // no music is available for the user for some reason
+ *  });
+ *
+ *  session.on('next-play-available', function(nextPlay) {
+ *    // if session.currentPlay is null, then try to start playback of
+ *    // nextPlay and then call
+ *
+ *    session.playStarted();
+ *
+ *    // now session.currentPlay becomes nextPlay
+ *    // when playback of session.currentPlay completes, call
+ *    // session.playCompleted();
+ *  });
+ *
+ *  session.on('current-play-changed', function(currentPlay) {
+ *    // when currentPlay is not null, this means we just started playback of currentPlay
+ *    // when currentPlay is null, it means we just completed playback of a song,
+ *    //    and if nextPlay is not null, we should begin playback of it and call session.playStarted()
+ *    //        else nextPlay is null and we're waiting for the next song
+ *  });
+ *
+ *  session.on('no-music-available', function() {
+ *    // no more music is available for the current station at the moment
+ *  });
+ *
+ *  session.setCredentials('token', 'secret'); // kicks off request to server for session
  *
  *  It is best to think of this class as constantly trying to keep a song in the queue for playback.
  *  When you advance a song in it from next to current (by calling 'playStarted'), the class tries
- *  to get another song queued up for you as the next song automatically.
+ *  to get another song queued up for you automatically.
  *
  *  This class requires that you pass it a token and secret so that it can sign
  *  requests and retrieve a client UUID for interacting with the API service.
@@ -30,12 +62,15 @@
  *
  *    session-not-available
  *    session-available
- *    next-item-available
- *    current-item-did-change
+ *
+ *    next-play-available
+ *    current-play-did-change
+ *
  *    active-station-did-change
- *    unexpected-error
- *    skip-status
+ *    skip-status-did-change
  *    no-more-music
+ *
+ *    unexpected-error
  *
  */
 
@@ -47,10 +82,22 @@
  *   event logging
  * changes:
  *   FMAudioItem is now Play
+ *   renamed currentItem and nextItem to currentPlay and nextPlay
  *   added getStations() call to retrieve list of stations
  *     removed the stations-list event as well
  *   when trying to retrieve the next play, increase number of retries when
- *     there is an existing curentItem.
+ *     there is an existing curentPlay.
+ *   skip-status is only triggered when the status actually changes
+ *   default canSkip value is false
+ *   skip-status renamed to skip-status-did-change
+ *   no-more-music is only triggered after completion of any actively
+ *     playing song
+ *   you can only reject the 'nextPlay', since the 'reportStart' means
+ *     you got the song playing...
+ *   added suspend() and unsuspend()
+ * learnings:
+ *   check for available play credits when making session, so shortcut need for
+ *     requestNextPlay()
  */
 
 var log = require('./log');
@@ -85,18 +132,62 @@ var Session = function(options) {
   this.activeStation = null;  // holds ref to active station
   this.stations = [];         // holds list of known stations
 
-  this.available = null; // true = music available, false = no music available, null = unknown
+  this.available = null;      // true = music available, false = no music available, null = unknown
 
-  this.currentItem = null;         // ref to current 'active' item
-  this.nextItem = null;            // ref to queued 'next' item
-  this.nextItemInProgress = false; // true if we're already waiting next item response
+  this.currentPlay = null;         // ref to current 'active' play
+  this.nextPlay = null;            // ref to queued 'next' play
+  this.nextPlayInProgress = false; // true if we're already waiting next play response
 
   this.requestsInProgress = [];  // network requests we're awaiting a response
 
-  this.canSkip = true;     // if false, the current song may not be skipped
+  this.canSkip = false;     // if false, the current song may not be skipped
 
   // add event handling
   _.extend(this, Events);
+};
+
+/**
+ * Save all the state variables for this instance so that we might
+ * recreate the state in the future (or another window, for example).
+ */
+
+Session.prototype.suspend = function(elapsed) {
+  var state = {
+    token: this.auth.token,
+    secret: this.auth.secret,
+    elapsed: elapsed,
+    available: this.available,
+    currentPlay: this.currentPlay,
+    nextPlay: this.nextPlay,
+    nextPlayInProgress: this.nextPlayInProgress,
+    canSkip: this.canSkip
+  };
+
+  return state;
+};
+
+/**
+ * Restore the state of this session from a previously suspended
+ * station.
+ */
+
+Session.prototype.unsuspend = function(state) {
+  this._cancelOutstandingRequests();
+
+  this.auth = new Auth();
+  this.auth.token = state.token;
+  this.auth.secret = state.secret;
+
+  this.available = state.available;
+  this.currentPlay = state.currentPlay;
+  this.nextPlay = state.nextPlay;
+  this.canSkip = state.canSkip;
+
+  if (state.nextPlayInProgress) {
+    this.requestNextPlay();
+  }
+
+  return state.elapsed;
 };
 
 /**
@@ -118,69 +209,75 @@ Session.prototype.setCredentials = function(token, secret) {
 };
 
 /**
- * Zero out any current and next items, cancel any outstanding
- * requests, and then request a new next item.
+ * Zero out any current and next play, cancel any outstanding
+ * requests, and then request a new next play.
  */
 
-Session.prototype.resetAndRequestNextItem = function() {
+Session.prototype.resetAndRequestNextPlay = function() {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
-  if (this.currentItem !== null) {
-    log('resetting current item');
-    this.currentItem = null;
+  if (this.currentPlay !== null) {
+    log('resetting current play');
+    this.currentPlay = null;
   }
 
-  if (this.nextItem !== null) {
-    log('resetting next item');
-    this.nextItem = null;
+  if (this.nextPlay !== null) {
+    log('resetting next play');
+    this.nextPlay = null;
   }
 
   this._cancelOustandingRequests();
 };
 
 /*
- * Assign new nextItem. Trigger 'next-item-available' event
+ * Assign new nextPlay. Trigger 'next-play-available' event
  * when non-null.
  */
 
-Session.prototype._setNextItem = function(nextItem) {
-  if (nextItem === this.nextItem) { 
-    log('ignoring attempt to re-set nextItem');
+Session.prototype._setNextPlay = function(nextPlay) {
+  if (nextPlay === this.nextPlay) { 
+    log('ignoring attempt to re-set nextPlay');
     return; 
   }
 
-  this.nextItem = nextItem;
+  this.nextPlay = nextPlay;
 
-  if (nextItem !== null) {
-    log('next item set to ' + nextItem);
-    this.trigger('next-item-available', nextItem);
+  if (nextPlay !== null) {
+    log('next play set to ' + nextPlay);
+    this.trigger('next-play-available', nextPlay);
 
   } else {
-    log('next item cleared');
+    log('next play cleared');
 
   }
 };
 
 /*
- * Assign new currentItme. Trigger 'current-item-did-change'
+ * Assign new currentPlay. Trigger 'current-play-did-change'
  * event.
  */
 
-Session.prototype._setCurrentItem = function(currentItem) {
-  if (currentItem === this.currentItem) { 
-    log('ignoring attempt to re-set currentItem');
+Session.prototype._setCurrentPlay = function(currentPlay) {
+  if (currentPlay === this.currentPlay) { 
+    log('ignoring attempt to re-set currentPlay');
     return; 
   }
 
-  this.currentItem = currentItem;
+  this.currentPlay = currentPlay;
 
-  log('current item set to ' + currentItem);
+  log('current play set to ' + currentPlay);
 
-  this.trigger('current-item-did-change', currentItem);
+  this.trigger('current-play-did-change', currentPlay);
 };
 
 /**
- * Set the current station from which we pull music.
+ * Set the current station from which we pull music and trigger
+ * an 'active-station-did-change' event. This kills
+ * any background requests for new plays and throws away any
+ * existing 'nextPlay'. You'll need to
+ * call 'requestNextPlay()' to start pulling in new music after
+ * making this call or receiving the 'active-station-did-change'
+ * event.
  */
 
 Session.prototype.setStation = function(station) {
@@ -195,10 +292,10 @@ Session.prototype.setStation = function(station) {
   this.activeStation = station;
   
   this._cancelOutstandingRequests();
-  this.currentItem = null;
-  this.nextItem = null;
+  this.currentPlay = null;
+  this.nextPlay = null;
 
-  this.trigger('active-station-did-change');
+  this.trigger('active-station-did-change', station);
 };
 
 /*
@@ -309,64 +406,73 @@ Session.prototype._cancelOutstandingRequests = function() {
 
   log('no more outstanding requests');
 
-  this.nextItemInProgress = false;
+  this.nextPlayInProgress = false;
 };
 
 /**
  * Request a new play if we aren't already getting one or
- * have one already.
+ * have one already. When a new play is retrieved, a 
+ * 'next-play-available' event is triggered. Note that if
+ * a nextPlay is already available and this method is called,
+ * it will not trigger a new 'next-play-available' event - so
+ * make sure you check wether there is a nextPlay before
+ * calling this.
  */
 
-Session.prototype.requestNextItem = function() {
+Session.prototype.requestNextPlay = function() {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
   var session = this;
 
-  if ((this.nextItem !== null) || this.nextItemInProgress) {
+  if ((this.nextPlay !== null) || this.nextPlayInProgress) {
     return;
   }
 
-  this.nextItemInProgress = true;
+  this.nextPlayInProgress = true;
 
   var playRequest = Request.requestPlay(this.activeStation.id, 
                 this.supportedAudioFormats, this.maxBitrate);
 
   playRequest.success = function(res) {
-    var nextItem;
+    var nextPlay;
     
     if (res.play) {
-      nextItem = new Play(res.play);
+      nextPlay = new Play(res.play);
     }
 
-    if (nextItem) {
-      session._nextItemSucceeded(nextItem);
+    if (nextPlay) {
+      session._nextPlaySucceeded(nextPlay);
     } else {
-      session._nextItemFailed(new Error('FMErrorCodeUnexpectedReturnType'));
+      session._nextPlayFailed(new Error('FMErrorCodeUnexpectedReturnType'));
     }
   };
 
   playRequest.failure = function(err) {
-    session._nextItemFailed(err);
+    session._nextPlayFailed(err);
   };
 
   this._sendRequest(playRequest);
 };
 
-Session.prototype._nextItemSucceeded = function(nextItem) {
-  log('next item fetch succeeded');
+Session.prototype._nextPlaySucceeded = function(nextPlay) {
+  log('next play fetch succeeded');
 
-  this.nextItemInProgress = false;
+  this.nextPlayInProgress = false;
 
-  this._setNextItem(nextItem);
+  this._setNextPlay(nextPlay);
 };
 
-Session.prototype._nextItemFailed = function(err) {
-  log('next item fetch failed');
+Session.prototype._nextPlayFailed = function(err) {
+  log('next play fetch failed');
 
-  this.nextItemInProgress = false;
+  this.nextPlayInProgress = false;
 
   if (err.message = 'FMErrorCodeNoAvailableMusic') {
-    this.trigger('no-more-music');
+    if (this.currentPlay === null) {
+      this.trigger('no-more-music');
+
+    } // else swallow this, and reportComplete() will kick off another try 
+      // upon completion of the playing song.
 
   } else {
     this._handleUnexpectedError(err);
@@ -374,8 +480,8 @@ Session.prototype._nextItemFailed = function(err) {
 };
 
 /**
- * After playback of the nextItem has begun, call this
- * method to promote the nextItem to the currentItem
+ * After playback of the nextPlay has begun, call this
+ * method to promote the nextPlay to the currentPlay
  * and tell the server we have started playback.
  */
 
@@ -384,23 +490,35 @@ Session.prototype.playStarted = function() {
 
   var session = this;
 
-  if (!this.nextItem) {
+  if (!this.nextPlay) {
     return;
   }
 
-  this._setCurrentItem(this.nextItem);
-  this._setNextItem(null);
+  this._setCurrentPlay(this.nextPlay);
+  this._setNextPlay(null);
 
-  var startRequest = Request.requestStart(this.currentItem.id);
+  var startRequest = Request.requestStart(this.currentPlay.id);
 
   startRequest.success = function(res) {
+    var oldCanSkip = session.canSkip;
     session.canSkip = !!(res.can_skip);
-    session.trigger('skip-status', session.canSkip);
 
-    session.requestNextItem();
+    if (oldCanSkip !== session.canSkip) {
+      session.trigger('skip-status-did-change', session.canSkip);
+    }
+
+    session.requestNextPlay();
   };
 
   startRequest.failure = function(err) {
+    if (err.code === 20) {
+      // server thinks we started this already.. let's pretend this
+      // is a successful start
+      session.requestNextPlay();
+
+      return;
+    }
+
     session._handleUnexpectedError(err);
   };
 
@@ -414,8 +532,8 @@ Session.prototype.playStarted = function() {
 Session.prototype.updatePlay = function(elapsedTime) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
-  if (this.currentItem && this.currentItem.id) {
-    var elapseRequest = Request.requestElapse(this.currentItem.id, elapsedTime);
+  if (this.currentPlay && this.currentPlay.id) {
+    var elapseRequest = Request.requestElapse(this.currentPlay.id, elapsedTime);
 
     this._sendRequest(elapseRequest);
   }
@@ -423,15 +541,21 @@ Session.prototype.updatePlay = function(elapsedTime) {
 
 /**
  * Inform the server that the current song has completed,
- * and clear out the current item.
+ * and clear out the current play.
  */
 
 Session.prototype.playCompleted = function() {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
   this._oneShotRequest(Request.requestComplete);
+
+  if (!this.nextPlay && !this.nextPlayInProgress) {
+    // We might have run out of music. Ask the server again for a song
+    this.requestNextPlay();
+  }
   
-  this.setCurrentItem(null);
+  this._setCurrentPlay(null);
+
 };
 
 /**
@@ -473,11 +597,11 @@ Session.prototype.requestDislike = function() {
 Session.prototype._oneShotRequest = function(ctor) {
   var session = this;
 
-  if (!this.currentItem) {
+  if (!this.currentPlay) {
     return;
   }
 
-  var playId = this.currentItem.id;
+  var playId = this.currentPlay.id;
 
   var request = ctor(playId);
   request.failure = function(err) {
@@ -498,7 +622,7 @@ Session.prototype.requestSkip = function(success, failure) {
 
   var session = this;
 
-  if (this.currentItem === null) {
+  if (this.currentPlay === null) {
     log('tried to skip but no currently playing song');
     if (failure) {
       failure(new Error('FMErrorCodeInvalidSkip'));
@@ -506,9 +630,14 @@ Session.prototype.requestSkip = function(success, failure) {
     return;
   }
 
-  var skipRequest = Request.requestSkip(this.currentItem.id, -1);
+  var skipRequest = Request.requestSkip(this.currentPlay.id, -1);
   skipRequest.success = function() {
-    session.setCurrentItem(null);
+    session._setCurrentPlay(null);
+
+    if (!session.nextPlay && !session.nextPlayInProgress) {
+      // We might have run out of music. Ask the server again for a song
+      session.requestNextPlay();
+    }
 
     if (success) {
       success();
@@ -516,7 +645,20 @@ Session.prototype.requestSkip = function(success, failure) {
   };
 
   skipRequest.failure = function(err) {
-    session.canSkip = false;
+    if (err.code === 9) {
+      if (session.canSkip) {
+        session.canSkip = false;
+
+        session.trigger('skip-status-did-change', session.canSkip);
+      }
+
+      if (failure) {
+        failure(err);
+      }
+
+      return;
+    }
+
     if (failure) {
       failure(err);
     } else {
@@ -527,31 +669,23 @@ Session.prototype.requestSkip = function(success, failure) {
   this._sendRequest(skipRequest);
 };
 
-Session.prototype.rejectItem = function(item) {
+Session.prototype.rejectPlay = function() {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
   var session = this;
 
-  var isCurrentItem = (item === this.currentItem);
-  var isNextItem = (item === this.nextItem);
-
-  if (isCurrentItem) {
-    this.setCurrentItem(null);
-
-  } else if (isNextItem) {
-    this.setNextItem(null);
-
-  } else {
-    // not current or next item - nobody cares!
+  if (!this.nextPlay) {
     return;
   }
 
-  var invalidateRequest = Request.requestInvalide(item.id);
+  var play = this.nextPlay;
+
+  this._setNextPlay(null);
+
+  var invalidateRequest = Request.requestInvalidate(play.id);
   invalidateRequest.success = function() {
     log('invalidate success!');
-    if (isNextItem) {
-      session.requestNextItem();
-    }
+    session.requestNextPlay();
   };
 
   invalidateRequest.failure = function(err) {
@@ -578,6 +712,5 @@ Session.prototype.handleUnexpectedError = function(err) {
     }
   }
 };
-
 
 module.exports = Session;
