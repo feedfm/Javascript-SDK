@@ -1,77 +1,79 @@
 /*global module:false */
 
+var log = require('./log');
+var Auth = require('./auth');
+var Events = require('./events');
+var Request = require('./request');
+var Play = require('./play');
+var Station = require('./station');
+var _ = require('underscore');
+
+var DEFAULT_FORMATS = 'mp3';
+var DEFAULT_BITRATE = 128;
+
 /**
- *  Feed Media Session API
+ * This indicates a response was received from the Feed.fm servers
+ * and music is available for this client. This event is triggered
+ * after {@link Session#setCredentials} is called. Upon receipt of
+ * this event, {@link Session#requestNextPlay} should be called to
+ * kick of retrieving music from Feed.fm.
  *
- *  This class is based on the iOS FMSession class.
+ * @event Session#session-available
+ */
+
+/**
+ * This indicates a response was received from the Feed.fm servers
+ * and they say this client may not retrieve music. This event is
+ * triggered after {@link Session#setCredentials} is called.
  *
- *  This class talks to the Feed.fm REST API to pull audio items for playback. It holds a 'currentPlay'
- *  that represents the song that has started playback for the user, and the 'nextPlay', which will
- *  be the next song to play. 
+ * @event Session#session-not-available
+ */
+
+/**
+ * This indicates {@link Session#nextPlay} has a non-null
+ * value.
  *
- *  The general usage of this class is:
+ * @event Session#next-play-available
+ */
+
+/**
+ * This indicates the {@link Session#currentPlay} value has
+ * changed. The new value may be null (indicating the most
+ * recently playing song completed) or non-null (indicating
+ * {@link Session#playStarted} has been called and what was
+ * previously the {@link Session#nextPlay} has now become
+ * the {@link Session#currentPlay}.
  *
- *  var session = new Feed.Session();
+ * @event Session#current-play-did-change
+ */
+
+/**
+ * This indicates that the {@link Session#activeStation}
+ * values has changed. A call to {@link Session#requestNextPlay}
+ * should be made to kick off retrieval of music from this
+ * new station.
  *
- *  session.on('session-available', function() {
- *    // music is available for the user.
- *    // session.getStations() will return list of available stations.
- *    // use session.setStation() to pick station, if we don't want default
- *    session.requestNextPlay();   // start retrieving songs
- *  });
+ * @event Session#active-station-did-change
+ */
+
+/**
+ * This indicates the {@link Session#canSkip} value has changed
  *
- *  session.on('session-not-available', function() {
- *    // no music is available for the user for some reason
- *  });
+ * @event Session#skip-status-did-change
+ */
+
+/**
+ * This indicates no more music is available in the current
+ * station and retrieval of music from Feed.fm has stopped.
  *
- *  session.on('next-play-available', function(nextPlay) {
- *    // if session.currentPlay is null, then try to start playback of
- *    // nextPlay and then call
+ * @event Session#no-more-music
+ */
+
+/**
+ * This indicates an unexpecte error was received from the
+ * server, and so music retrieval has stopped.
  *
- *    session.playStarted();
- *
- *    // now session.currentPlay becomes nextPlay
- *    // when playback of session.currentPlay completes, call
- *    // session.playCompleted();
- *  });
- *
- *  session.on('current-play-changed', function(currentPlay) {
- *    // when currentPlay is not null, this means we just started playback of currentPlay
- *    // when currentPlay is null, it means we just completed playback of a song,
- *    //    and if nextPlay is not null, we should begin playback of it and call session.playStarted()
- *    //        else nextPlay is null and we're waiting for the next song
- *  });
- *
- *  session.on('no-music-available', function() {
- *    // no more music is available for the current station at the moment
- *  });
- *
- *  session.setCredentials('token', 'secret'); // kicks off request to server for session
- *
- *  It is best to think of this class as constantly trying to keep a song in the queue for playback.
- *  When you advance a song in it from next to current (by calling 'playStarted'), the class tries
- *  to get another song queued up for you automatically.
- *
- *  This class requires that you pass it a token and secret so that it can sign
- *  requests and retrieve a client UUID for interacting with the API service.
- *
- *  This class saves the client UUID as a cookie or in local HTML storage so it can be
- *  reused with future requests.
- *
- *  This class emits a number of events:
- *
- *    session-not-available
- *    session-available
- *
- *    next-play-available
- *    current-play-did-change
- *
- *    active-station-did-change
- *    skip-status-did-change
- *    no-more-music
- *
- *    unexpected-error
- *
+ * @event Session#unexpected-error
  */
 
 /*
@@ -98,27 +100,85 @@
  * learnings:
  *   check for available play credits when making session, so shortcut need for
  *     requestNextPlay()
+ *
  */
 
-var log = require('./log');
-var Auth = require('./auth');
-var Events = require('./events');
-var Request = require('./request');
-var Play = require('./play');
-var Station = require('./station');
-var _ = require('underscore');
-
-var DEFAULT_FORMATS = 'mp3';
-var DEFAULT_BITRATE = 128;
-
-/**
- * Create a new session. Optionally pass in an options object
- * with the following properties:
+ /**
+ * @constructor
+ * @classdesc 
  *
- *   audioFormats = string with comma separated list of preferred
- *                  media formats: mp3 or aac
+ * This class talks to the Feed.fm REST API to pull audio items for
+ * playback. It holds a {@link Session#currentPlay} that represents
+ * the song that has started playback for the user, and the 
+ * {@link Session#nextPlay}, which will be the next song to play when
+ * the currentPlay is completed.
  *
- **/
+ * A call to {@link Session#setCredentials} kicks off a request to
+ * the Feed.fm servers to see if the client can play music. Either
+ * a {@link Session#event:session-available} or 
+ * {@link Session#event:session-not-available} event will be triggered
+ * to indicate if the user is given a session to request music with.
+ *
+ * If {@link Session#event:session-available} is triggered, then the
+ * client can call {@link Session#requestNextPlay} to kick off retrieval
+ * of music for playback.
+ *
+ * The general usage of this class is:
+ *
+ * ```
+ * var session = new Feed.Session();
+ *
+ * session.on('session-available', function() {
+ *   // music is available for the user.
+ *   // session.getStations() will return list of available stations.
+ *   // use session.setStation() to pick station, if we don't want default
+ *   session.requestNextPlay();   // start retrieving songs
+ * });
+ *
+ * session.on('session-not-available', function() {
+ *   // no music is available for the user for some reason
+ * });
+ *
+ * session.on('next-play-available', function(nextPlay) {
+ *   // if session.currentPlay is null, then try to start playback of
+ *   // nextPlay and then call session.playStarted();
+ *
+ *   // if session.currentPlay is not null, then we could start
+ *   // loading the audio data for nextPlay in anticipation of
+ *   // playing this song next
+ * });
+ *
+ * session.on('current-play-changed', function(currentPlay) {
+ *   // when currentPlay is not null, this means we just started
+ *   // playback of currentPlay
+ *
+ *   // when currentPlay is null, it means we just completed playback
+ *   // of a song. If nextPlay is not null, we should try to begin
+ *   // playback of it and call session.rejectPlay() (if the song couldn't
+ *   // be retrieved or started) or session.playStarted() followed by
+ *   // session.requestSkip() or session.playCompleted().
+ *   // Iff nextPlay is null then we're still waiting for the next
+ *   // song and can expect a next-play-available event soon.
+ * });
+ *
+ * session.on('no-music-available', function() {
+ *   // no more music is available for the current station.
+ * });
+ *
+ * session.setCredentials('token', 'secret'); // kicks off request to server for session
+ * ```
+ *
+ * It is best to think of this class as constantly trying to
+ * keep a song in the queue for playback. When you advance a song
+ * in it from next to current (by calling {@link Session#playStarted}), the class
+ * tries to get another song queued up for you automatically.
+ *
+ * @constructor
+ * @param {object} options - options for the session
+ * @param {string} [options.audioFormats=mp3] - string with comma separated list of 
+ *                                              preferred media formats: mp3 or aac
+ * @param {string} [options.maxBitrate=128] - max bitrate (in kbps) of requested audio files
+ */
 
 var Session = function(options) {
   if (!options) { options = {}; }
@@ -127,28 +187,63 @@ var Session = function(options) {
   this.auth = null;
 
   this.supportedAudioFormats = options.audioFormats || DEFAULT_FORMATS; // , separated string of 'aac', 'mp3'
-  this.maxBitrate = DEFAULT_BITRATE;      // max bitrate to request
+  this.maxBitrate = options.maxBitrate || DEFAULT_BITRATE;      // max bitrate to request
 
-  this.activeStation = null;  // holds ref to active station
+  /** 
+   * @readonly
+   * @member {object} - reference to the station we're pulling songs from 
+   */
+  this.activeStation = null;
+
+  /** 
+   * @readonly
+   * @member {object[]} - array of station objects that represent available
+   *                       stations we can tune to 
+   */
   this.stations = [];         // holds list of known stations
 
-  this.available = null;      // true = music available, false = no music available, null = unknown
+  /** 
+   * @readonly
+   * @member {boolean} - when true, music is available; when false, no music is available;
+   *                      when null, we don't know if music is available yet
+   */
+  this.available = null;
 
-  this.currentPlay = null;         // ref to current 'active' play
-  this.nextPlay = null;            // ref to queued 'next' play
+  /**
+   * @readonly
+   * @member {object} - song that is currently being played back to user
+   */
+  this.currentPlay = null;
+
+  /**
+   * @readonly
+   * @member {object} - song that is queued to be played next. This will become the
+   *                     {@link Session#currentPlay} when {@link Session#playStarted}
+   *                     is called.
+   */
+  this.nextPlay = null;
+
   this.nextPlayInProgress = false; // true if we're already waiting next play response
 
   this.requestsInProgress = [];  // network requests we're awaiting a response
 
-  this.canSkip = false;     // if false, the current song may not be skipped
+  /**
+   * @readonly
+   * @member {boolean} - if false, the current song may not be skippedj
+   */
+  this.canSkip = false;
 
   // add event handling
   _.extend(this, Events);
 };
 
 /**
- * Save all the state variables for this instance so that we might
- * recreate the state in the future (or another window, for example).
+ * Save all the state variables for this instance into a simple
+ * object so that we might recreate the state in the future
+ * (or another window, for example).
+ *
+ * @return {object} a simple object to be passed to 
+ *       {@link Session#unsuspend} at a later time.
  */
 
 Session.prototype.suspend = function(elapsed) {
@@ -169,6 +264,8 @@ Session.prototype.suspend = function(elapsed) {
 /**
  * Restore the state of this session from a previously suspended
  * station.
+ *
+ * @param {object} state - value returned from {@link Session#suspend}
  */
 
 Session.prototype.unsuspend = function(state) {
@@ -193,7 +290,11 @@ Session.prototype.unsuspend = function(state) {
 /**
  * Assign public and private tokens and kick off request to
  * ask server for a session, leading ultimately to
- * 'session-available' or 'session-not-available' being triggered.
+ * {@link Session#event:session-available} or 
+ * {@link Session#event:session-not-available} being triggered.
+ *
+ * @param {string} token token provided by feed.fm
+ * @param {string} secret secret provided by feed.fm
  */
 
 Session.prototype.setCredentials = function(token, secret) {
@@ -209,29 +310,10 @@ Session.prototype.setCredentials = function(token, secret) {
 };
 
 /**
- * Zero out any current and next play, cancel any outstanding
- * requests, and then request a new next play.
- */
-
-Session.prototype.resetAndRequestNextPlay = function() {
-  if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
-
-  if (this.currentPlay !== null) {
-    log('resetting current play');
-    this.currentPlay = null;
-  }
-
-  if (this.nextPlay !== null) {
-    log('resetting next play');
-    this.nextPlay = null;
-  }
-
-  this._cancelOustandingRequests();
-};
-
-/*
  * Assign new nextPlay. Trigger 'next-play-available' event
  * when non-null.
+ *
+ * @private
  */
 
 Session.prototype._setNextPlay = function(nextPlay) {
@@ -252,9 +334,11 @@ Session.prototype._setNextPlay = function(nextPlay) {
   }
 };
 
-/*
+/**
  * Assign new currentPlay. Trigger 'current-play-did-change'
  * event.
+ *
+ * @private
  */
 
 Session.prototype._setCurrentPlay = function(currentPlay) {
@@ -272,12 +356,15 @@ Session.prototype._setCurrentPlay = function(currentPlay) {
 
 /**
  * Set the current station from which we pull music and trigger
- * an 'active-station-did-change' event. This kills
+ * an {@link Session#event:active-station-did-change} event. This kills
  * any background requests for new plays and throws away any
- * existing 'nextPlay'. You'll need to
- * call 'requestNextPlay()' to start pulling in new music after
- * making this call or receiving the 'active-station-did-change'
+ * existing {@link Session#nextPlay} value. You'll need to
+ * call {@link Session#requestNextPlay} to start pulling in new music after
+ * making this call or receiving the {@link Session#event:active-station-did-change}
  * event.
+ *
+ * @param {object} station - a station (available from 
+ *    {@link Session#stations})
  */
 
 Session.prototype.setStation = function(station) {
@@ -298,10 +385,12 @@ Session.prototype.setStation = function(station) {
   this.trigger('active-station-did-change', station);
 };
 
-/*
+/**
  * Ask the server to start a new session. This will
  * trigger a 'session-available' or 'session-not-available'
  * event.
+ *
+ * @private
  */
 
 Session.prototype._requestSession = function() {
@@ -353,9 +442,11 @@ Session.prototype._requestSession = function() {
   sessionRequest.send();
 };
 
-/*
+/**
  * Add authentication credentials to the given request,
  * make a note that we're sending it, then send it out.
+ *
+ * @private
  */
 
 Session.prototype._sendRequest = function(req) {
@@ -391,8 +482,10 @@ Session.prototype._sendRequest = function(req) {
   req.send();
 };
 
-/*
+/**
  * Cancel any outstanding requests we might be waiting on.
+ *
+ * @private
  */
 
 Session.prototype._cancelOutstandingRequests = function() { 
@@ -412,11 +505,9 @@ Session.prototype._cancelOutstandingRequests = function() {
 /**
  * Request a new play if we aren't already getting one or
  * have one already. When a new play is retrieved, a 
- * 'next-play-available' event is triggered. Note that if
- * a nextPlay is already available and this method is called,
- * it will not trigger a new 'next-play-available' event - so
- * make sure you check wether there is a nextPlay before
- * calling this.
+ * {@link Session#event:next-play-available} event is triggered.
+ * Note that if a {@link Session#nextPlay} is already not null
+ * and this method is called, nothing will happen.
  */
 
 Session.prototype.requestNextPlay = function() {
@@ -480,9 +571,11 @@ Session.prototype._nextPlayFailed = function(err) {
 };
 
 /**
- * After playback of the nextPlay has begun, call this
- * method to promote the nextPlay to the currentPlay
- * and tell the server we have started playback.
+ * After playback of the {@link Session#nextPlay} has begun, call this
+ * method to promote the play to {@link Session#currentPlay},
+ * null out the value of {@link Session#nextPlay},
+ * tell the server we have started playback, and start requesting the
+ * next value for {@link Session#nextPlay}.
  */
 
 Session.prototype.playStarted = function() {
@@ -526,7 +619,11 @@ Session.prototype.playStarted = function() {
 };
 
 /**
- * Inform the server that we have elapsed playback
+ * Inform the server that we have elapsed playback. This may be
+ * called multiple times during playback.
+ *
+ * @param {number} elapsedTime - total number of seconds of the 
+ *   current song that have played since the song started.
  */
 
 Session.prototype.updatePlay = function(elapsedTime) {
@@ -541,7 +638,8 @@ Session.prototype.updatePlay = function(elapsedTime) {
 
 /**
  * Inform the server that the current song has completed,
- * and clear out the current play.
+ * set {@link Session#currentPlay} to null, and ensure that
+ * a request for the next song is in progress or has completed.
  */
 
 Session.prototype.playCompleted = function() {
@@ -569,7 +667,7 @@ Session.prototype.requestLike = function() {
 };
 
 /**
- * Remove a like from the current song
+ * Mark the currently playing song as neither liked nor disliked.
  */
 
 Session.prototype.requestUnlike = function() {
@@ -579,7 +677,7 @@ Session.prototype.requestUnlike = function() {
 };
 
 /**
- * Mark a song as disliked
+ * Mark the currently playing song as disliked.
  */
 
 Session.prototype.requestDislike = function() {
@@ -588,10 +686,12 @@ Session.prototype.requestDislike = function() {
   this._oneShotRequest(Request.requestDislike);
 };
 
-/*
+/**
  * Send a simple request to the server that
  * requires the current play id. Ignore successful
  * response and log error response.
+ *
+ * @private
  */
 
 Session.prototype._oneShotRequest = function(ctor) {
@@ -613,8 +713,14 @@ Session.prototype._oneShotRequest = function(ctor) {
 
 /**
  * Ask the server if we can skip the current song.
- * Call the success or failure arguments depending on
- * the response.
+ * Call the optional success or failure functions depending on
+ * the response. If the server allows the skip, then
+ * a virtual {@link Session#playCompleted} call is made you can
+ * expect a {@link Session#event:current-play-did-change} event
+ * that sets {@link Session#currentPlay} to null. If the
+ * server disallows the skip (despite {@link Session#canSkip} being
+ * true) a {@link Session#event:skip-status-did-change}
+ * event is triggered.
  */
 
 Session.prototype.requestSkip = function(success, failure) {
@@ -669,6 +775,14 @@ Session.prototype.requestSkip = function(success, failure) {
   this._sendRequest(skipRequest);
 };
 
+/**
+ * If we are unable to start playback of {@link Session#nextPlay},
+ * then call this in place of {@link Session#playStarted} to report
+ * the song as being unplayable. This will kick off a request for
+ * a new {@link Session#nextPlay} value (and associated 
+ * {@link Session#event:next-play-available} event).
+ */
+
 Session.prototype.rejectPlay = function() {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
@@ -695,6 +809,12 @@ Session.prototype.rejectPlay = function() {
   this._sendRequest(invalidateRequest);
 };
 
+/**
+ * Deal with some unexpected server response.
+ *
+ * @private
+ */
+
 Session.prototype.handleUnexpectedError = function(err) {
   if (err.message === 'FMErrorCodeInvalidRegion') {
     log('invalid region!');
@@ -708,6 +828,19 @@ Session.prototype.handleUnexpectedError = function(err) {
       this.trigger('session-not-available');
 
     } else {
+
+      if (this.currentPlay !== null) {
+        log('resetting current play');
+        this.currentPlay = null;
+      }
+
+      if (this.nextPlay !== null) {
+        log('resetting next play');
+        this.nextPlay = null;
+      }
+
+      this._cancelOutstandingRequests();
+
       this.trigger('unexpected-error', err);
     }
   }

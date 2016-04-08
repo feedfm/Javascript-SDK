@@ -64,6 +64,22 @@
  *
  */
 
+/*
+ * changes:
+ *  - add in classes for reporting errors.
+ *  - state classes are 
+ *     'state-unitialized': player should be hidden
+ *     'state-ready': big play button
+ *     'state-playing': pause, skip, like, dislike
+ *     'state-paused': play, skip, like, dislike
+ *     'state-requesting-skip': play/pause, like, dislike
+ *     'state-waiting-for-item': pause
+ *     'state-suspended':  ??
+ *
+ *  button-enable/disable states will be independent of overall state.
+ *
+ */
+
 var _ = require('underscore');
 var $ = require('jquery');
 

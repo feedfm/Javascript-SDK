@@ -13,6 +13,7 @@ var gutil = require('gulp-util');
 var uglify = require('gulp-uglify');
 var sourcemaps = require('gulp-sourcemaps');
 var assign = require('lodash.assign');
+var jsdoc = require('gulp-jsdoc3');
 
 // browserify, minify, gen source maps
 function buildScript(file, watch) {
@@ -28,6 +29,8 @@ function buildScript(file, watch) {
     bundler = watchify(bundler);
   }
 
+  var start;
+
   function rebundle() {
     return bundler.bundle()
       // log errors if they happen
@@ -39,13 +42,20 @@ function buildScript(file, watch) {
         .pipe(uglify({ output: { ascii_only: true, comments: preserveComments } }))
         .on('error', gutil.log)
       .pipe(sourcemaps.write('./'))
-      .pipe(gulp.dest('./dist'));
+      .pipe(gulp.dest('./dist'))
+      .on('finish', function() {
+        gutil.log('Finished build after ' + (Date.now() - start) + 'ms');
+      });
   }
 
   bundler.on('update', function() {
+    start = Date.now();
+    gutil.log('Starting build...');
     rebundle();
-    gutil.log('Rebundle...');
   });
+
+  start = Date.now();
+  gutil.log('Starting build...');
   return rebundle();
 }
 
@@ -55,13 +65,25 @@ function preserveComments(node, comment) {
 }
 
 
+gulp.task('docs', function(cb) {
+  var config = {
+    plugins: [ 'plugins/markdown' ],
+    opts: {
+      destination: './html/docs'
+    }
+  };
 
+  gulp.src(['README.md', './src/feed.js', './src/session.js' ], {read: false})
+      .pipe(jsdoc(config, cb));
+});
 
 gulp.task('build', function() {
   return buildScript('feed.js', false);
 });
 
-gulp.task('default', ['build'], function() {
+gulp.task('default', [ 'docs' ], function() {
+  gulp.watch('src/*.js', [ 'docs' ]);
+
   return buildScript('feed.js', true);
 });
 

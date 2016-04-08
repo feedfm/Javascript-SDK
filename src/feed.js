@@ -2,10 +2,6 @@
 
 /*! A Feed.fm joint: github.com/fuzz-radio/Javascript-SDK */
 
-/*
- * This is the object we export as 'Feed' when everything is bundled up.
- */
-
 var Session = require('./session');
 var Auth = require('./auth');
 var Request = require('./request');
@@ -18,11 +14,21 @@ var Player = require('./player');
 var getSpeaker = require('./speaker');
 */
 
-module.exports = {
+/**
+ * Feed is the namespace through which you can access
+ * the various classes.
+ * 
+ * @namespace
+ * @property {Session} Session - ref to Session class
+ */
+
+var Feed = {
   Session: Session,
+
   Auth: Auth,
   Request: Request,
   Client: Client
+
 //  Player: Player,
 //  PlayerView: PlayerView,
 //  log: log,
@@ -30,3 +36,4 @@ module.exports = {
 //  _getSpeaker: getSpeaker
 };
 
+module.exports = Feed;

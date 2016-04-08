@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width">
+	<title>Documentation Index</title>
+
+	<!--[if lt IE 9]>
+	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+	<link type="text/css" rel="stylesheet" href="styles/sunlight.default.css">
+
+	<link type="text/css" rel="stylesheet" href="styles/site.simplex.css">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-default navbar-fixed-top ">
+<div class="container">
+	<div class="navbar-header">
+		<a class="navbar-brand" href="index.html">Documentation</a>
+		<button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#topNavigation">
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+        </button>
+	</div>
+	<div class="navbar-collapse collapse" id="topNavigation">
+		<ul class="nav navbar-nav">
+			
+			<li class="dropdown">
+				<a href="namespaces.list.html" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b class="caret"></b></a>
+				<ul class="dropdown-menu ">
+					<li><a href="Feed.html">Feed</a></li>
+				</ul>
+			</li>
+			
+			<li class="dropdown">
+				<a href="classes.list.html" class="dropdown-toggle" data-toggle="dropdown">Classes<b class="caret"></b></a>
+				<ul class="dropdown-menu ">
+					<li><a href="Session.html">Session</a></li>
+				</ul>
+			</li>
+			
+			<li class="dropdown">
+				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
+				<ul class="dropdown-menu ">
+					<li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li>
+				</ul>
+			</li>
+			
+		</ul>
+		<div class="col-sm-3 col-md-3">
+            <form class="navbar-form" role="search">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Search" name="q" id="search-input">
+                    <div class="input-group-btn">
+                        <button class="btn btn-default" id="search-submit"><i class="glyphicon glyphicon-search"></i></button>
+                    </div>
+                </div>
+            </form>
+        </div>
+	</div>
+
+</div>
+</div>
+
+
+<div class="container" id="toc-content">
+<div class="row">
+
+	
+	<div class="col-md-8">
+	
+		<div id="main">
+			
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+    <section class="readme-section">
+        <article><p>Feed Media SDK for Javascript Quickstart Guide</p>
+<h1>Introduction</h1><p>The Feed Media SDK for Javascript allows you to play DMCA compliant radio within your browser.
+You can read more about the Feed Media API at <a href="http://feed.fm/documentation">http://feed.fm/</a>. The primary object used
+to communicate with the Feed API is the <code>Feed.Session</code> class, which handles authentication
+and interfaces with the Feed REST endpoints. You probably won't use that, however. You'll
+use an instance of the <code>Feed.Player</code> class, which hides the complexity of requesting new
+songs from the server via Feed.Session, and just exports a simple API for starting/stopping
+music playback and getting updates on the status. The <code>Feed.PlayerView</code>
+is an example class that makes use fo the <code>Feed.Player</code> to visualize a simple HTML player.</p>
+<p>This javascript library requires a browser that can do CORS (Firefox 3.5+, Safari 4+, Chrome 3+,
+IE 10+).</p>
+<p>Before you begin, you should have an account at feed.fm where you've created a set of 
+authentication credentials (<em>token</em> and <em>secret</em>) and set up at least one <em>placement</em>
+If you have not already done so, please go to <a href="http://feed.fm/dashboard">http://feed.fm/</a>. </p>
+<h1>1 Minute Guide to Creating a Player and Streaming Music</h1><p>0) Pull up <em><a href="http://jsbin.com/uweSavU/5/edit?html,output">this jsbin</a></em> page so you don't have to
+type anything.</p>
+<p>1) Include the 'dist/feed.js' source in your HTML - either directly from
+your website or from feed.fm:</p>
+<pre class="prettyprint source lang-html"><code>&lt;script type='application/javascript' src='http://feed.fm/js/latest/feed.js'>&lt;/script></code></pre><p>If you've already got jQuery in your page, you can use 'js/latest/feed-without-jquery.js' and
+the player will use the global window.jQuery object.</p>
+<p>2) Enter the minimal HTML to display the player:</p>
+<pre class="prettyprint source lang-html"><code>&lt;div id=&quot;player-view-div&quot;>
+  &lt;div class='status'>&lt;/div>
+  &lt;button class=&quot;play-button&quot;>play&lt;/button>
+  &lt;button class=&quot;pause-button&quot;>pause&lt;/button>
+  &lt;button class=&quot;skip-button&quot;>skip&lt;/button>
+&lt;/div></code></pre><p>3) Create an instance of the player and the player view:</p>
+<pre class="prettyprint source lang-js"><code>  var player = new Feed.Player('your-token', 'your-secret', { secure: true });
+
+  var playerView = new Feed.PlayerView('player-view-div', player);
+
+  player.tune(); // or player.play() to auto-play immediately</code></pre><p>The user can now start/stop music via the simple player interface.</p>
+<h1>Working with Feed.PlayerView</h1><p>Feed.PlayerView should be given the ID of an element in the page and
+a reference to a Feed.Player instance, and it will update child elements
+based on player events and listen to user clicks to tell the Feed.Player
+to pause/play/skip. Child elements are identified by their class
+name and are used as described below:</p>
+<ul>
+<li>status - This is updated to display the song currently being played,
+or the name of the placement that we're streaming from. The 
+'formatPlay(play)' method can be overridden to change how the current
+song is formatted, and the 'formatPlacement(placement)' method can
+be overriden to change how the placement is formatted. Also, if
+there are errors or alerts that need to be displayed, those are
+placed here and an 'alert' class is added to this element. After
+displaying an alert, the status is automatically reverted back to
+the song or placement text after a few seconds.</li>
+<li>elapsed - As a song is playing, the text of this element is updated
+with the elapsed playback time in the format '0:00'.</li>
+<li>duration - When a song starts playing, the text of this element
+is set to the total duration of the song in the format '0:00'.</li>
+<li>progress - While a song is playing the 'width' of this element is
+changed from 0% to 100%.</li>
+<li>play-button - When clicked, this will start playback. This button
+may be disabled (for instance, when a song is already playing). The
+button is enabled by adding a 'button-enabled' class. The button
+is disabled by adding a 'button-disabled' class and setting the
+'disabled' attribute to true.</li>
+<li>pause-button - When clicked, this will pause playback. This button
+may be disabled (for instance, when a song is already paused). The
+button is enabled by adding a 'button-enabled' class. The button
+is disabled by adding a 'button-disabled' class and setting the
+'disabled' attribute to true.</li>
+<li>skip-button - When clicked, this will request a song skip. This button
+may be disabled (for instance, when a song may not be skipped). The
+button is enabled by adding a 'button-enabled' class. The button
+is disabled by adding a 'button-disabled' class and setting the
+'disabled' attribute to true.</li>
+</ul>
+<p>The sample <a href="http://jsbin.com/uweSavU/5/edit?html,output">jsbin</a> has a function to
+display in the javascript console all the events that the player emits.</p>
+<p>When creating your own player skin, most everything can be stylized
+without having to edit javascript. For most projects, you should be able
+to fully customize the player using only CSS rules that take into account
+the 'button-enabled' and 'button-disabled' classes, along with the state
+of the player that is attached as a class to the top level HTML element
+of the player.</p>
+<h1>Working with Feed.Player</h1><p>The Feed.Player class retrieves music from the Feed.fm servers and
+sends them to the browser for playback. The class requires a 
+token and secret in order to create an instance of the player:</p>
+<pre class="prettyprint source lang-js"><code>  var player = new Feed.Player('token', 'secret', { secure: true });</code></pre><p>The final argument is optional and lets you specify some extra parameters
+to for the player (fully documented <a href="https://github.com/fuzz-radio/Javascript-SDK/blob/master/src/player.js">here</a>).</p>
+<p>The player should be started with a call to <code>tune()</code> or <code>play()</code>.
+<code>tune()</code> will cause the player to load up information about the current
+placement, and <code>play()</code> will cause the player to <code>tune()</code> and then immediately
+start playing music.</p>
+<p>Music can be paused with a call to <code>pause()</code>, or skipped with a call
+to <code>skip()</code>, or resumed/started with a call to <code>play()</code>.</p>
+<p>The player emits named events that you can attach to in order to
+follow the state of the player. To follow an event, use the <code>on()</code>
+method, and to stop following an event use the <code>off()</code> method.
+Event handling comes from the BackBone.js project. Some example usage:</p>
+<pre class="prettyprint source lang-js"><code>  // simple callback
+  player.on('play-completed', function() { console.log('a play completed!'); });
+
+  // third argument sets 'this' for callback function
+  player.on('play-started', handler.someFunction, handler);
+
+  // passing 'all' as the event will cause all events to be sent to this callback
+  player.on('all', function(event) { console.log('received: ', event); });
+
+  // turn off all handlers for this event
+  player.off('play-completed');
+
+  // turn off a specific handler for this event
+  player.off('play-started', handler.someFunction);</code></pre><p>The player emits the following events:</p>
+<ul>
+<li><p>not-in-us - Feed.fm doesn't think the client is located in the US, and so it
+will refuse to serve up music. When this event is emitted, you can assume
+the player will no longer function.</p>
+</li>
+<li><p>placement - This event provides information about the placement 
+that music is being pulled from. This is called before any music starts,
+and also after a call to change the current placement via <code>setPlacementId()</code>.
+This includes information about the placement that was retrieved from the feed.fm
+servers. At this point, only the name and id of the placement are
+returned:</p>
+<pre class="prettyprint source lang-js"><code>  player.on('placement', function(placement) {
+    console.log('the placement id is ' + placement.id + ' and name ' + placement.name);
+  });</code></pre></li>
+<li><p>stations - This event provides the list of stations associated with the
+placement we are pulling music from. It is triggered before any music starts,
+and also after a call to change the current placement via <code>setPlacementId()</code>.</p>
+<p>```js
+  player.on('stations', function(stations) {</p>
+<pre class="prettyprint source"><code>console.log('there are ' + stations.length + ' stations. The first is named ' + stations[0].name);</code></pre><p>  });</p>
+</li>
+<li><p>play-started - This is sent when playback of a specific song has started.
+Details of the song that has just started are passed as an argument and
+look like the following:</p>
+<pre class="prettyprint source lang-json"><code>{
+  &quot;id&quot;:&quot;132459570&quot;,
+  &quot;station&quot;: { 
+    &quot;id&quot;:&quot;727&quot;,
+    &quot;name&quot;:&quot;Pretty Lights Music&quot;
+  },
+  &quot;audio_file&quot;: {
+    &quot;id&quot;:&quot;8707&quot;,
+    &quot;duration_in_seconds&quot;:349,
+    &quot;track&quot;: { 
+      &quot;id&quot;:&quot;15226435&quot;,
+      &quot;title&quot;:&quot;Starve the Ego, Feed the Soul&quot;
+    },
+    &quot;release&quot;: {
+      &quot;id&quot;:&quot;1550367&quot;,
+      &quot;title&quot;:&quot;Drink the Sea&quot;
+    },
+    &quot;artist&quot;: {
+      &quot;id&quot;:&quot;1176632&quot;,
+      &quot;name&quot;:&quot;The Glitch Mob&quot;
+    },
+    &quot;codec&quot;:&quot;mp3&quot;,
+    &quot;url&quot;:&quot;http://stor02.fuzzcdn.com/path/to/mp3&quot;
+  }
+}</code></pre></li>
+<li>play-paused - This is sent when playback of the current song is paused.</li>
+<li>play-resumed - This is sent when playback of the current song is resumed after
+pausing.</li>
+<li>play-completed - This is sent when playback of the current song is complete or
+is aborted (due to a skip, for instance).</li>
+<li>plays-exhausted - If there are no more songs that a user can listen to, this
+event is triggered.</li>
+<li>skip-denied - If a call was made to <code>skip()</code> to skip the current song, but the
+server denied it (due to skip restrctions), then this event will be emitted.</li>
+</ul>
+<p>In addition to responding to events, the current state of the player
+can be queried with <code>getCurrentState()</code>. That call will return one of the
+following strings:</p>
+<ul>
+<li>playing - the player is currently playing a song</li>
+<li>paused - the player is paused</li>
+<li>idle - the player has no song actively playing or paused</li>
+</ul>
+<p>Because mobile clients require audio playback to begin only during a user-initiated
+event, the player should only be initialized with <code>tune()</code> on a mobile device, and
+<code>play()</code> should be called in a <code>click</code> event handler.</p>
+<h1>Go Deeper</h1><p>The Feed.Player class is built on top of a Feed.Session class that manages
+authentication and low level communication with the feed server. In the normal
+state of events, you shouldn't need to work at this low of a level. If you do,
+feel free to contact eric@feed.fm for details.</p>
+<p>The Feed.Player class makes use of the exceptional
+<a href="http://www.schillmania.com/projects/soundmanager2/">SoundManager2</a> library. Details
+can be found in the <code>speaker.js</code> file, which encapsulates our usage of SM2.</p></article>
+    </section>
+
+
+
+
+
+
+
+		</div>
+	</div>
+
+	<div class="clearfix"></div>
+
+	
+		<div class="col-md-3">
+			<div id="toc" class="col-md-3 hidden-xs hidden-sm hidden-md"></div>
+		</div>
+	
+
+</div>
+</div>
+
+<div class="modal fade" id="searchResults">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Search results</h4>
+      </div>
+      <div class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div>
+
+<footer>
+
+
+<span class="jsdoc-message">
+	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
+	
+		on 2016-04-08T12:51:12-07:00
+	
+	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
+</span>
+</footer>
+
+<script src="scripts/docstrap.lib.js"></script>
+<script src="scripts/toc.js"></script>
+<script type="text/javascript" src="scripts/fulltext-search-ui.js"></script>
+
+<script>
+$( function () {
+	$( "[id*='$']" ).each( function () {
+		var $this = $( this );
+
+		$this.attr( "id", $this.attr( "id" ).replace( "$", "__" ) );
+	} );
+
+	$( ".tutorial-section pre, .readme-section pre" ).each( function () {
+		var $this = $( this );
+
+		var example = $this.find( "code" );
+		exampleText = example.html();
+		var lang = /{@lang (.*?)}/.exec( exampleText );
+		if ( lang && lang[1] ) {
+			exampleText = exampleText.replace( lang[0], "" );
+			example.html( exampleText );
+			lang = lang[1];
+		} else {
+			var langClassMatch = example.parent()[0].className.match(/lang\-(\S+)/);
+			lang = langClassMatch ? langClassMatch[1] : "javascript";
+		}
+
+		if ( lang ) {
+
+			$this
+			.addClass( "sunlight-highlight-" + lang )
+			.addClass( "linenums" )
+			.html( example.html() );
+
+		}
+	} );
+
+	Sunlight.highlightAll( {
+		lineNumbers : false,
+		showMenu : true,
+		enableDoclinks : true
+	} );
+
+	$.catchAnchorLinks( {
+        navbarOffset: 10
+	} );
+	$( "#toc" ).toc( {
+		anchorName  : function ( i, heading, prefix ) {
+			var id = $( heading ).attr( "id" );
+			return id && id.replace(/\~/g, '-inner-').replace(/\./g, '-static-') || ( prefix + i );
+		},
+		selectors   : "#toc-content h1,#toc-content h2,#toc-content h3,#toc-content h4",
+		showAndHide : false,
+		smoothScrolling: true
+	} );
+
+	$( "#main span[id^='toc']" ).addClass( "toc-shim" );
+	$( '.dropdown-toggle' ).dropdown();
+
+    $( "table" ).each( function () {
+      var $this = $( this );
+      $this.addClass('table');
+    } );
+
+} );
+</script>
+
+
+
+<!--Navigation and Symbol Display-->
+
+
+<!--Google Analytics-->
+
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		SearcherDisplay.init();
+	});
+</script>
+
+</body>
+</html>
