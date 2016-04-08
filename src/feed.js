@@ -6,6 +6,7 @@ var Session = require('./session');
 var Auth = require('./auth');
 var Request = require('./request');
 var Client = require('./client');
+var Speaker = require('./speaker');
 
 /*
 var log = require('./log');
@@ -20,10 +21,12 @@ var getSpeaker = require('./speaker');
  * 
  * @namespace
  * @property {Session} Session - ref to Session class
+ * @property {Speaker} Speaker - ref to Speaker class
  */
 
 var Feed = {
   Session: Session,
+  Speaker: Speaker,
 
   Auth: Auth,
   Request: Request,

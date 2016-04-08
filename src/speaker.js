@@ -1,84 +1,5 @@
 /*global module:false */
 
-/*
- * The speaker object encapsulates the SoundManager2 code and boils it down
- * to the following api:
- *
- *    speaker().initializeForMobile: mobile clients can only start using
- *      speaker when handling an 'onClick' event. This call should be made 
- *      at that time to get sound initialized while waiting for details
- *      of what to play from the server. 
- *
- *    speaker().setVolume(value): set the volume from 0 (mute) - 100 (full volume)
- *
- *    var sound = speaker().create(url, optionsAndEvents): create a new sound from the
- *       given url and return a 'song' object that can be used to pause/play/
- *       destroy the song and receive trigger events as the song plays/stops. 
- *
- *       The 'optionsAndEvents' is an object that lets you specify event
- *       handlers and options:
- *
- *          startPosition:  specifies the time offset (in milliseconds) that the
- *                          sound should begin playback at when we begin playback.
- *          play:           event handler for 'play' event
- *          pause:          event handler for 'pause' event
- *          finish:         event handler for 'finish' event
- *
- *       The returned object emits the following events:
- *         play: the song has started playing or resumed playing after pause
- *         pause: the song has paused playback
- *         finish: the song has completed playback and the song object
- *           is no longer usable and should be destroyed
- *
- *       The events should be received in this order only:
- *         ( play -> ( pause | play )* -> )? finish
- *
- *       Note that I represent play failures as a 'finish' call, so if
- *       we can't load a song, it will just get a 'finish' and no 'play'.
- *       The 'finish' event will have a 'true' argument passed to it on
- *       some kind of error, so you can treat those differently.
- *
- *       The returned song object has this following api:
- *         play: start playback (at the 'startPosition', if specified)
- *         pause: pause playback
- *         resume: resume playback
- *         destroy: stop playback, prevent any future playback, and free up memory
- *
- * This module returns a function that returns a speaker singleton so everybody
- * is using the same instance.
- *
- * Proper usage looks like this:
- *
- *   require([ 'feed/speaker' ], function(speaker) {
- *     var mySpeaker = speaker(options, onReady);
- *   });
- *
- * That will make sure that all code uses the same speaker instance. 'options'
- * is optional, and is an object with any of the following keys:
- *
- *   swfBase: URL pointing to directory containing 'soundmanager2.swf' file 
- *            for flash fallback
- *   preferFlash: if true, opt to use the flash plugin rather than the
- *                browser's 'audio' tag
- *   debug: if true, emit debug information to the console
- *   silence: URL to an mp3 with no sound, for initializing mobile clients.
- *            defaults to swfBase + '/silence.mp3'
- *
- * 'onReady' is also optional, and is a callback that will be called as
- * soon as the sond system is initialized (or immediately if it was already
- * initialized) and it will be given a string that lists supported
- * audio formats, suitable for passing to Feed.Session.setFormats().
- *
- * The first function call to 'speaker()' is what configures and defines the
- * speaker - and subsequent calls just return the already-created instance.
- * I think this is a poor interface, but I don't have a better one at the
- * moment.
- *
- * This code uses the wonderful SoundManager2 api and falls back to
- * the soundmanager2 flash plugin if HTML5 audio isn't available. 
- *
- */
-
 var _ = require('underscore');
 var $ = require('jquery');
 var log = require('./log');
@@ -86,13 +7,42 @@ var Events = require('./events');
 var util = require('./util');
 var SoundManager = require('soundmanager2');
 
-// fake console to redirect soundmanager2 to the feed logger
-var feedConsole = {
-  log: log,
-  info: log,
-  warn: log,
-  error: log
-};
+
+/**
+ * The song has started playback or resumed playback
+ * after a pause.
+ *
+ * @event Sound#play
+ */
+
+/**
+ * The song has paused playback.
+ *
+ * @event Sound#pause
+ */
+
+/**
+ * The song has finished playback, is no
+ * longer usable, and should be destroyed. If
+ * an argument of 'true' is passed with the
+ * event, then the song didn't complete normally.
+ *
+ * @event Sound#finish
+ */
+
+/**
+ *
+ * @classdesc
+ *
+ * This class represents an audio object we
+ * want to play. It emits a set of events
+ * in a specific order:
+ *
+ * ( {@link Sound#event.play} -> ( {@link Sound#event.pause} | {@link Sound#event.play} )* -> )? {@link Sound#event.finish} )
+ *
+ * @constructor
+ * @mixes Events
+ */
 
 var Sound = function(options) { 
   var obj = _.extend(this, Events);
@@ -113,6 +63,19 @@ var Sound = function(options) {
 };
 
 Sound.prototype = {
+
+  /**
+   * Start playback. If the sound object
+   * was created via {@link Speaker#create} with a
+   * `startPosition` option, then the first call
+   * to play will start audio at that playback
+   * position.
+   *
+   * This method should only be called once, to
+   * start playback. Use {@link Sound#resume} to
+   * resume playback.
+   */
+
   play: function() {
     var sound = this;
 
@@ -140,21 +103,30 @@ Sound.prototype = {
     }
   },
 
-  // pause playback of the current sound clip
+  /**
+   * Pause playback of the current song
+   */
+
   pause: function() {
     if (this.sm2Sound) {
       this.sm2Sound.pause();
     }
   },
 
-  // resume playback of the current sound clip
+  /**
+   * Resume playback of the current song
+   */
+
   resume: function() {
     if (this.sm2Sound) {
       this.sm2Sound.resume();
     }
   },
 
-  // elapsed number of milliseconds played
+  /**
+   * @return elapsed number of milliseconds of playback
+   */
+
   position: function() {
     if (this.sm2Sound) {
       return this.sm2Sound.position;
@@ -163,8 +135,11 @@ Sound.prototype = {
     }
   },
 
-  // duration in milliseconds of the song
-  // (this may change until the song is full loaded)
+  /**
+   * @return Duration of the audio clip, in milliseconds. Note
+   *   that this might change while we are loading the song
+   */
+
   duration: function() {
     if (this.sm2Sound) {
       var d = this.sm2Sound.duration;
@@ -174,7 +149,11 @@ Sound.prototype = {
     }
   },
 
-  // stop playing the given sound clip, unload it, and disable events
+  /**
+   * stop playing the given sound clip, unload it,
+   * and disable any attached event handlers.
+   */
+
   destroy: function() {
     log('destroy triggered for', this.id);
 
@@ -195,6 +174,34 @@ Sound.prototype = {
   }
 };
 
+/**
+ * Create a new Speaker object. This class is intended to be a
+ * singleton, so don't use this constructor - instead use the
+ * {@link Speaker.getShared} method.
+ *
+ * @classdesc
+ *
+ * The speaker object encapsulates and simplifies the
+ * SoundManager2 code to just give us what is needed for
+ * radio music playback.
+ *
+ *
+ * This code uses the wonderful SoundManager2 api and falls back to
+ * the soundmanager2 flash plugin if HTML5 audio isn't available. 
+ *
+ * @param {object} options - configuration options
+ * @param {string} [options.swfBase=./] - URL that points to a directory
+ *           containing `soundmanager2.swf` file for flash fallback.
+ * @param {boolean} [options.preferFlash=false] - if true, try to use the
+ *           flash player for audio rather than HTML5
+ * @param {boolean} [options.debug=false] - if true, emit debugging
+ *           to the console
+ * @param {string} [options.silence=options.swfBase + '/silence.mp3'] - URL to an
+ *           mp3 with no sound, for initializing mobile clients
+ *
+ * @constructor
+ */
+
 var Speaker = function(options) {
   var speaker = this;
 
@@ -208,7 +215,7 @@ var Speaker = function(options) {
     flashPollingInterval: 500,
     html5PollingInterval: 500,
     debugMode: options.debug || false,
-    useConsole: options.debug ? true : false, // feedConsole : null,
+    useConsole: options.debug ? true : false,
     debugFlash: options.debug || false,
     preferFlash: options.preferFlash || false,
     url: util.addProtocol(options.swfBase, true),
@@ -259,6 +266,14 @@ Speaker.prototype = {
   mobileInitialized: false,
   onReadyPromise: null,
 
+  /**
+   * Mobile clients can only start using speaker when
+   * handling an `onClick` event. This call should be made 
+   * at that time to get sound initialized in case we
+   * have to wait for details of what to play from
+   * the server.
+   */
+ 
   initializeForMobile: function() {
     if (!this.mobileInitialized) {
       // Just play a blank mp3 file that we know the location of, presumably
@@ -275,7 +290,23 @@ Speaker.prototype = {
     }
   },
 
-  // start playing the given clip and return sound object
+  /**
+   * Create and return a new Sound object
+   *
+   * @param {string} url - url to audio file
+   * @param {object} optionsAndEvents - options for sound object
+   * @param {number} optionsAndEvents.startPosition - time offset
+   *               (in milliseconds) that the sound should begin
+   *               playback at when we begin playback
+   * @param {function} optionsAndEvents.play - function that will
+   *               be called on {@link Sound#event:play} events
+   * @param {function} optionsAndEvents.pause - function that will
+   *               be called on {@link Sound#event:pause} events
+   * @param {function} optionsAndEvents.finish - function that will
+   *               be called on {@link Sound#event:finish} events
+   * @return {Sound} new sound object
+   */
+
   create: function(url, callbacks) {
     var sound = new Sound(callbacks);
     sound.id = _.uniqueId('play');
@@ -358,7 +389,15 @@ Speaker.prototype = {
     return sound;
   },
 
-  // set or get the volume (0-100)
+  /**
+   * Set or get the volume. This adjusts any sound
+   * objects already created as well as future sound
+   * objects.
+   *
+   * @param {number} volume New volume level 
+   *           (0 = silent, 100 = full volume)
+   */
+
   setVolume: function(value) {
     if (typeof value !== 'undefined') {
       this.vol = value;
@@ -380,8 +419,33 @@ _.extend(Speaker.prototype, Events);
 
 var speaker = null;
 
-// there should only ever be a single instance of 'Speaker'
-module.exports = function(options, onReady) {
+/**
+ * This callback is given a string with a comma
+ * separated list of formats that this browser
+ * can play, in order of most preferred to least
+ * preferred.
+ *
+ * @callback speakerReadyCallback
+ * @param {string} formats - comma separated list of formats,
+ *    suitable for passing as the `audioFormats` option
+ *    to {@link Session} 
+ */
+
+/**
+ * Return a shared speaker instance. Only the first
+ * call creates a new speaker - subsequent ones
+ * merely return the original.
+ * 
+ * @param {object} options - options sent to the Speaker
+ *     constructor. See {@link Speaker}.
+ * @param {speakerReadyCallback} onReady - function that will be called
+ *     after the music subsystem is initialized.
+ * @return {Speaker} globally shared speaker object. This
+ *     shouldn't be used until the onReady function 
+ *     gets called
+ */
+
+Speaker.getShared = function(options, onReady) {
   if (speaker === null) {
     speaker = new Speaker(options);
   }
@@ -394,4 +458,8 @@ module.exports = function(options, onReady) {
 
   return speaker;
 };
+
+
+// there should only ever be a single instance of 'Speaker'
+module.exports = Speaker;
 

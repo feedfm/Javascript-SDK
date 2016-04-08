@@ -11,100 +11,7 @@ var _ = require('underscore');
 var DEFAULT_FORMATS = 'mp3';
 var DEFAULT_BITRATE = 128;
 
-/**
- * This indicates a response was received from the Feed.fm servers
- * and music is available for this client. This event is triggered
- * after {@link Session#setCredentials} is called. Upon receipt of
- * this event, {@link Session#requestNextPlay} should be called to
- * kick of retrieving music from Feed.fm.
- *
- * @event Session#session-available
- */
-
-/**
- * This indicates a response was received from the Feed.fm servers
- * and they say this client may not retrieve music. This event is
- * triggered after {@link Session#setCredentials} is called.
- *
- * @event Session#session-not-available
- */
-
-/**
- * This indicates {@link Session#nextPlay} has a non-null
- * value.
- *
- * @event Session#next-play-available
- */
-
-/**
- * This indicates the {@link Session#currentPlay} value has
- * changed. The new value may be null (indicating the most
- * recently playing song completed) or non-null (indicating
- * {@link Session#playStarted} has been called and what was
- * previously the {@link Session#nextPlay} has now become
- * the {@link Session#currentPlay}.
- *
- * @event Session#current-play-did-change
- */
-
-/**
- * This indicates that the {@link Session#activeStation}
- * values has changed. A call to {@link Session#requestNextPlay}
- * should be made to kick off retrieval of music from this
- * new station.
- *
- * @event Session#active-station-did-change
- */
-
-/**
- * This indicates the {@link Session#canSkip} value has changed
- *
- * @event Session#skip-status-did-change
- */
-
-/**
- * This indicates no more music is available in the current
- * station and retrieval of music from Feed.fm has stopped.
- *
- * @event Session#no-more-music
- */
-
-/**
- * This indicates an unexpecte error was received from the
- * server, and so music retrieval has stopped.
- *
- * @event Session#unexpected-error
- */
-
-/*
- * missing functionality:
- *   got rid of canRequestItems
- *   timeUpdate() and the trigger that watches the system clock
- *   not queueing up calls made before session availability
- *   event logging
- * changes:
- *   FMAudioItem is now Play
- *   renamed currentItem and nextItem to currentPlay and nextPlay
- *   added getStations() call to retrieve list of stations
- *     removed the stations-list event as well
- *   when trying to retrieve the next play, increase number of retries when
- *     there is an existing curentPlay.
- *   skip-status is only triggered when the status actually changes
- *   default canSkip value is false
- *   skip-status renamed to skip-status-did-change
- *   no-more-music is only triggered after completion of any actively
- *     playing song
- *   you can only reject the 'nextPlay', since the 'reportStart' means
- *     you got the song playing...
- *   added suspend() and unsuspend()
- * learnings:
- *   check for available play credits when making session, so shortcut need for
- *     requestNextPlay()
- *
- */
-
  /**
- * @constructor
  * @classdesc 
  *
  * This class talks to the Feed.fm REST API to pull audio items for
@@ -178,6 +85,7 @@ var DEFAULT_BITRATE = 128;
  * @param {string} [options.audioFormats=mp3] - string with comma separated list of 
  *                                              preferred media formats: mp3 or aac
  * @param {string} [options.maxBitrate=128] - max bitrate (in kbps) of requested audio files
+ * @mixes Events
  */
 
 var Session = function(options) {
@@ -845,5 +753,98 @@ Session.prototype.handleUnexpectedError = function(err) {
     }
   }
 };
+
+/**
+ * This indicates a response was received from the Feed.fm servers
+ * and music is available for this client. This event is triggered
+ * after {@link Session#setCredentials} is called. Upon receipt of
+ * this event, {@link Session#requestNextPlay} should be called to
+ * kick of retrieving music from Feed.fm.
+ *
+ * @event Session#session-available
+ */
+
+/**
+ * This indicates a response was received from the Feed.fm servers
+ * and they say this client may not retrieve music. This event is
+ * triggered after {@link Session#setCredentials} is called.
+ *
+ * @event Session#session-not-available
+ */
+
+/**
+ * This indicates {@link Session#nextPlay} has a non-null
+ * value.
+ *
+ * @event Session#next-play-available
+ */
+
+/**
+ * This indicates the {@link Session#currentPlay} value has
+ * changed. The new value may be null (indicating the most
+ * recently playing song completed) or non-null (indicating
+ * {@link Session#playStarted} has been called and what was
+ * previously the {@link Session#nextPlay} has now become
+ * the {@link Session#currentPlay}.
+ *
+ * @event Session#current-play-did-change
+ */
+
+/**
+ * This indicates that the {@link Session#activeStation}
+ * values has changed. A call to {@link Session#requestNextPlay}
+ * should be made to kick off retrieval of music from this
+ * new station.
+ *
+ * @event Session#active-station-did-change
+ */
+
+/**
+ * This indicates the {@link Session#canSkip} value has changed
+ *
+ * @event Session#skip-status-did-change
+ */
+
+/**
+ * This indicates no more music is available in the current
+ * station and retrieval of music from Feed.fm has stopped.
+ *
+ * @event Session#no-more-music
+ */
+
+/**
+ * This indicates an unexpecte error was received from the
+ * server, and so music retrieval has stopped.
+ *
+ * @event Session#unexpected-error
+ */
+
+/*
+ * missing functionality:
+ *   got rid of canRequestItems
+ *   timeUpdate() and the trigger that watches the system clock
+ *   not queueing up calls made before session availability
+ *   event logging
+ * changes:
+ *   FMAudioItem is now Play
+ *   renamed currentItem and nextItem to currentPlay and nextPlay
+ *   added getStations() call to retrieve list of stations
+ *     removed the stations-list event as well
+ *   when trying to retrieve the next play, increase number of retries when
+ *     there is an existing curentPlay.
+ *   skip-status is only triggered when the status actually changes
+ *   default canSkip value is false
+ *   skip-status renamed to skip-status-did-change
+ *   no-more-music is only triggered after completion of any actively
+ *     playing song
+ *   you can only reject the 'nextPlay', since the 'reportStart' means
+ *     you got the song playing...
+ *   added suspend() and unsuspend()
+ * learnings:
+ *   check for available play credits when making session, so shortcut need for
+ *     requestNextPlay()
+ *
+ */
+
 
 module.exports = Session;

@@ -1,33 +1,43 @@
 /*global module:false */
 
-/*
- *  Events mixin from Backbone 
- *
- *  Backbone.js 1.0.0
- *
- *  (c) 2010-2013 Jeremy Ashkenas, DocumentCloud Inc.
- *  Backbone may be freely distributed under the MIT license.
- *  For all details and documentation:
- *  http:*backbonejs.org
- *
- *  A module that can be mixed in to *any object* in order to provide it with
- *  custom events. You may bind with `on` or remove with `off` callback functions
- *  to an event; trigger`-ing an event fires all callbacks in succession.
- *
- *  var object = {};
- *  _.extend(object, Backbone.Events);
- *  object.on('expand', function(){ alert('expanded'); });
- *  object.trigger('expand');
- */
-
 var _ = require('underscore');
 
 var slice = Array.prototype.slice;
 
+/**
+ * Events mixin from Backbone 
+ *
+ * Backbone.js 1.0.0
+ *
+ * (c) 2010-2013 Jeremy Ashkenas, DocumentCloud Inc.
+ * Backbone may be freely distributed under the MIT license.
+ * For all details and documentation:
+ * http:*backbonejs.org
+ *
+ * A module that can be mixed in to *any object* in order to provide it with
+ * custom events. You may bind with `on` or remove with `off` callback functions
+ * to an event; trigger`-ing an event fires all callbacks in succession.
+ *
+ * ```
+ * var object = {};
+ * _.extend(object, Backbone.Events);
+ * object.on('expand', function(){ alert('expanded'); });
+ * object.trigger('expand');
+ * ```
+ * @mixin 
+ */
+
 var Events = {
 
-  // Bind an event to a `callback` function. Passing `"all"` will bind
-  // the callback to all events fired.
+  /** 
+   * bind function to event. 
+   *
+   * @param {string} name - name of the event. using `"all"` will bind
+   *                        the callback to all events fired
+   * @param {function} callback - function to call on event firing
+   * @param {object} [context] - call context for callback 
+   */
+
   on: function(name, callback, context) {
     if (!eventsApi(this, 'on', name, [callback, context]) || !callback) { return this; }
     if (!this._events) { this._events = {}; }
@@ -36,8 +46,16 @@ var Events = {
     return this;
   },
 
-  // Bind an event to only be triggered a single time. After the first time
-  // the callback is invoked, it will be removed.
+  /**
+   * Bind an event to only be triggered a single time. After the first time
+   * the callback is invoked, it will be removed.
+   *
+   * @param {string} name - name of the event. `"all"` will bind the callback
+   *                        to all events fired
+   * @param {function} callback - function to call on event firing.
+   * @param {object} [context] - optional call context for callback
+   */
+
   once: function(name, callback, context) {
     if (!eventsApi(this, 'once', name, [callback, context]) || !callback) { return this; }
     var self = this;
@@ -49,10 +67,17 @@ var Events = {
     return this.on(name, once, context);
   },
 
-  // Remove one or many callbacks. If `context` is null, removes all
-  // callbacks with that function. If `callback` is null, removes all
-  // callbacks for the event. If `name` is null, removes all bound
-  // callbacks for all events.
+  /**
+   * Remove one or many callbacks. If `context` is null, removes all
+   * callbacks with that function. If `callback` is null, removes all
+   * callbacks for the event. If `name` is null, removes all bound
+   * callbacks for all events.
+   *
+   * @param {string} name - event name or null
+   * @param {function} callback - callback to remove or null
+   * @param {object} [context] - optional call context to match
+   */
+
   off: function(name, callback, context) {
     var retain, ev, events, names, i, l, j, k;
     if (!this._events || !eventsApi(this, 'off', name, [callback, context])) { return this; }
@@ -82,10 +107,16 @@ var Events = {
     return this;
   },
 
-  // Trigger one or many events, firing all bound callbacks. Callbacks are
-  // passed the same arguments as `trigger` is, apart from the event name
-  // (unless you're listening on `"all"`, which will cause your callback to
-  // receive the true name of the event as the first argument).
+  /**
+   * Trigger one or many events, firing all bound callbacks. Callbacks are
+   * passed the same arguments as `trigger` is, apart from the event name
+   * (unless you're listening on `"all"`, which will cause your callback to
+   * receive the true name of the event as the first argument).
+   *
+   * @param {string} name - name of event to trigger
+   * @param {...*} args - arguments to pass to event handlers
+   */
+
   trigger: function(name) {
     if (!this._events) { return this; }
     var args = slice.call(arguments, 1);
@@ -97,8 +128,15 @@ var Events = {
     return this;
   },
 
-  // Tell this object to stop listening to either specific events ... or
-  // to every object it's currently listening to.
+  /**
+   * Tell this object to stop listening to either specific events ... or
+   * to every object it's currently listening to.
+   *
+   * @param {object} obj
+   * @param {string} name
+   * @param {function} callback
+   */
+
   stopListening: function(obj, name, callback) {
     var listeners = this._listeners;
     if (!listeners) { return this; }
