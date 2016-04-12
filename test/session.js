@@ -23,7 +23,7 @@
     describe('base API', function() {
       var api = ['playStarted', 'updatePlay', 'playCompleted',
                  'requestSkip', 'rejectPlay', 'requestLike', 'requestUnlike',
-                 'requestDislike', 'resetAndRequestNextPlay' ];
+                 'requestDislike' ];
 
       it('exports the base API', function() {
         var session = new Feed.Session();

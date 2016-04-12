@@ -74,7 +74,7 @@ gulp.task('docs', function(cb) {
   };
 
   gulp.src(['README.md', './src/feed.js', './src/session.js', './src/events.js', './src/play.js',
-            './src/station.js', './src/speaker.js' ], {read: false})
+            './src/station.js', './src/speaker.js', './src/player.js' ], {read: false})
       .pipe(jsdoc(config, cb));
 });
 

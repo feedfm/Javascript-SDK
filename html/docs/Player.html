@@ -4,7 +4,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width">
-	<title>Documentation Mixin: Events</title>
+	<title>Documentation Class: Player</title>
 
 	<!--[if lt IE 9]>
 	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -91,14 +91,23 @@
 		<div id="main">
 			
 
-	<h1 class="page-title">Mixin: Events</h1>
+	<h1 class="page-title">Class: Player</h1>
 <section>
 
 <header>
     
         <h2>
-        Events
+        Player
         </h2>
+        
+            <div class="class-description"><p>This class exports a high level API for simple
+music playback. It uses the Session class to
+repeatedly ask for music from the Feed.fm servers
+and send them to Speaker objects</p>
+<p>After creating an instance of this class, a
+call should be made to <a href="Player.html#setCredentials">Player#setCredentials</a>
+to ask the Feed.fm servers if music
+playback is granted.</p></div>
         
     
 </header>
@@ -108,22 +117,605 @@
     <div class="container-overview">
     
         
-            <div class="description"><p>Events mixin from Backbone </p>
-<p>Backbone.js 1.0.0</p>
-<p>(c) 2010-2013 Jeremy Ashkenas, DocumentCloud Inc.
-Backbone may be freely distributed under the MIT license.
-For all details and documentation:
-http:*backbonejs.org</p>
-<p>A module that can be mixed in to <em>any object</em> in order to provide it with
-custom events. You may bind with <code>on</code> or remove with <code>off</code> callback functions
-to an event; trigger`-ing an event fires all callbacks in succession.</p>
-<pre class="prettyprint source"><code>var object = {};
-_.extend(object, Backbone.Events);
-object.on('expand', function(){ alert('expanded'); });
-object.trigger('expand');</code></pre></div>
+<hr>
+<dt>
+    <h4 class="name" id="Player"><span class="type-signature"></span>new Player(<span class="optional">options</span>)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
         
 
         
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>configuration options</p>
+                <h6 class="method-params-label method-subparams-label">Properties</h6>
+                
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>debug</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    false
+                
+                </td>
+            
+
+            <td class="description last"><p>if true, debug to console</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+        <dt class="mixes">Mixes In:</dt>
+
+        <dd class="mixes"><ul>
+        
+            <li><a href="Events.html">Events</a></li>
+        
+        </ul></dd>
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Members</h3>
+
+        <dl>
+            
+<hr>
+<dt class="name" id=".PlaybackState">
+    <h4><span class="type-signature">&lt;static, readonly> </span>PlaybackState<span class="type-signature"> :number</span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        <p>Possible playback state values</p>
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type">number</span>
+
+
+
+            </li>
+        </ul>
+    
+
+    
+<dl class="details">
+    
+
+    <h5 class="subsection-title">Properties:</h5>
+
+    <dl>
+
+<table class="props table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>UNINITIALIZED</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    0
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>UNAVAILABLE</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    1
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>WAITING_FOR_ITEM</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    2
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>READY_TO_PLAY</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    3
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>PLAYING</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    4
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>PAUSED</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    5
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>STALLED</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    6
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>REQUESTING_SKIP</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                    7
+                
+                </td>
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+</dl>
+
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt class="name" id="state">
+    <h4><span class="type-signature">&lt;readonly> </span>state<span class="type-signature"> :<a href="Player.html#.PlaybackState">Player.PlaybackState</a></span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        <p>current state of the player</p>
+    </div>
+    
+
+    
+        <h5>Type:</h5>
+        <ul>
+            <li>
+                
+<span class="param-type"><a href="Player.html#.PlaybackState">Player.PlaybackState</a></span>
+
+
+
+            </li>
+        </ul>
+    
+
+    
 <dl class="details">
     
 
@@ -163,20 +755,10 @@ object.trigger('expand');</code></pre></div>
 </dl>
 
 
-        
     
-    </div>
+</dd>
 
-    
-
-    
-
-    
-
-    
-
-    
-
+        </dl>
     
 
     
@@ -186,7 +768,7 @@ object.trigger('expand');</code></pre></div>
             
 <hr>
 <dt>
-    <h4 class="name" id=".off"><span class="type-signature">&lt;static> </span>off(name, callback, <span class="optional">context</span>)</h4>
+    <h4 class="name" id="off"><span class="type-signature"></span>off(name, callback, <span class="optional">context</span>)</h4>
     
     
 </dt>
@@ -351,6 +933,14 @@ callbacks for all events.</p>
     
 
     
+        <dt class="mixes">Mixes In:</dt>
+
+        <dd class="mixes"><ul>
+        
+            <li><a href="Events.html#.off">Events.off</a></li>
+        
+        </ul></dd>
+    
 
 	
 
@@ -393,7 +983,7 @@ callbacks for all events.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id=".on"><span class="type-signature">&lt;static> </span>on(name, callback, <span class="optional">context</span>)</h4>
+    <h4 class="name" id="on"><span class="type-signature"></span>on(name, callback, <span class="optional">context</span>)</h4>
     
     
 </dt>
@@ -556,6 +1146,14 @@ callbacks for all events.</p>
     
 
     
+        <dt class="mixes">Mixes In:</dt>
+
+        <dd class="mixes"><ul>
+        
+            <li><a href="Events.html#.on">Events.on</a></li>
+        
+        </ul></dd>
+    
 
 	
 
@@ -598,7 +1196,7 @@ callbacks for all events.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id=".once"><span class="type-signature">&lt;static> </span>once(name, callback, <span class="optional">context</span>)</h4>
+    <h4 class="name" id="once"><span class="type-signature"></span>once(name, callback, <span class="optional">context</span>)</h4>
     
     
 </dt>
@@ -762,6 +1360,14 @@ the callback is invoked, it will be removed.</p>
     
 
     
+        <dt class="mixes">Mixes In:</dt>
+
+        <dd class="mixes"><ul>
+        
+            <li><a href="Events.html#.once">Events.once</a></li>
+        
+        </ul></dd>
+    
 
 	
 
@@ -804,7 +1410,169 @@ the callback is invoked, it will be removed.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id=".stopListening"><span class="type-signature">&lt;static> </span>stopListening(obj, name, callback)</h4>
+    <h4 class="name" id="setCredentials"><span class="type-signature"></span>setCredentials(token, secret)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>Assign credentials to the player. This kicks off
+communication with Feed.fm to see if this client is
+cleared to play music. If and when the client is
+cleared play music and the audio system is initialized,
+the <a href="Player.html#state">Player#state</a> will change to READY_TO_PLAY.
+Otherwise the state will become UNAVAILABLE. Also,
+a Player#event:player-available
+or Player#event:player-not-available event
+will be triggered. Note that there is no time limit
+on this completing, so it could potentially take a
+long time for the state change.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>token</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>token value provided by Feed.fm</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>secret</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>secret value provided by Feed.fm</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="stopListening"><span class="type-signature"></span>stopListening(obj, name, callback)</h4>
     
     
 </dt>
@@ -939,6 +1707,14 @@ to every object it's currently listening to.</p>
     
 
     
+        <dt class="mixes">Mixes In:</dt>
+
+        <dd class="mixes"><ul>
+        
+            <li><a href="Events.html#.stopListening">Events.stopListening</a></li>
+        
+        </ul></dd>
+    
 
 	
 
@@ -981,7 +1757,7 @@ to every object it's currently listening to.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id=".trigger"><span class="type-signature">&lt;static> </span>trigger(name, args)</h4>
+    <h4 class="name" id="trigger"><span class="type-signature"></span>trigger(name, args)</h4>
     
     
 </dt>
@@ -1114,6 +1890,14 @@ receive the true name of the event as the first argument).</p>
     
 
     
+        <dt class="mixes">Mixes In:</dt>
+
+        <dd class="mixes"><ul>
+        
+            <li><a href="Events.html#.trigger">Events.trigger</a></li>
+        
+        </ul></dd>
+    
 
 	
 
@@ -1157,6 +1941,258 @@ receive the true name of the event as the first argument).</p>
 
     
 
+    
+        <h3 class="subsection-title">Events</h3>
+
+        <dl>
+            
+<hr>
+<dt>
+    <h4 class="name" id=".event:playback-state-did-change">playback-state-did-change</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event signifies that the state of the player
+has changed. Listeners for this event will be given
+the new and the old state value.</p>
+    </div>
+    
+
+    
+
+    
+        <h5>Type: 
+<span class="param-type"><a href="global.html#stateChangeCallback">stateChangeCallback</a></span>
+
+
+</h5>
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id=".event:player-available">player-available</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event signifies that this client may
+play music. Instead of listening for this you could
+watch the state of the player to see if it
+becomes <a href="Player.html#.PlaybackState#.READY_TO_PLAY">Player.PlaybackState.READY_TO_PLAY</a></p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id=".event:player-not-available">player-not-available</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event signifies that this client may
+<em>NOT</em> play music. Instead of listening for this you could
+watch the state of the player to see if it
+becomes <a href="Player.html#.PlaybackState#.UNAVAILABLE">Player.PlaybackState.UNAVAILABLE</a></p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        </dl>
     
 </article>
 

@@ -7,6 +7,7 @@ var Auth = require('./auth');
 var Request = require('./request');
 var Client = require('./client');
 var Speaker = require('./speaker');
+var Player = require('./player');
 
 /*
 var log = require('./log');
@@ -27,7 +28,9 @@ var getSpeaker = require('./speaker');
 var Feed = {
   Session: Session,
   Speaker: Speaker,
+  Player: Player,
 
+  // used for testing
   Auth: Auth,
   Request: Request,
   Client: Client

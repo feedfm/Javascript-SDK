@@ -158,7 +158,7 @@ Sound.prototype = {
     log('destroy triggered for', this.id);
 
     if (this.sm2Sound) {
-      delete speaker.outstandingPlays[this.id];
+      delete this.outstandingPlays[this.id];
       this.sm2Sound.destruct();
       this.sm2Sound = null;
     }
@@ -175,8 +175,8 @@ Sound.prototype = {
 };
 
 /**
- * Create a new Speaker object. This class is intended to be a
- * singleton, so don't use this constructor - instead use the
+ * Create a new Speaker object. __This class is intended to be a
+ * singleton, so don't use this constructor__ - instead use the
  * {@link Speaker.getShared} method.
  *
  * @classdesc
@@ -207,7 +207,15 @@ var Speaker = function(options) {
 
   options = _.extend({ swfBase: '//feed.fm/js/latest/' }, options);
 
-  this.onReadyPromise = $.Deferred();
+  var d = $.Deferred();
+  this.onReadyPromise = d.promise();
+
+  /**
+   * @readonly
+   * @member {string} - comma separated string of formats
+   *   the audio system prefers to play.
+   */
+  this.preferred = '';
 
   var config = {
     wmode: 'transparent',
@@ -220,17 +228,16 @@ var Speaker = function(options) {
     preferFlash: options.preferFlash || false,
     url: util.addProtocol(options.swfBase, true),
     onready: function() {
-      var preferred;
 
       if (window.soundManager.canPlayMIME('audio/aac')) {
         // some clients play aac, and we prefer that
-        preferred = 'aac,mp3';
+        speaker.preferred = 'aac,mp3';
       } else {
         // every client plays mp3
-        preferred = 'mp3';
+        speaker.preferred = 'mp3';
       }
 
-      speaker.onReadyPromise.resolve(preferred);
+      d.resolve(speaker);
     }
   };
 
@@ -417,46 +424,42 @@ Speaker.prototype = {
 // add events to speaker class
 _.extend(Speaker.prototype, Events);
 
+// global shared instance
 var speaker = null;
 
 /**
- * This callback is given a string with a comma
- * separated list of formats that this browser
- * can play, in order of most preferred to least
- * preferred.
+ * This callback is passed a reference to the
+ * speaker that became ready.
  *
  * @callback speakerReadyCallback
- * @param {string} formats - comma separated list of formats,
- *    suitable for passing as the `audioFormats` option
- *    to {@link Session} 
+ * @param {Speaker} speaker - a ref to the ready
+ *   speaker instance
  */
 
 /**
- * Return a shared speaker instance. Only the first
- * call creates a new speaker - subsequent ones
- * merely return the original.
+ * Return a promise for a shared speaker instance.
  * 
  * @param {object} options - options sent to the Speaker
  *     constructor. See {@link Speaker}.
- * @param {speakerReadyCallback} onReady - function that will be called
- *     after the music subsystem is initialized.
- * @return {Speaker} globally shared speaker object. This
- *     shouldn't be used until the onReady function 
- *     gets called
+ * @param {speakerReadyCallback} [onReady] - a optional function
+ *     that will be called after the music subsystem is
+ *     initialized.
+ * @return {Promise} a promise that yields a
+ *   reference to the initialized shared speaker.
  */
 
 Speaker.getShared = function(options, onReady) {
-  if (speaker === null) {
+  if (!speaker) {
     speaker = new Speaker(options);
   }
 
-  if (onReady) {
-    speaker.onReadyPromise.then(function(formats) {
-      onReady(formats);
-    });
-  }
+  return speaker.onReadyPromise.then(function(s) {
+    if (onReady) {
+      onReady(s);
+    }
 
-  return speaker;
+    return s;
+  });
 };
 
 

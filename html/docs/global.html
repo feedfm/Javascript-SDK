@@ -40,7 +40,7 @@
 			<li class="dropdown">
 				<a href="classes.list.html" class="dropdown-toggle" data-toggle="dropdown">Classes<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Play.html">Play</a></li><li><a href="Session.html">Session</a></li><li><a href="Sound.html">Sound</a></li><li><a href="Speaker.html">Speaker</a></li><li><a href="Station.html">Station</a></li>
+					<li><a href="Play.html">Play</a></li><li><a href="Player.html">Player</a></li><li><a href="Session.html">Session</a></li><li><a href="Sound.html">Sound</a></li><li><a href="Speaker.html">Speaker</a></li><li><a href="Station.html">Station</a></li>
 				</ul>
 			</li>
 			
@@ -54,7 +54,7 @@
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
+					<li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
 				</ul>
 			</li>
 			
@@ -174,7 +174,7 @@
                 
 <hr>
 <dt>
-    <h4 class="name" id="speakerReadyCallback"><span class="type-signature"></span>speakerReadyCallback(formats)</h4>
+    <h4 class="name" id="speakerReadyCallback"><span class="type-signature"></span>speakerReadyCallback(speaker)</h4>
     
     
 </dt>
@@ -182,10 +182,8 @@
 
     
     <div class="description">
-        <p>This callback is given a string with a comma
-separated list of formats that this browser
-can play, in order of most preferred to least
-preferred.</p>
+        <p>This callback is passed a reference to the
+speaker that became ready.</p>
     </div>
     
 
@@ -220,13 +218,13 @@ preferred.</p>
 
         <tr>
             
-                <td class="name"><code>formats</code></td>
+                <td class="name"><code>speaker</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">string</span>
+<span class="param-type"><a href="Speaker.html">Speaker</a></span>
 
 
 
@@ -237,9 +235,161 @@ preferred.</p>
 
             
 
-            <td class="description last"><p>comma separated list of formats,
-   suitable for passing as the <code>audioFormats</code> option
-   to <a href="Session.html">Session</a></p></td>
+            <td class="description last"><p>a ref to the ready
+  speaker instance</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+            
+                
+<hr>
+<dt>
+    <h4 class="name" id="stateChangeCallback"><span class="type-signature"></span>stateChangeCallback(newState, oldState)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This callback is passed two <a href="Player.html#.PlaybackState">Player.PlaybackState</a> 
+vaules: the new value and then the old value.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>newState</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="Player.html#.PlaybackState">Player.PlaybackState</a></span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>new state of player</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>oldState</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="Player.html#.PlaybackState">Player.PlaybackState</a></span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>old state of player</p></td>
         </tr>
 
     
@@ -349,7 +499,7 @@ preferred.</p>
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-04-08T16:29:35-07:00
+		on 2016-04-11T17:24:36-07:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>
