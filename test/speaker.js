@@ -47,6 +47,7 @@
         var song = speaker.create('chirp.mp3', { });
 
         assert.isNotNull(song);
+        console.log('song is ', song);
 
         song.destroy();
       });
@@ -74,6 +75,26 @@
         var playCalled = false;
 
         var song = speaker.create('bad.m4a', { 
+          play: function() { playCalled = true; },
+          finish: function(withError) {
+            assert.equal(playCalled, true, 'should have triggered play event');
+            assert.equal(withError, true, 'should have reported a finish error');
+
+            song.destroy();
+
+            done();
+          }
+        });
+
+        song.play();
+
+        assert.isNotNull(song);
+      });
+
+      it('will play a missing song object and trigger play and finish events', function(done) {
+        var playCalled = false;
+
+        var song = speaker.create('filedoesnotexist.m4a', { 
           play: function() { playCalled = true; },
           finish: function(withError) {
             assert.equal(playCalled, true, 'should have triggered play event');

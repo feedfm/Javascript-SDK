@@ -1,520 +1,506 @@
 /*global module:false */
 /*jshint camelcase:false */
 
+var Session = require('./session');
+var Speaker = require('./speaker');
+var Events = require('./events');
+var _ = require('underscore');
+var log = require('./log');
+
+
+var warn = log;
+
 /*
- *  Feed Media Player
- *
- *  This class requests and plays audio files from the feed servers. It
- *  makes use of the Session class to communicate with the server. There
- *  should technically only ever be one instance of this class in a page.
- *  This class does no UI - that should be handled by Feed.PlayerView 
- *  or similar.
- *
- *  Create this with:
- *    player = new Feed.Player(token, secret[, options])
- *
- *  'options' may be any option that 'Feed.Session' and 'Feed.Speaker' accept
- *
- *  Then set the optional placement and station that we're pulling
- *  from:
- *
- *    player.setStationId(xxx);
- *      set station on session, which should stop any current plays
- *
- *  Then control playback with:
- *
- *    tune() - load up information about the current placement, but
- *      don't actually start playing it.
- *    play() - start playing the current placement/station or resume the current song
- *    pause() - pause playback of the current song, if any
- *    like() - tell the server we like this song
- *    unlike() - tell the server to remove the 'like' for this song
- *    dislike() - tell the server we dislike this song, and skip to the next one
- *    skip() - request to skip the current song
- *
- *  player has a current state that can be queried with 'getCurrentState()':
- *    playing - if session.hasActivePlayStarted() and we're not paused
- *    paused -  if session.hasActivePlayStarted() and we're paused
- *    idle - if !session.hasActivePlayStarted()
- *    suspended - if player.suspend() has been called (ie - the player has
- *      been popped out into a new window)
- *
- *  session events are proxied via the play object:
- *    not-in-us - user isn't located in the US and can't play music
- *    placement - information about the placement we just tuned to
- *    play-active - this play is queued up and ready for playback
- *    play-started - this play has begun playback
- *    play-completed  - this play has completed playback
- *    plays-exhausted - there are no more plays available from this placement/station combo
- *    skip-denied - the given song could not be skipped due to DMCA rules
- *  
- *  and the play object adds some new events:
- *    play-paused - the currently playing song was paused
- *    play-resumed - the currently playing song was resumed
- *    play-liked - the currently playing song was liked
- *    play-unliked - the currently playing song had it's 'like' status removed
- *    play-disliked - the currently playing song was disliked
- *    suspend - player.suspend() was called, and the player should stop playback
- *
- *  Some misc methods:
- *
- *    setMuted(muted)
- *    suspend - this returns the state of the player a an object that can be passed
- *      to the unsuspend() call.
- *    unsuspend(state, [startPlay]) - this call takes the state of a previously suspended player
- *      instance and makes this player match that one. These calls allow you to suspend
- *      the player, open up a new window, create a new player instance, and resume playback
- *      where you left off. This call should be made in place of a tune() or play() call.
- *
+ * changes from iOS:
+ *   this starts in UNINITIALIZED mode, while iOS starts in READY_TO_PLAY.
+ *   this goes into STALLED mode while we wait for a song to start playback.
+ *   iOS throws songs into a player queue and watches when a song is
+ *     advanced to the next one. in here, we start a song after the completion
+ *     of the previous one.
+ *   while in PLAYING or PAUSED mode, there is guaranteed to be a currentPlay value
+ *   throws out play-started and play-completed rather than current item changed
  */
 
-var _ = require('underscore');
-var $ = require('jquery');
-var log = require('./log');
-var getSpeaker = require('./speaker');
-var Events = require('./events');
-var Session = require('./session');
+/**
+ * @classdesc
+ *
+ * This class exports a high level API for simple
+ * music playback. It uses the Session class to
+ * repeatedly ask for music from the Feed.fm servers
+ * and send them to Speaker objects
+ *
+ * After creating an instance of this class, a
+ * call should be made to {@link Player#setCredentials}
+ * to ask the Feed.fm servers if music
+ * playback is granted.
+ *
+ * @constructor
+ * @mixes Events
+ * @param {object} [options] - configuration options. These also include
+ *       all the options in {@link Speaker}.
+ * @param {boolean} [options.debug=false] - if true, debug to console
+ */
 
-function supports_html5_storage() {
-  try {
-    return 'localStorage' in window && window['localStorage'] !== null;
-  } catch (e) {
-    return false;
-  }
-}
+var Player = function(options) {
+  options = options || { };
 
-var Player = function(token, secret, options) {
-  this.state = {
-    paused: true,
-    suspended: false
-    // activePlay
-  };
+  this.session = new Session();
 
-  options = options || {};
+  // watch the session!
+  this.session.on('session-available', this._onSessionAvailable, this);
+  this.session.on('session-not-available', this._onSessionNotAvailable, this);
+  this.session.on('active-station-did-change', this._onSessionActiveStationDidChange, this);
+  this.session.on('current-play-did-change', this._onSessionCurrentPlayDidChange, this);
+  this.session.on('next-play-available', this._onSessionNextPlayAvailable, this);
+  this.session.on('no-more-music', this._onSessionNoMoreMusic, this);
+  this.session.on('skip-status-did-change', this._onSessionSkipStatusDidCHange, this);
+  this.session.on('unexpected-error', this._onSessionUnexpectedError, this);
 
-  this.skipPlayDelay = !!options.skipPlayDelay;
-
+  // add event handling
   _.extend(this, Events);
 
-  var session = this.session = new Session(token, secret, options);
-  this.session.on('play-active', this._onPlayActive, this);
-  this.session.on('play-started', this._onPlayStarted, this);
-  this.session.on('play-completed', this._onPlayCompleted, this);
-  this.session.on('plays-exhausted', this._onPlaysExhausted, this);
-
-  this.session.on('all', function() {
-    // propagate all events out to everybody else
-    this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
-  }, this);
-
-  // create 'speakerInitialized' promise so we can delay things until
-  // the audio subsystem is set up.
-  var initializeSpeaker = this.initializeSpeaker = $.Deferred();
-
-  this.speaker = getSpeaker(options, function(supportedFormats) {
-    if (options.formats) {
-      var reqFormatList = options.formats.split(','),
-          suppFormatList = supportedFormats.split(','),
-          reqAndSuppFormatList = _.intersection(reqFormatList, suppFormatList),
-          reqAndSuppFormats = reqAndSuppFormatList.join(',');
-
-      if (reqAndSuppFormatList.length === 0) {
-        reqAndSuppFormats = supportedFormats;
-      }
-
-      session.setFormats(reqAndSuppFormats);
-
-    } else {
-      session.setFormats(supportedFormats);
+  var speakerOptions = {};
+  _.each(['debug', 'swfBase', 'preferFlash', 'silence'], function(p) {
+    if (options[p]) {
+      speakerOptions[p] = options[p];
     }
-    initializeSpeaker.resolve();
   });
 
-  this.setMuted(this.isMuted());
+  // initialize and watch the speaker!
+  this.speakerPromise = Speaker.getShared(speakerOptions);
+
+  this._state = Player.PlaybackState.UNINITIALIZED;
+
+  /**
+   * map play id -> Sound .
+   * @private
+   */
+
+  this._sounds = { };
 };
 
-Player.prototype.setStationId = function(stationId) {
-  this.session.setStationId(stationId);
+/**
+ * @returns {Player.PlaybackState} the state of the player
+ */
+
+Player.prototype.getState = function() {
+  return this._state;
 };
 
-Player.prototype.setBaseUrl = function(baseUrl) {
-  this.session.setBaseUrl(baseUrl);
-};
+/**
+ * Update the current state. This also triggers a
+ * {@link Player#event:playback-state-did-change} event.
+ *
+ * @param {Player.PlaybackState} newState - new state for the player.
+ * @param {string} [reason] - human readable reason for transition
+ * @private
+ */
 
-Player.prototype._onPlayActive = function(play) {
-  // create a new sound object
-  var options = {
-    play: _.bind(this._onSoundPlay, this, play.id),
-    pause: _.bind(this._onSoundPause, this, play.id),
-    finish:  _.bind(this._onSoundFinish, this, play.id),
-    elapse: _.bind(this._onSoundElapse, this, play.id)
-  };
-
-  if (play.startPosition) {
-    options.startPosition = play.startPosition;
-  }
-
-  var sound = this.speaker.create(play.audio_file.url, options);
-
-  this.state.activePlay = {
-    id: play.id,
-    sound: sound,
-    startReportedToServer: false, // wether we got a 'play-started' event from session
-    soundCompleted: false,        // wether the sound object told us it finished playback
-    playStarted: false,           // wether playback started on the sound object yet
-    previousPosition: 0           // last time we got an 'elapse' callback
-  };
-
-  // if we're not paused, then start it
-  if (!this.state.paused) {
-    var s = this.state.activePlay.sound;
-
-    s.play();
-  }
-};
-
-Player.prototype._onSoundPlay = function(playId) {
-  // sound started playing
-  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-    log('received sound play, but active play does not match', this.state.activePlay, playId);
-    return;
-  }
-  
-  this.state.paused = false;
-  this.state.activePlay.playStarted = true;
-
-  // on the first play, tell the server we're good to go
-  if (!this.state.activePlay.startReportedToServer) {
-    return this.session.reportPlayStarted();
-  }
-
-  // subsequent plays are considered 'resumed' events
-  this.trigger('play-resumed', this.session.getActivePlay());
-};
-
-Player.prototype.getActivePlay = function() {
-  return this.session.getActivePlay();
-};
-
-Player.prototype.hasActivePlayStarted = function() {
-  return this.session.hasActivePlayStarted();
-};
-
-Player.prototype.getActivePlacement = function() {
-  return this.session.getActivePlacement();
-};
-
-Player.prototype._onSoundPause = function(playId) {
-  // sound paused playback
-  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-    log('received sound pause, but active play does not match', this.state.activePlay, playId);
-    return;
-  }
-  
-  this.state.paused = true;
-
-  this.trigger('play-paused', this.session.getActivePlay());
-};
-
-Player.prototype._onSoundFinish = function(playId, withError) {
-  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-    log('received sound finish, but active play does not match', this.state.activePlay, playId);
-    return;
-  }
-
-  this.state.activePlay.soundCompleted = true;
-  if (withError) {
-    this.state.activePlay.soundCompletedWithError = true;
-  }
-
-  if (!this.state.activePlay.playStarted) {
-    // never reported this as started...  mark it as invalidated so
-    // we can advance.
-    this.session.requestInvalidate();
-
-    return;
-  }
-
-  if (!this.state.activePlay.startReportedToServer) {
-    // if the song failed before we recieved start response, wait
-    // until word from the server that we started before we say
-    // that we completed the song
-    return;
-  }
-
-  if (withError) {
-    log('song completed with error - marking as invalid');
-    this.session.requestInvalidate();
-
+Player.prototype._setState = function(newState, reason) {
+  if (reason) {
+    reason = ' for reason "' + reason + '"';
   } else {
-    this.session.reportPlayCompleted();
+    reason = '';
   }
-};
 
-Player.prototype._onSoundElapse = function(playId) {
-  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-    log('received sound elapse, but active play does not match', this.state.activePlay, playId);
+  if (newState === this._state) {
+    log('ignoring state change to ' + this.stateAsString(newState) + reason);
     return;
   }
 
-  var sound = this.state.activePlay.sound,
-      position = sound.position(),
-      interval = 30 * 1000,  // ping server every 30 seconds
-      previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
-      currentCount = Math.floor(position / interval);
+  var oldState = this._state;
+  this._state = newState;
 
-  this.state.activePlay.previousPosition = position;
+  log('transitioned from ' + this.stateAsString(oldState) + ' to ' +
+      this.stateAsString(newState) + reason);
 
-  if (currentCount !== previousCount) {
-    this.session.reportPlayElapsed(Math.floor(position / 1000));
+  this.trigger('playback-state-did-change', newState, oldState);
+
+  if (newState === Player.PlaybackState.UNAVAILABLE) {
+    this.trigger('player-not-available');
+
+  } else if ((oldState === Player.PlaybackState.UNINITIALIZED) &&
+             (newState === Player.PlaybackState.READY_TO_PLAY)) {
+      this.trigger('player-available');
+
   }
 };
 
-Player.prototype._onPlayStarted = function(play) {
-  var session = this.session;
+Player.prototype.stateAsString = function(state) {
+  var text = _.findKey(Player.PlaybackState, function(value) { return value === state; });
 
-  if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
-    log('received play started, but it does not match active play', play, this.state.activePlay);
-    return;
+  return text;
+};
+
+/**
+ * Possible playback state values
+ *
+ * @readonly
+ * @enum {number}
+ */
+
+Player.PlaybackState =  {
+  UNINITIALIZED: 0,
+  UNAVAILABLE: 1,
+  WAITING_FOR_ITEM: 2,
+  READY_TO_PLAY: 3,
+  PLAYING: 4,
+  PAUSED: 5,
+  STALLED: 6,
+  REQUESTING_SKIP: 7
+};
+
+
+/**
+ * Assign credentials to the player. This kicks off
+ * communication with Feed.fm to see if this client is
+ * cleared to play music. If and when the client is
+ * cleared play music and the audio system is initialized,
+ * the {@link Player#getState} will change to READY_TO_PLAY.
+ * Otherwise the state will become UNAVAILABLE. Also,
+ * a {@link Player#event:player-available}
+ * or {@link Player#event:player-not-available} event
+ * will be triggered. Note that there is no time limit
+ * on this completing, so it could potentially take a
+ * long time for the state change. 
+ *
+ * @param {string} token token value provided by Feed.fm
+ * @param {string} secret secret value provided by Feed.fm
+ */
+
+Player.prototype.setCredentials = function(token, secret) {
+  this.session.setCredentials(token, secret);
+};
+
+
+/**
+ * Start loading music in the background so that a 
+ * call to {@link Player#play} immediately starts music.
+ */
+
+Player.prototype.prepareToPlay = function() {
+  if (this._state === Player.PlaybackState.READY_TO_PLAY) {
+    this.session.requestNextPlay();
   }
-
-  this.state.activePlay.startReportedToServer = true;
-
-  if (this.state.activePlay.soundCompleted) {
-    // the audio completed playback before the session announced the play started
-    log('sound completed before we finished reporting start', this.state.activePlay);
-
-    // In the normal case we'd just quit here, but since the audio completed playback
-    // already, we've got to make sure a 'session.reportPlayCompleted()' gets kicked
-    // off to record the completion of this song.
-    // Defer the reporting so other 'play-started' handlers can complete as normal
-    // before a 'play-completed' gets triggered
-
-    if (this.state.activePlay.soundCompletedWithError) {
-      _.defer(function() {
-        session.requestInvalidate();
-      });
-
-    } else {
-      _.defer(function() {
-        session.reportPlayCompleted();
-      });
-    }
-  }
 };
 
-Player.prototype._onPlayCompleted = function(play) {
-  if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
-    log('received play completed, but it does not match active play', play, this.state.activePlay);
-    return;
-  }
-
-  this.state.activePlay.sound.destroy();
-  delete this.state.activePlay;
-
-  // Force us into play mode in case we were paused and hit
-  // skip to complete the current song.
-  this.state.paused = false;
-};
-
-Player.prototype._onPlaysExhausted = function() {
-  this.state.paused = false;
-};
-
-Player.prototype.isPaused = function() {
-  return this.session.isTuned() && this.state.paused;
-};
-
-Player.prototype.getStationInformation = function(stationInformationCallback) {
-  return this.session.getStationInformation(stationInformationCallback);
-};
-
-Player.prototype.tune = function() {
-  var player = this;
-
-  this.initializeSpeaker.then(function() {
-    if (!player.session.isTuned()) {
-      player.session.tune();
-    }
-  });
-};
+/**
+ * Start or resume music playback
+ */
 
 Player.prototype.play = function() {
-  var player = this;
+  var sound;
 
-  this.initializeSpeaker.then(function() {
-    player.speaker.initializeForMobile();
+  if (this._state === Player.PlaybackState.READY_TO_PLAY) {
+    var nextPlay = this.session.nextPlay;
 
-    if (!player.session.isTuned()) {
-      // not currently playing music
-      player.state.paused = false;
-
-      return player.session.tune();
-
-    } else if (player.session.getActivePlay() && player.state.activePlay && player.state.paused) {
-      // resume playback of song
-      if (player.state.activePlay.playStarted) {
-        player.state.activePlay.sound.resume();
-
-      } else {
-        player.state.activePlay.sound.play();
-      }
-    }
-  });
-};
-
-Player.prototype.pause = function() {
-  if (!this.session.hasActivePlayStarted() || 
-      !this.state.activePlay ||
-      this.state.paused) {
-    return;
-  }
-
-  // pause current song
-  this.state.activePlay.sound.pause();
-};
-
-Player.prototype.like = function() {
-  if (!this.session.hasActivePlayStarted()) {
-    return;
-  }
-
-  this.session.likePlay(this.state.activePlay.id);
-
-  this.trigger('play-liked');
-};
-
-Player.prototype.unlike = function() {
-  if (!this.session.hasActivePlayStarted()) {
-    return;
-  }
-
-  this.session.unlikePlay(this.state.activePlay.id);
-
-  this.trigger('play-unliked');
-};
-
-Player.prototype.dislike = function() {
-  if (!this.session.hasActivePlayStarted()) {
-    return;
-  }
-
-  this.session.dislikePlay(this.state.activePlay.id);
-
-  this.trigger('play-disliked');
-
-  this.skip();
-};
-
-Player.prototype.skip = function() {
-  if (!this.session.hasActivePlayStarted()) {
-    // can't skip non-playing song
-    return;
-  }
-
-  this.session.requestSkip();
-};
-
-Player.prototype.destroy = function() {
-  this.session = null;
-
-  if (this.state.activePlay && this.state.activePlay.sound) {
-    this.state.activePlay.sound.destroy();
-  }
-};
-
-Player.prototype.getCurrentState = function() {
-  if (this.state.suspended) {
-    return 'suspended';
-
-  } else if (!this.session.hasActivePlayStarted()) {
-    // nothing started, so we're idle
-    return 'idle';
-
-  } else {
-    if (this.state.paused) {
-      return 'paused';
+    if (nextPlay === null) {
+      this._setState(Player.PlaybackState.WAITING_FOR_ITEM, 'User wants to play, but no song queued up');
+      this.session.requestNextPlay();
+      return;
 
     } else {
-      return 'playing';
-    }
-  }
-};
-
-Player.prototype.getPosition = function() {
-  if (this.state.activePlay && this.state.activePlay.sound) {
-    return this.state.activePlay.sound.position();
-
-  } else {
-    return 0;
-  }
-};
-
-Player.prototype.getDuration = function() {
-  if (this.state.activePlay && this.state.activePlay.sound) {
-    return this.state.activePlay.sound.duration();
-
-  } else {
-    return 0;
-  }
-};
-
-Player.prototype.maybeCanSkip = function() {
-  return this.session.maybeCanSkip();
-};
-
-var mutedKey = 'muted';
-Player.prototype.isMuted = function() {
-  if (supports_html5_storage()) {
-    if (mutedKey in localStorage) {
-      return localStorage[mutedKey] === 'true';
-    }
-  }
-
-  return false;
-};
-
-Player.prototype.setMuted = function(isMuted) {
-  if (isMuted) {
-    this.speaker.setVolume(0);
     
-    if (supports_html5_storage()) {
-      localStorage[mutedKey] = true;
+      sound = this._sounds[nextPlay.id];
+
+      if (sound === null) {
+        sound = this._prepareSound(nextPlay);
+        this._sounds[nextPlay.id] = sound;
+      }
+
+      this._setState(Player.PlaybackState.STALLED, 'User wants to play, we are waiting for it to start');
+      sound.play();
     }
 
-    this.trigger('muted');
+  } else if (this._state === Player.PlaybackState.PAUSED) {
+    var currentPlay = this.session.currentPlay;
 
-  } else {
-    this.speaker.setVolume(100);
-
-    if (supports_html5_storage()) {
-      localStorage[mutedKey] = false;
+    if (!currentPlay) {
+      warn('trying to resume, but there is no current play!');
+      return;
     }
 
-    this.trigger('unmuted');
+    sound = this._sounds[currentPlay.id];
+
+    if (!sound) {
+      warn('trying to resume, but there are no sounds associated with current play');
+      return;
+    }
+
+    sound.play();
   }
 };
 
-Player.prototype.suspend = function() {
-  var playing = (this.state.activePlay && this.state.activePlay.sound),
-      state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
+/**
+ * Pause music playback.
+ */
 
-  this.pause();
+Player.prototype.pause = function() {
+  if (this._state === Player.PlaybackState.PLAYING) {
+    var currentPlay = this.session.currentPlay;
 
-  this.state.suspended = true;
-  this.trigger('suspend');
+    if (currentPlay === null) {
+      warn('Trying to pause song, but there is no current play');
+      return;
+    }
 
-  return state;
-};
+    var sound = this._sounds[currentPlay.id];
+    if (!sound) {
+      warn('Trying to pause song, but cannot find sound associated with play id ' + currentPlay.id);
+      return;
+    }
 
-Player.prototype.unsuspend = function(state, startPlayback) {
-  this.session.unsuspend(state);
-
-  if (startPlayback) {
-    this.play();
+    sound.pause();
   }
 };
+
+
+Player.prototype._onSessionAvailable = function() {
+  var player = this;
+
+  this.speakerPromise
+    .then(function(speaker) {
+      player.speaker = speaker;
+      player._setState(Player.PlaybackState.READY_TO_PLAY, 'Session and speaker ready');
+    })
+    .fail(function() {
+      player._setState(Player.PlaybackState.UNAVAILABLE, 'Speaker initialization failed');
+    });
+};
+
+Player.prototype._onSessionNotAvailable = function() {
+  this._setState(Player.PlaybackState.UNAVAILABLE, 'Unable to create a session');
+};
+
+Player.prototype._onSessionUnexpectedError = function() {
+  this._setState(Player.PlaybackState.UNAVAILABLE, 'Unexpected session error');
+};
+
+Player.prototype._onSessionNoMoreMusic = function() {
+  if ((this._state === Player.PlaybackState.READY_TO_PLAY) ||
+      (this._state === Player.PlaybackState.WAITING_FOR_ITEM)) {
+
+    this._setState(Player.PlaybackState.READY_TO_PLAY, 'Session says we ran out of music');
+    this.trigger('no-more-music');
+  } 
+
+};
+
+Player.prototype._onSessionNextPlayAvailable = function(nextPlay) {
+  if ((this._state === Player.PlaybackState.READY_TO_PLAY) ||
+      (this._state === Player.PlaybackState.PLAYING) ||
+      (this._state === Player.PlaybackState.PAUSED) ||
+      (this._state === Player.PlaybackState.WAITING_FOR_ITEM)) {
+
+    // TODO: if we're PLAYING or PAUSED, we might want to wait to start
+    // loading the next song until the currently playing song
+    // is fully loaded. Alternatively, wait a couple seconds before
+    // starting to create the song; code that would start playing this
+    // sound is smart enough to make the sound if it isn't made already.
+    // (maybe put start time in Sound so we know when the previous
+    // one started loading?)
+
+    var sound = this._sounds[nextPlay.id];
+    if (sound) {
+      warn('received duplicate next play available for play id ' + nextPlay.id);
+
+    } else {
+      sound = this._prepareSound(nextPlay);
+      this._sounds[nextPlay.id] = sound;
+
+      log('created sound (' + sound.id + ') for play ' + nextPlay.id + ' at url ' + nextPlay.audio_file.url);
+    }
+
+    if (this._state === Player.PlaybackState.WAITING_FOR_ITEM) {
+      this._setState(Player.PlaybackState.STALLED);
+      sound.play();
+    }
+  }
+};
+
+Player.prototype._onSessionSkipStatusDidChange = function() {
+
+};
+
+Player.prototype._onSessionActiveStationDidChange = function() {
+
+};
+
+Player.prototype._prepareSound = function(play) {
+  var player = this;
+
+  var sound = this.speaker.create(play.audio_file.url, {
+    play: function() { 
+      if (player._state === Player.PlaybackState.STALLED) {
+        if (player.session.currentPlay) {
+          warn('song started playback, but there is a current play already?');
+          return;
+        }
+
+        if (player.session.nextPlay === null) {
+          warn('sound for play ' + play.id + ' started, but player.sesion.nextPlay is null');
+          return;
+        }
+
+        if (player.session.nextPlay.id !== play.id) {
+          warn('sound for play ' + play.id + ' started, but ' + player.session.nextPlay.id + ' is scheduled next');
+          return;
+        }
+
+        player.session.playStarted();
+
+      } else if (player._state === Player.PlaybackState.PAUSED) {
+        if (player.session.currentPlay.id !== play.id) {
+          warn('sound for play ' + play.id + ' resumed, but ' + player.session.currentPlay.id + ' is the active play');
+          return;
+        }
+
+        player._setState(Player.PlaybackState.PLAYING, 'Audio resumed playback');
+
+      }
+    },
+    pause: function() { 
+      if (player._state === Player.PlaybackState.PLAYING) {
+        var currentPlay = player.session.currentPlay;
+
+        if (!currentPlay) {
+          warn('audio paused, but there is no current play');
+          return;
+        }
+
+        if (currentPlay.id !== play.id) {
+          warn('audio paused, but current play ' + currentPlay.id + ' does not matched paused sound for play ' + play.id);
+          return;
+        }
+
+        player._setState(Player.PlaybackState.PAUSED, 'Audio paused');
+      }
+      
+    },
+    finish: function() { 
+      var currentPlay = player.session.currentPlay;
+
+      if (!currentPlay) {
+        warn('audio finished, but there is no current play');
+        return;
+      }
+
+      if (currentPlay.id !== play.id) {
+        warn('audio finished, but current play ' + currentPlay.id + ' does not match finishing sound for play ' + play.id);
+        return;
+      }
+
+      if (!player._sounds[currentPlay.id]) {
+        warn('attempting to delete reference to active sound for play ' + currentPlay.id + ' but it does not exist');
+
+      } else {
+        delete player._sounds[currentPlay.id];
+      }
+
+      player.session.playCompleted();
+    },
+
+    elapsed: function() { }
+  });
+
+  return sound;
+};
+
+Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
+  if (this._state === Player.PlaybackState.PLAYING) {
+    if (currentPlay != null) {
+      warn('current play set to non-null while in playing state');
+      return;
+      
+    } else {
+      this.trigger('play-completed');
+
+      var nextPlay = this.session.nextPlay;
+
+      if (!nextPlay) {
+        this._setState(Player.PlaybackState.WAITING_FOR_ITEM, 'Play completed, and we are waiting for next play');
+
+      } else {
+        var sound = this._sounds[nextPlay.id];
+
+        if (!sound) {
+          // its possible we opted to not start loading the sound, so here
+          // we kick that off
+          sound = this._prepareSound(nextPlay);
+          this._sounds[nextPlay.id] = sound;
+
+          log('created sound (' + sound.id + ') for play ' + nextPlay.id + ' at url ' + nextPlay.audio_file.url);
+        }
+
+        this._setState(Player.PlaybackState.STALLED, 'advancing to next song');
+        sound.play();
+      }
+    }
+
+  } else if (this._state === Player.PlaybackState.STALLED) {
+    if (currentPlay === null) {
+      warn('current play set to null while in stalled state');
+      return;
+    }
+
+    this._setState(Player.PlaybackState.PLAYING, 'Playback of play ' + currentPlay.id + ' began');
+    this.trigger('play-started', currentPlay);
+
+  }
+
+};
+
+
+/**
+ * This event signifies that this client may
+ * play music. Instead of listening for this you could
+ * watch the state of the player to see if it
+ * becomes {@link Player.PlaybackState.READY_TO_PLAY}
+ * after being {@link Player.PlaybackState.UNINITIALIZED}
+ *
+ * @event Player.player-available
+ */
+
+/**
+ * This event signifies that this client may
+ * _NOT_ play music. Instead of listening for this you could
+ * watch the state of the player to see if it
+ * becomes {@link Player.PlaybackState.UNAVAILABLE}
+ *
+ * @event Player.player-not-available
+ */
+
+/**
+ * This event signifies that the state of the player
+ * has changed. Listeners for this event will be given
+ * the new and the old state value.
+ *
+ * @event Player.playback-state-did-change
+ * @type {stateChangeCallback}
+ */
+
+/**
+ * This event announces that the server can't
+ * serve up any more music for this client in
+ * this station, so playback has stopped.
+ *
+ * @event Player.no-more-music
+ */
+
+/**
+ * This event announces that the given play
+ * has begun playback
+ *
+ * @event Player.play-started
+ */
+
+/**
+ * This callback is passed two {@link Player.PlaybackState} 
+ * vaules: the new value and then the old value.
+ *
+ * @callback stateChangeCallback
+ * @param {Player.PlaybackState} newState - new state of player
+ * @param {Player.PlaybackState} oldState - old state of player
+ */
 
 module.exports = Player;
-
-

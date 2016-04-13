@@ -74,9 +74,12 @@ Request.prototype.send = function() {
 
   if (!Client.cookiesEnabled()) {
     var cid = Client.getClientUUID();
+  console.log('no cookies, so getting UUID', cid);
     if (cid) {
       ajax.data.client_id = cid;
     }
+  } else {
+  console.log('found cookies');
   }
 
   log(this.toString() + ': sending request to ' + ajax.url);

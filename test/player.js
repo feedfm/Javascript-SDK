@@ -1,31 +1,187 @@
-/*global it:false, describe:false, beforeEach:false, afterEach:false, chai:false, sinon:false, Feed:false */
+/*global it:false, describe:false, chai:false, sinon:false, Feed:false, beforeEach:false, afterEach:false, $:false, _:false, Events:false */
 /*jshint camelcase:false */
 
 (function() {
-  var assert = chai.assert,
-      speakerOptions = { swfBase: '../dist' };
+  var assert = chai.assert;
 
   describe('player', function() {
-    var server, requests, plays;
+
+    describe('initialization', function() {
+
+      it('should start out in the uninitialized state', function() {
+        sinon.stub(Feed.Speaker, 'getShared', function() {
+          var d = $.Deferred();
+          d.resolve({ }); // speaker is good
+
+          return d.promise();
+        });
+
+        var player = new Feed.Player();
+        assert.equal(player.getState(), Feed.Player.PlaybackState.UNINITIALIZED);
+
+        Feed.Speaker.getShared.restore();
+      });
+
+      it('should become ready to play after valid session and speaker', function(done) {
+        sinon.stub(Feed.Speaker, 'getShared', function() {
+          var d = $.Deferred();
+          d.resolve({ });  // speaker is good
+
+          return d.promise();
+        });
+
+        var player = new Feed.Player();
+
+        player.once('playback-state-did-change', function(current, past) {
+          assert.equal(current, Feed.Player.PlaybackState.READY_TO_PLAY);
+          assert.equal(past, Feed.Player.PlaybackState.UNINITIALIZED);
+          
+          Feed.Speaker.getShared.restore();
+
+          done();
+        });
+
+        player.session.trigger('session-available');  // session is good
+      });
+      
+      it('should become unavailable after an invalid session response', function(done) {
+        sinon.stub(Feed.Speaker, 'getShared', function() {
+          var d = $.Deferred();
+          d.resolve({ }); // speaker is good
+
+          return d.promise();
+        });
+
+        var player = new Feed.Player();
+
+        player.once('playback-state-did-change', function(current, past) {
+          assert.equal(current, Feed.Player.PlaybackState.UNAVAILABLE);
+          assert.equal(past, Feed.Player.PlaybackState.UNINITIALIZED);
+
+          Feed.Speaker.getShared.restore();
+
+          done();
+        });
+
+        player.session.trigger('session-not-available'); // session is bad
+      });
+
+      it('should become unavailable when speaker fails to start', function(done) {
+        // stub out speaker
+        sinon.stub(Feed.Speaker, 'getShared', function() {
+          var d = $.Deferred();
+          d.reject();  // speaker is bad
+
+          return d.promise();
+        });
+
+        var player = new Feed.Player();
+
+        player.once('playback-state-did-change', function(current, past) {
+          assert.equal(current, Feed.Player.PlaybackState.UNAVAILABLE);
+          assert.equal(past, Feed.Player.PlaybackState.UNINITIALIZED);
+
+          Feed.Speaker.getShared.restore();
+
+          done();
+        });
+
+        player.session.trigger('session-available'); // session is good
+      });
+
+    });
+
+/*
+    describe('streaming', function() {
+      var player;
+
+      // fake speaker implementation
+      var speaker = {
+        create: function(url, options) {
+          if (songQueue.length === 0) {
+            assert.fail('tried to create song, but nothing is queued up');
+          }
+
+          var song = songQueue.shift();
+
+          _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
+            if (ev in options) {
+              song.on(ev, options[ev]);
+            }
+          });
+
+          return song;
+        }
+      };
+
+      beforeEach(function(done) {
+        songQueue = [];
+
+        sinon.stub(Feed.Speaker, 'getShared', function() {
+          var d = $.Deferred();
+          d.resolve(speaker);
+
+          return d.promise();
+        });
+
+        // create a player and get past the session setup
+        // (we assume stage of things has already been tested)
+        player = new Feed.Player();
+
+        sinon.stub(player.session, 'setCredentials');
+
+        player.setCredentials('a', 'b');
+
+        player.once('playback-state-did-change', function() {
+          done();
+        });
+
+        player.session.trigger('session-available');
+      });
+
+      afterEach(function() {
+        Feed.Speaker.getShared.restore();
+      });
+      */
+
+/*
+      function createSound() {
+        var sound = new Event();
+
+        return sound;
+      }
+
+
+      it('will request a play and create a sound when told to prepareToPlay', function() {
+
+      });
+      */
+
+  });
+})();
+
+/*
+  describe('preparation', function() {
+    var player;
 
     beforeEach(function() {
-      server = sinon.fakeServer.create();
-      server.autoRespond = true;
-      server.autoRespondAfter = 10;
+      // create a player and get it to a point where
+      // it is waiting for a session-available event
+      // from the session it owns
+      player = new Feed.Player();
 
+      sinon.stub(player.session, 'setCredentials');
+
+      player.setCredentials('a', 'b');
+    });
+
+//        player.session.trigger('session-available');
+  });
+
+    beforeEach(function() {
       requests = [];
       plays = [];
 
-      server.respondWith('POST', 'https://feed.fm/api/v2/client', function(response) {
-        console.log('client');
-        requests.push('client');
-
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
-          success: true,
-          client_id: 'client_id'
-        }));
-      });
-      
       server.respondWith('GET', 'https://feed.fm/api/v2/placement/10000', function(response) {
         console.log('placement');
         requests.push('placement');
@@ -108,12 +264,6 @@
 
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       });
-    });
-
-    afterEach(function() {
-      server.restore();
-
-      Feed.Session.prototype._deleteStoredCid();
     });
 
     it('exports the base API', function() {
@@ -590,4 +740,5 @@
       };
     }
   });
-})();
+  */
+

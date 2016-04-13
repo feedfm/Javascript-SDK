@@ -4,7 +4,7 @@
 </head>
 <body>
 
-<button id="tune">tune</button>
+<button id="tune">prepare</button>
 <button id="play">play</button>
 <button id="pause">pause</button>
 <button id="skip">skip</button>
@@ -17,32 +17,21 @@
 <button id="delete">delete client cookie</button>
 
 <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../dist/feed.js" type="application/javascript"></script>
+<script src="../../dist/feed.js" type="application/javascript"></script>
 
 <script>
- var player = new Feed.Player(
-  // production
-  'demo', 
-  'demo', 
-  { 
-    debug: true, 
-    swfBase: '../dist' 
-  }
-  /*
-  // localhost dev
-  '7fcef228d85f96746d7c290eb9056d6ee5411d5e', 
-  '84bead07460f549894197b4cf60becde93121c11', 
-  { 
-    debug: true, 
-    swfBase: '../dist',
-    baseUrl: '//feed.localdomain:8000'
-  }
-  */
-);
+console.log('creating...');
+var player = new Feed.Player({ 
+  debug: true, 
+  swfBase: '../dist' 
+});
+console.log('created!');
 
 player.on('all', function() {
   console.log('event sprung!', arguments);
 });
+
+player.setCredentials('demo', 'demo');
 
 var state = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)player\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
 
@@ -67,7 +56,7 @@ $('#delete').on('click', function() {
 });
 
 $('#tune').on('click', function() {
-  player.tune();
+  player.prepareToPlay();
 });
 
 $('#play').on('click', function() {

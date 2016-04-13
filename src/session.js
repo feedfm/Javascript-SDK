@@ -5,6 +5,7 @@ var Auth = require('./auth');
 var Events = require('./events');
 var Request = require('./request');
 var Play = require('./play');
+var Client = require('./client');
 var Station = require('./station');
 var _ = require('underscore');
 
@@ -55,7 +56,7 @@ var DEFAULT_BITRATE = 128;
  *   // playing this song next
  * });
  *
- * session.on('current-play-changed', function(currentPlay) {
+ * session.on('current-play-did-change', function(currentPlay) {
  *   // when currentPlay is not null, this means we just started
  *   // playback of currentPlay
  *
@@ -315,7 +316,7 @@ Session.prototype._requestSession = function() {
     }
 
     var cid = res.session.client_id;
-    Auth.setClientUUID(cid);
+    Client.setClientUUID(cid);
 
     if (res.session.available) {
       // session is available!
@@ -777,6 +778,7 @@ Session.prototype.handleUnexpectedError = function(err) {
  * value.
  *
  * @event Session#next-play-available
+ * @type {Play}
  */
 
 /**
@@ -788,6 +790,7 @@ Session.prototype.handleUnexpectedError = function(err) {
  * the {@link Session#currentPlay}.
  *
  * @event Session#current-play-did-change
+ * @type {Play}
  */
 
 /**
@@ -797,6 +800,7 @@ Session.prototype.handleUnexpectedError = function(err) {
  * new station.
  *
  * @event Session#active-station-did-change
+ * @type {Station}
  */
 
 /**

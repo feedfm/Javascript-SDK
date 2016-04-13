@@ -54,7 +54,7 @@
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
+					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
 				</ul>
 			</li>
 			
@@ -187,7 +187,8 @@ playback is granted.</p></div>
 
             
 
-            <td class="description last"><p>configuration options</p>
+            <td class="description last"><p>configuration options. These also include
+      all the options in <a href="Speaker.html">Speaker</a>.</p>
                 <h6 class="method-params-label method-subparams-label">Properties</h6>
                 
 
@@ -687,32 +688,29 @@ playback is granted.</p></div>
     
 </dd>
 
-        
+        </dl>
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        <dl>
             
 <hr>
-<dt class="name" id="state">
-    <h4><span class="type-signature">&lt;readonly> </span>state<span class="type-signature"> :<a href="Player.html#.PlaybackState">Player.PlaybackState</a></span></h4>
-
+<dt>
+    <h4 class="name" id="getState"><span class="type-signature"></span>getState()</h4>
+    
     
 </dt>
 <dd>
-    
-    <div class="description">
-        <p>current state of the player</p>
-    </div>
+
     
 
     
-        <h5>Type:</h5>
-        <ul>
-            <li>
-                
-<span class="param-type"><a href="Player.html#.PlaybackState">Player.PlaybackState</a></span>
 
+    
 
-
-            </li>
-        </ul>
+    
     
 
     
@@ -756,15 +754,45 @@ playback is granted.</p></div>
 
 
     
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    <p>the state of the player</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Player.html#.PlaybackState">Player.PlaybackState</a></span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
 </dd>
 
-        </dl>
-    
-
-    
-        <h3 class="subsection-title">Methods</h3>
-
-        <dl>
+        
             
 <hr>
 <dt>
@@ -1410,6 +1438,241 @@ the callback is invoked, it will be removed.</p>
             
 <hr>
 <dt>
+    <h4 class="name" id="pause"><span class="type-signature"></span>pause()</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>Pause music playback.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="play"><span class="type-signature"></span>play()</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>Start or resume music playback</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="prepareToPlay"><span class="type-signature"></span>prepareToPlay()</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>Start loading music in the background so that a 
+call to <a href="Player.html#play">Player#play</a> immediately starts music.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id="setCredentials"><span class="type-signature"></span>setCredentials(token, secret)</h4>
     
     
@@ -1422,7 +1685,7 @@ the callback is invoked, it will be removed.</p>
 communication with Feed.fm to see if this client is
 cleared to play music. If and when the client is
 cleared play music and the audio system is initialized,
-the <a href="Player.html#state">Player#state</a> will change to READY_TO_PLAY.
+the <a href="Player.html#getState">Player#getState</a> will change to READY_TO_PLAY.
 Otherwise the state will become UNAVAILABLE. Also,
 a Player#event:player-available
 or Player#event:player-not-available event
@@ -1948,6 +2211,165 @@ receive the true name of the event as the first argument).</p>
             
 <hr>
 <dt>
+    <h4 class="name" id=".event:no-more-music">no-more-music</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event announces that the server can't
+serve up any more music for this client in
+this station, so playback has stopped.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id=".event:play-started">play-started</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event announces that the given play
+has begun playback</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id=".event:playback-state-did-change">playback-state-did-change</h4>
     
     
@@ -2045,7 +2467,8 @@ the new and the old state value.</p>
         <p>This event signifies that this client may
 play music. Instead of listening for this you could
 watch the state of the player to see if it
-becomes <a href="Player.html#.PlaybackState#.READY_TO_PLAY">Player.PlaybackState.READY_TO_PLAY</a></p>
+becomes <a href="Player.html#.PlaybackState#.READY_TO_PLAY">Player.PlaybackState.READY_TO_PLAY</a>
+after being <a href="Player.html#.PlaybackState#.UNINITIALIZED">Player.PlaybackState.UNINITIALIZED</a></p>
     </div>
     
 
@@ -2236,7 +2659,7 @@ becomes <a href="Player.html#.PlaybackState#.UNAVAILABLE">Player.PlaybackState.U
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-04-11T17:24:36-07:00
+		on 2016-04-13T15:21:27-07:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>

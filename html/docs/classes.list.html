@@ -54,7 +54,7 @@
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
+					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
 				</ul>
 			</li>
 			
@@ -212,6 +212,165 @@
             
 <hr>
 <dt>
+    <h4 class="name" id=".event:no-more-music">no-more-music</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event announces that the server can't
+serve up any more music for this client in
+this station, so playback has stopped.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id=".event:play-started">play-started</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event announces that the given play
+has begun playback</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id=".event:playback-state-did-change">playback-state-did-change</h4>
     
     
@@ -309,7 +468,8 @@ the new and the old state value.</p>
         <p>This event signifies that this client may
 play music. Instead of listening for this you could
 watch the state of the player to see if it
-becomes <a href="Player.html#.PlaybackState#.READY_TO_PLAY">Player.PlaybackState.READY_TO_PLAY</a></p>
+becomes <a href="Player.html#.PlaybackState#.READY_TO_PLAY">Player.PlaybackState.READY_TO_PLAY</a>
+after being <a href="Player.html#.PlaybackState#.UNINITIALIZED">Player.PlaybackState.UNINITIALIZED</a></p>
     </div>
     
 
@@ -478,6 +638,12 @@ new station.</p>
     
 
     
+        <h5>Type: 
+<span class="param-type"><a href="Station.html">Station</a></span>
+
+
+</h5>
+    
 
     
     
@@ -561,6 +727,12 @@ the <a href="Session.html#currentPlay">Session#currentPlay</a>.</p>
     
 
     
+        <h5>Type: 
+<span class="param-type"><a href="Play.html">Play</a></span>
+
+
+</h5>
+    
 
     
     
@@ -639,6 +811,12 @@ value.</p>
 
     
 
+    
+        <h5>Type: 
+<span class="param-type"><a href="Play.html">Play</a></span>
+
+
+</h5>
     
 
     
@@ -1101,6 +1279,85 @@ server, and so music retrieval has stopped.</p>
             
 <hr>
 <dt>
+    <h4 class="name" id="event:elapse">elapse</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This is periodically triggered while the
+song is playing.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id="event:finish">finish</h4>
     
     
@@ -1269,7 +1526,8 @@ event, then the song didn't complete normally.</p>
     
     <div class="description">
         <p>The song has started playback or resumed playback
-after a pause.</p>
+after a pause. This event is always triggered after
+a call to <a href="Sound.html#play">Sound#play</a></p>
     </div>
     
 
@@ -1379,7 +1637,7 @@ after a pause.</p>
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-04-11T17:24:36-07:00
+		on 2016-04-13T15:21:27-07:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>

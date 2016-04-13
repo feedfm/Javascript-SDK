@@ -42,11 +42,14 @@ Client.setClientUUID = function(cid) {
 };
 
 Client.getClientUUID = function() {
+  var uuid;
   if (Client.cookiesEnabled()) {
-    return Cookie.get(COOKIE_NAME);
+    uuid = Cookie.get(COOKIE_NAME);
   } else {
-    return localCid;
+    uuid = localCid;
   }
+
+  return uuid;
 };
 
 /**

@@ -7,10 +7,13 @@ var Events = require('./events');
 var util = require('./util');
 var SoundManager = require('soundmanager2');
 
+// global shared instance
+var speaker = null;
 
 /**
  * The song has started playback or resumed playback
- * after a pause.
+ * after a pause. This event is always triggered after
+ * a call to {@link Sound#play}
  *
  * @event Sound#play
  */
@@ -31,6 +34,13 @@ var SoundManager = require('soundmanager2');
  */
 
 /**
+ * This is periodically triggered while the
+ * song is playing.
+ *
+ * @event Sound#elapse
+ */
+
+/**
  *
  * @classdesc
  *
@@ -38,9 +48,23 @@ var SoundManager = require('soundmanager2');
  * want to play. It emits a set of events
  * in a specific order:
  *
- * ( {@link Sound#event.play} -> ( {@link Sound#event.pause} | {@link Sound#event.play} )* -> )? {@link Sound#event.finish} )
+ * ( {@link Sound#event:play} -> ( {@link Sound#event:pause} | {@link Sound#event:play} | {@link Sound#event:elapse} )* -> )? {@link Sound#event:finish} )
+ *
+ * Note, particularly, that the {@link Sound#event:play} 
+ * and {@link Sound#event:finish} events will always
+ * be called, even if the file is missing or bad.
+ *
+ * Use the {@link Speaker#create} method to create
+ * a new sound, rather than using this constructor.
+ *
  *
  * @constructor
+ * @param {object} [options] - configuration options
+ * @param {number} [options.startPosition] - time offset to start playback from
+ * @param {function} [options.play] - method to receive {@link Sound#event:play} events
+ * @param {function} [options.pause] - method to receive {@link Sound#event:pause} events
+ * @param {function} [options.finish] - method to receive {@link Sound#event:finish} events
+ * @param {function} [options.elapse] - method to receive {@link Sound#event:elapse} events
  * @mixes Events
  */
 
@@ -158,7 +182,7 @@ Sound.prototype = {
     log('destroy triggered for', this.id);
 
     if (this.sm2Sound) {
-      delete this.outstandingPlays[this.id];
+      delete this.speaker.outstandingPlays[this.id];
       this.sm2Sound.destruct();
       this.sm2Sound = null;
     }
@@ -318,6 +342,7 @@ Speaker.prototype = {
     var sound = new Sound(callbacks);
     sound.id = _.uniqueId('play');
     sound.url = url;
+    sound.speaker = this;
 
     this.outstandingPlays[sound.id] = sound;
 
@@ -424,9 +449,6 @@ Speaker.prototype = {
 // add events to speaker class
 _.extend(Speaker.prototype, Events);
 
-// global shared instance
-var speaker = null;
-
 /**
  * This callback is passed a reference to the
  * speaker that became ready.
@@ -441,25 +463,16 @@ var speaker = null;
  * 
  * @param {object} options - options sent to the Speaker
  *     constructor. See {@link Speaker}.
- * @param {speakerReadyCallback} [onReady] - a optional function
- *     that will be called after the music subsystem is
- *     initialized.
  * @return {Promise} a promise that yields a
  *   reference to the initialized shared speaker.
  */
 
-Speaker.getShared = function(options, onReady) {
+Speaker.getShared = function(options) {
   if (!speaker) {
     speaker = new Speaker(options);
   }
 
-  return speaker.onReadyPromise.then(function(s) {
-    if (onReady) {
-      onReady(s);
-    }
-
-    return s;
-  });
+  return speaker.onReadyPromise;
 };
 
 

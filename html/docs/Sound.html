@@ -54,7 +54,7 @@
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
+					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
 				</ul>
 			</li>
 			
@@ -103,7 +103,12 @@
             <div class="class-description"><p>This class represents an audio object we
 want to play. It emits a set of events
 in a specific order:</p>
-<p>( Sound#event.play -&gt; ( Sound#event.pause | Sound#event.play )* -&gt; )? Sound#event.finish )</p></div>
+<p>( <a href="Sound.html#event:play">Sound#event:play</a> -&gt; ( <a href="Sound.html#event:pause">Sound#event:pause</a> | <a href="Sound.html#event:play">Sound#event:play</a> | <a href="Sound.html#event:elapse">Sound#event:elapse</a> )* -&gt; )? <a href="Sound.html#event:finish">Sound#event:finish</a> )</p>
+<p>Note, particularly, that the <a href="Sound.html#event:play">Sound#event:play</a> 
+and <a href="Sound.html#event:finish">Sound#event:finish</a> events will always
+be called, even if the file is missing or bad.</p>
+<p>Use the <a href="Speaker.html#create">Speaker#create</a> method to create
+a new sound, rather than using this constructor.</p></div>
         
     
 </header>
@@ -115,7 +120,7 @@ in a specific order:</p>
         
 <hr>
 <dt>
-    <h4 class="name" id="Sound"><span class="type-signature"></span>new Sound()</h4>
+    <h4 class="name" id="Sound"><span class="type-signature"></span>new Sound(<span class="optional">options</span>)</h4>
     
     
 </dt>
@@ -128,6 +133,266 @@ in a specific order:</p>
     
 
     
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>configuration options</p>
+                <h6 class="method-params-label method-subparams-label">Properties</h6>
+                
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>startPosition</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>time offset to start playback from</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>play</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>method to receive <a href="Sound.html#event:play">Sound#event:play</a> events</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>pause</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>method to receive <a href="Sound.html#event:pause">Sound#event:pause</a> events</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>finish</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>method to receive <a href="Sound.html#event:finish">Sound#event:finish</a> events</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>elapse</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>method to receive <a href="Sound.html#event:elapse">Sound#event:elapse</a> events</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
     
 
     
@@ -1724,6 +1989,85 @@ receive the true name of the event as the first argument).</p>
             
 <hr>
 <dt>
+    <h4 class="name" id="event:elapse">elapse</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This is periodically triggered while the
+song is playing.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id="event:finish">finish</h4>
     
     
@@ -1892,7 +2236,8 @@ event, then the song didn't complete normally.</p>
     
     <div class="description">
         <p>The song has started playback or resumed playback
-after a pause.</p>
+after a pause. This event is always triggered after
+a call to <a href="Sound.html#play">Sound#play</a></p>
     </div>
     
 
@@ -2002,7 +2347,7 @@ after a pause.</p>
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-04-11T17:24:36-07:00
+		on 2016-04-13T15:21:27-07:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>
