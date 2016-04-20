@@ -227,7 +227,7 @@ Player.prototype.play = function() {
       return;
     }
 
-    sound.play();
+    sound.resume();
   }
 };
 
@@ -251,6 +251,27 @@ Player.prototype.pause = function() {
     }
 
     sound.pause();
+  }
+};
+
+/**
+ * Try to skip the current song. This will cause the
+ * current song to complete (and trigger a
+ * {@link Player#event:play-completed}) and advance
+ * to the next song, or it will trigger a 
+ * {@link Player#event:skip-denied} event and the
+ * current song will continue playing.
+ */
+
+Player.prototype.skip = function() {
+  if (!this.session.canSkip) {
+    this.trigger('skip-denied');
+    return;
+  }
+
+  if ((this._state === Player.PlaybackState.PLAYING) ||
+      (this._state === Player.PlaybackState.PAUSED)) {
+    this._setState(Player.PlaybackState.REQUESTING_SKIP, 'User requested skip');
   }
 };
 
@@ -318,8 +339,30 @@ Player.prototype._onSessionNextPlayAvailable = function(nextPlay) {
   }
 };
 
-Player.prototype._onSessionSkipStatusDidChange = function() {
+Player.prototype._onSessionSkipStatusDidChange = function(canSkip) {
+  if (this._state === Player.PlaybackState.REQUESTING_SKIP) {
+    if (canSkip === false) {
+      var currentPlay = this.session.currentPlay;
+      if (!currentPlay) {
+        warn('no current play after failed skip!');
+        return;
+      }
 
+      var sound = this._sounds[currentPlay.id];
+      if (!sound) {
+        warn('no sound associated with current play when trying to resume from failed skip!');
+        return;
+      }
+
+      // make sure we're playing the song when we go back to
+      // PLAYING state
+      sound.play();
+
+      this._setState(Player.PlaybackState.PLAYING);
+
+      this.trigger('skip-failed');
+    }
+  }
 };
 
 Player.prototype._onSessionActiveStationDidChange = function() {
@@ -407,9 +450,10 @@ Player.prototype._prepareSound = function(play) {
 };
 
 Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
-  if (this._state === Player.PlaybackState.PLAYING) {
+  if ((this._state === Player.PlaybackState.PLAYING) ||
+      (this._state === Player.PlaybackState.REQUESTING_SKIP)) {
     if (currentPlay != null) {
-      warn('current play set to non-null while in playing state');
+      warn('current play set to non-null while in playing or requesting skip state');
       return;
       
     } else {
@@ -492,6 +536,13 @@ Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
  * has begun playback
  *
  * @event Player.play-started
+ */
+
+/**
+ * This event announces that a skip request
+ * was denied.
+ *
+ * @event Player.skip-denied
  */
 
 /**

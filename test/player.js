@@ -6,6 +6,15 @@
 
   describe('player', function() {
 
+    beforeEach(function() {
+
+    });
+
+    afterEach(function() {
+      // delete any stored cid
+      Feed.Client.deleteClientUUID();
+    });
+
     describe('initialization', function() {
 
       it('should start out in the uninitialized state', function() {
@@ -30,18 +39,28 @@
           return d.promise();
         });
 
+        sinon.stub(Feed.Session.prototype, 'setCredentials', function() {
+          var that = this;
+          setTimeout(function() {
+            // session is good
+            that.trigger('session-available');
+          }, 10);
+        });
+
         var player = new Feed.Player();
 
         player.once('playback-state-did-change', function(current, past) {
           assert.equal(current, Feed.Player.PlaybackState.READY_TO_PLAY);
           assert.equal(past, Feed.Player.PlaybackState.UNINITIALIZED);
+          assert.equal(player.getState(), Feed.Player.PlaybackState.READY_TO_PLAY);
           
           Feed.Speaker.getShared.restore();
+          Feed.Session.prototype.setCredentials.restore();
 
           done();
         });
 
-        player.session.trigger('session-available');  // session is good
+        player.setCredentials('a', 'b');
       });
       
       it('should become unavailable after an invalid session response', function(done) {
@@ -52,18 +71,28 @@
           return d.promise();
         });
 
+        sinon.stub(Feed.Session.prototype, 'setCredentials', function() {
+          var that = this;
+          setTimeout(function() {
+            // session is not good
+            that.trigger('session-not-available');
+          }, 10);
+        });
+
         var player = new Feed.Player();
 
         player.once('playback-state-did-change', function(current, past) {
           assert.equal(current, Feed.Player.PlaybackState.UNAVAILABLE);
           assert.equal(past, Feed.Player.PlaybackState.UNINITIALIZED);
+          assert.equal(player.getState(), Feed.Player.PlaybackState.UNAVAILABLE);
 
           Feed.Speaker.getShared.restore();
+          Feed.Session.prototype.setCredentials.restore();
 
           done();
         });
 
-        player.session.trigger('session-not-available'); // session is bad
+        player.setCredentials('a', 'b');
       });
 
       it('should become unavailable when speaker fails to start', function(done) {
@@ -75,21 +104,32 @@
           return d.promise();
         });
 
+        sinon.stub(Feed.Session.prototype, 'setCredentials', function() {
+          var that = this;
+          setTimeout(function() {
+            // session is good
+            that.trigger('session-available');
+          }, 10);
+        });
+
         var player = new Feed.Player();
 
         player.once('playback-state-did-change', function(current, past) {
           assert.equal(current, Feed.Player.PlaybackState.UNAVAILABLE);
           assert.equal(past, Feed.Player.PlaybackState.UNINITIALIZED);
+          assert.equal(player.getState(), Feed.Player.PlaybackState.UNAVAILABLE);
 
           Feed.Speaker.getShared.restore();
+          Feed.Session.prototype.setCredentials.restore();
 
           done();
         });
 
-        player.session.trigger('session-available'); // session is good
+        player.setCredentials('a', 'b');
       });
 
     });
+
 
 /*
     describe('streaming', function() {

@@ -5,27 +5,34 @@ var Cookie = require('tiny-cookie');
 
 var COOKIE_NAME = 'cid';
 
-/**
- * The Client class keeps track of the client's
- * UUID value.
- */
-
 var localCid = '';
 
-var Client = { };
+/**
+ * The Client class keeps track of a client's
+ * UUID value.
+ *
+ * @classdesc
+ * @class
+ */
+
+var Client = function() {
+
+};
+
+Client._cookiesEnabled = Cookie.enabled();
 
 /**
  * Returns true if the client will let us set cookies.
+ *
+ * @return {boolean} true if cookies are available
  */
 
-Client._cookiesEnabled = Cookie.enabled();
 Client.cookiesEnabled = function() {
   return Client._cookiesEnabled;
 };
 
 /**
- * Persist client UUID as a cookie and save it for signed
- * requests.
+ * Persist UUID 
  */
 
 Client.setClientUUID = function(cid) {
@@ -41,6 +48,12 @@ Client.setClientUUID = function(cid) {
   }
 };
 
+/*
+ * Retrieve saved UUID
+ *
+ * @returns {string} persisted UUID
+ */
+
 Client.getClientUUID = function() {
   var uuid;
   if (Client.cookiesEnabled()) {
@@ -53,7 +66,7 @@ Client.getClientUUID = function() {
 };
 
 /**
- * Delete the persisted UUID cookie
+ * Delete persisted UUID 
  */
 
 Client.deleteClientUUID = function() {
