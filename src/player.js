@@ -333,7 +333,7 @@ Player.prototype._onSessionNextPlayAvailable = function(nextPlay) {
     }
 
     if (this._state === Player.PlaybackState.WAITING_FOR_ITEM) {
-      this._setState(Player.PlaybackState.STALLED);
+      this._setState(Player.PlaybackState.STALLED, 'Item came in while waiting for it');
       sound.play();
     }
   }
@@ -423,8 +423,9 @@ Player.prototype._prepareSound = function(play) {
     finish: function() { 
       var currentPlay = player.session.currentPlay;
 
+console.log('sound finish callback', play, currentPlay);
       if (!currentPlay) {
-        warn('audio finished, but there is no current play');
+        warn('audio finished for (' + play.id + '), but there is no current play');
         return;
       }
 
@@ -477,6 +478,7 @@ Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
         }
 
         this._setState(Player.PlaybackState.STALLED, 'advancing to next song');
+        console.log('advanced state');
         sound.play();
       }
     }

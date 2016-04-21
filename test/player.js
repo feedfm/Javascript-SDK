@@ -130,6 +130,260 @@
 
     });
 
+    describe('playback', function() {
+
+      var responses, requests;
+      var xhr;
+      var onCreateSound;
+      var onResponsesComplete;
+      var playId;
+
+      function sessionResponse() {
+        return {
+          success: true,
+          session: {
+            available: true,
+            client_id: 'abc123'
+          },
+          stations: [
+            { id: 'station one', title: 'station one' }
+          ]
+        };
+      }
+
+      function playResponse() {
+        var play = {
+          success: true,
+          play: {
+            id: 'play id ' + playId,
+            audio_file: {
+              id: 'audio file id',
+              url: 'http://audio.file/' + playId,
+              track: {
+                id: 'audio file track id',
+                title: 'audio file track title'
+              },
+              release: {
+                id: 'audio file release id',
+                title: 'audio file release title'
+              },
+              artist: {
+                id: 'audio file artist id',
+                title: 'audio file artist title'
+              }
+            }
+          }
+        };
+
+        playId++;
+
+        return play;
+      }
+
+      function startResponse() {
+        return {
+          success: true,
+          can_skip: true
+        };
+      }
+
+      function successResponse() {
+        return {
+          success: true
+        };
+      }
+
+      beforeEach(function() {
+        responses = [];
+        requests = [];
+        onCreateSound = null;
+        onResponsesComplete = null;
+        playId = 0;
+
+        xhr = sinon.useFakeXMLHttpRequest();
+        xhr.onCreate = function(xhr) {
+          requests.push(xhr);
+
+          if (responses.length > 0) {
+            var response = responses.shift();
+            var lastResponse = (responses.length === 0);
+
+            setTimeout(function() {
+              xhr.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(response));
+
+              if (lastResponse && onResponsesComplete) {
+                onResponsesComplete();
+              }
+            }, 10);
+          }
+        };
+
+        // Fake speaker that returns a sound object with
+        // stubbed out play/pause/position/resume properties.
+        sinon.stub(Feed.Speaker, 'getShared', function() {
+          var d = $.Deferred();
+          var soundId = 0;
+
+          d.resolve({
+            create: function(url, options) {
+              var sound = _.extend({ 
+                id: 'sound id ' + soundId++,
+                url: url,
+
+                // any interaction with new fake sound
+                // defaults to an error
+                play: function()     { assert.fail(); },
+                pause: function()    { assert.fail(); },
+                position: function() { assert.fail(); },
+                resume: function()   { assert.fail(); }
+              }, Events);
+
+              _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
+                if (ev in options) {
+                  sound.on(ev, options[ev]);
+                }
+              });
+
+              if (onCreateSound) {
+                // customize fake sound
+                onCreateSound(sound);
+              }
+
+              return sound;
+            }
+          });
+
+          return d.promise();
+        });
+      });
+
+      afterEach(function() {
+        Feed.Speaker.getShared.restore();
+
+        xhr.restore();
+
+      });
+
+      it('should load a song after a prepareToPlay call', function(done) {
+        responses.push(sessionResponse());
+        responses.push(playResponse());
+
+        onCreateSound = function() {
+          setTimeout(function() {
+            done();
+          }, 20);
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.prepareToPlay();
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
+      it('should load and start a song after a play call', function(done) {
+        responses.push(sessionResponse());
+        responses.push(playResponse());
+        responses.push(startResponse());
+        responses.push(playResponse());
+
+        onCreateSound = function(sound) {
+          sound.play = function() { 
+            setTimeout(function() {
+              sound.trigger('play');
+            }, 1);
+          };
+        };
+
+        var states = [];
+
+        onResponsesComplete = function() {
+          assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                     Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING ]);
+          done();
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
+
+      it('should advanced to the next song after the first completes', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+        var third = playResponse();
+
+        responses.push(sessionResponse());
+        responses.push(first);
+        responses.push(startResponse());
+        responses.push(second);
+        responses.push(successResponse());
+        responses.push(startResponse());
+        responses.push(third);
+
+        onCreateSound = function(sound) {
+
+          sound.play = function() { 
+
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+              setTimeout(function() {
+                sound.trigger('finish');
+              }, 50);
+
+            } else if (sound.url === second.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+        };
+
+        var states = [];
+
+        onResponsesComplete = function() {
+          assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                     Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING ]);
+          done();
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
+    });
 
 /*
     describe('streaming', function() {
