@@ -941,6 +941,40 @@
       session.setCredentials('x', 'y');
     });
 
+    it('will emit unexpected-error when all play attempts fail', function(done) {
+      this.timeout(5000);
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var requestCount = 0;
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        requestCount++;
+
+        // all responses are bad
+        response.respond(500, { 'Content-Type': 'text/html' }, 'not a good response!');
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+
+      session.on('all', function() {
+        console.log('event ', arguments);
+      });
+
+      session.once('unexpected-error', function(err) {
+        assert.isNotNull(err);
+
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
     var counter = 0;
     function validPlayResponse(id) {
       if (!id) { id = counter++; }

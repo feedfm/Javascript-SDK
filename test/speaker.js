@@ -203,7 +203,7 @@
         }, 1400);
       });
 
-      it.only('will not trigger finish event if playing song is destroyed', function(done) {
+      it('will not trigger finish event if playing song is destroyed', function(done) {
         var song = speaker.create('hutz.mp3', { 
           play: function() { 
             setTimeout(function() {

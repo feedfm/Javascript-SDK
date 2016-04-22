@@ -21,7 +21,7 @@
       Feed.Client.cookiesEnabled = clientCookiesEnabled;
 
       // delete the stored cid
-      Feed.Auth.deleteClientUUID();
+      Feed.Client.deleteClientUUID();
     });
 
     it('will send the cid as a parameter if cookies are not enabled', function(done) {

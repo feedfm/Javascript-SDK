@@ -54,7 +54,7 @@
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Player.html#.event:skip-denied">Player.event:skip-denied</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:discard-next-play">Session#event:discard-next-play</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
+					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Player.html#.event:skip-denied">Player.event:skip-denied</a></li><li><a href="Player.html#.event:unexpected-error">Player.event:unexpected-error</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:discard-next-play">Session#event:discard-next-play</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
 				</ul>
 			</li>
 			
@@ -633,6 +633,89 @@ becomes <a href="Player.html#.PlaybackState#.UNAVAILABLE">Player.PlaybackState.U
     <div class="description">
         <p>This event announces that a skip request
 was denied.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id=".event:unexpected-error">unexpected-error</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event announces that we had an unexpected
+response from the server. This value is just passed
+on from the <a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a>
+event. The player class will reset itself back
+to the READY_TO_PLAY state and
+then emit this so the user can be informed.</p>
     </div>
     
 
@@ -1375,8 +1458,14 @@ triggered after <a href="Session.html#setCredentials">Session#setCredentials</a>
 
     
     <div class="description">
-        <p>This indicates an unexpecte error was received from the
-server, and so music retrieval has stopped.</p>
+        <p>This indicates an unexpected error was received from the
+server. This can only be triggered sometime after we've triggered
+a <a href="Session.html#event:session-available">Session#event:session-available</a> event. Before
+this is triggered, any <a href="Session.html#nextPlay">Session#nextPlay</a> will be
+discarded and the <a href="Session.html#currentPlay">Session#currentPlay</a> will be set
+to null, which effectively resets the session. 
+No more plays will be requested until
+<a href="Session.html#requestNextPlay">Session#requestNextPlay</a> is called again.</p>
     </div>
     
 
@@ -1804,7 +1893,7 @@ a call to <a href="Sound.html#play">Sound#play</a></p>
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-04-21T17:31:51-07:00
+		on 2016-04-22T11:58:37-07:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>

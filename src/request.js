@@ -195,7 +195,7 @@ Request.requestPlay = function(stationId, audioFormats, maxBitrate) {
   var req = new Request();
   req.endpoint = 'play';
   req.type = 'POST';
-  req.retryCount = 20;  // we _really_ want to play music, man!
+  req.retryCount = 3;  // if this fails, the user can retry later
 
   req.data.station_id = stationId;
   req.data.formats = audioFormats;

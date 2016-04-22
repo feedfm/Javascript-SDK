@@ -8,6 +8,7 @@ var Play = require('./play');
 var Client = require('./client');
 var Station = require('./station');
 var _ = require('underscore');
+var API_ERRORS = require('./error');
 
 var DEFAULT_FORMATS = 'mp3';
 var DEFAULT_BITRATE = 128;
@@ -318,7 +319,7 @@ Session.prototype._requestSession = function() {
 
   sessionRequest.success = function(res) {
     if (!res.session) {
-      session.handleUnexpectedError(new Error('FMErrorCodeUnexpectedReturnType'));
+      session._handleUnexpectedError(new Error('FMErrorCodeUnexpectedReturnType'));
 
       return;
     }
@@ -353,7 +354,7 @@ Session.prototype._requestSession = function() {
   };
 
   sessionRequest.failure = function(error) {
-    session.handleUnexpectedError(new Error('unexpected response from session request ' + error));
+    session._handleUnexpectedError(new Error('unexpected response from session request ' + error));
   };
 
   sessionRequest.send();
@@ -475,15 +476,19 @@ Session.prototype._nextPlayFailed = function(err) {
 
   this.nextPlayInProgress = false;
 
-  if (err.message = 'FMErrorCodeNoAvailableMusic') {
-    if (this.currentPlay === null) {
+  if (this.currentPlay === null) {
+    if (err.code === API_ERRORS.noMoreMusic.id) {  // no more music.
       this.trigger('no-more-music');
 
-    } // else swallow this, and reportComplete() will kick off another try 
-      // upon completion of the playing song.
+    } else {
+      this._handleUnexpectedError(err);
+    }
 
   } else {
-    this._handleUnexpectedError(err);
+    // we've got an active song; rather than immediately
+    // report an error, just ignore this and we'll
+    // try again when reportComplete() is called.
+
   }
 };
 
@@ -549,6 +554,10 @@ Session.prototype.updatePlay = function(elapsedTime) {
   if (this.currentPlay && this.currentPlay.id) {
     var elapseRequest = Request.requestElapse(this.currentPlay.id, elapsedTime);
 
+    elapseRequest.failure = function(err) {
+      log('ignoring bad response to elapse request: ' + err.toString());
+    };
+
     this._sendRequest(elapseRequest);
   }
 };
@@ -571,14 +580,13 @@ Session.prototype.playCompleted = function(dueToError) {
   } else {
     this._oneShotRequest(Request.requestComplete);
   }
+  
+  this._setCurrentPlay(null);
 
   if (!this.nextPlay && !this.nextPlayInProgress) {
     // We might have run out of music. Ask the server again for a song
     this.requestNextPlay();
   }
-  
-  this._setCurrentPlay(null);
-
 };
 
 /**
@@ -620,8 +628,6 @@ Session.prototype.requestDislike = function() {
  */
 
 Session.prototype._oneShotRequest = function(ctor) {
-  var session = this;
-
   if (!this.currentPlay) {
     return;
   }
@@ -630,7 +636,7 @@ Session.prototype._oneShotRequest = function(ctor) {
 
   var request = ctor(playId);
   request.failure = function(err) {
-    session.handleUnexpectedError(err);
+    log('failure response on one-shot-request: ' + err.toString());
   };
 
   this._sendRequest(request);
@@ -693,7 +699,7 @@ Session.prototype.requestSkip = function(success, failure) {
     if (failure) {
       failure(err);
     } else {
-      session.handleUnexpectedError(err);
+      session._handleUnexpectedError(err);
     }
   };
 
@@ -736,39 +742,45 @@ Session.prototype.rejectPlay = function() {
 };
 
 /**
+ * Cancel any outstanding tasks and destroy 
+ * any resources we are using. This object is
+ * unusable after this call.
+ */
+
+Session.prototype.destroy = function() {
+  this._cancelOutstandingRequests();
+};
+
+/**
  * Deal with some unexpected server response.
  *
  * @private
  */
 
-Session.prototype.handleUnexpectedError = function(err) {
-  if (err.message === 'FMErrorCodeInvalidRegion') {
-    log('invalid region!');
+Session.prototype._handleUnexpectedError = function(err) {
+  if (this.available === null) {
+    log('unexpected error before session available leads to no session available');
+    this.available = false;
+
     this.trigger('session-not-available');
 
-  } else {
-    if (this.available === null) {
-      log('fatal error leads to no session available');
-      this.available = false;
+  } else if (this.available) {
+    log('unexpected error after sesion available - so triggering unexpected error and resetting things');
 
-      this.trigger('session-not-available');
+    this._cancelOutstandingRequests();
 
-    } else {
-
-      if (this.currentPlay !== null) {
-        log('resetting current play');
-        this.currentPlay = null;
-      }
-
-      if (this.nextPlay !== null) {
-        log('resetting next play');
-        this.nextPlay = null;
-      }
-
-      this._cancelOutstandingRequests();
-
-      this.trigger('unexpected-error', err);
+    if (this.nextPlay) {
+      var nextPlay = this.nextPlay;
+      this.nextPlay = null;
+      this.trigger('discard-next-play', nextPlay);
     }
+
+    this._setCurrentPlay(null);
+
+    this.trigger('unexpected-error', err);
+
+  } else {
+    log('swallowing error since session is not available');
   }
 };
 
@@ -842,8 +854,14 @@ Session.prototype.handleUnexpectedError = function(err) {
  */
 
 /**
- * This indicates an unexpecte error was received from the
- * server, and so music retrieval has stopped.
+ * This indicates an unexpected error was received from the
+ * server. This can only be triggered sometime after we've triggered
+ * a {@link Session#event:session-available} event. Before
+ * this is triggered, any {@link Session#nextPlay} will be
+ * discarded and the {@link Session#currentPlay} will be set
+ * to null, which effectively resets the session. 
+ * No more plays will be requested until
+ * {@link Session#requestNextPlay} is called again.
  *
  * @event Session#unexpected-error
  */

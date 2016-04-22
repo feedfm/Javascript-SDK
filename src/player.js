@@ -39,6 +39,7 @@ var warn = log;
  * @param {object} [options] - configuration options. These also include
  *       all the options in {@link Speaker}.
  * @param {boolean} [options.debug=false] - if true, debug to console
+ * @param {number}  [options.reportElapseIntervalInMS] - how often to report elapsed playback, in milliseconds
  */
 
 var Player = function(options) {
@@ -71,6 +72,10 @@ var Player = function(options) {
   this.speakerPromise = Speaker.getShared(speakerOptions);
 
   this._state = Player.PlaybackState.UNINITIALIZED;
+
+  // how often to report elapsed playback
+  this._reportElapseIntervalInMS = options.reportElapseIntervalInMS || 30000;
+  this._elapseInterval = null;
 
   /**
    * map play id -> Sound .
@@ -105,6 +110,8 @@ Player.prototype.getState = function() {
  */
 
 Player.prototype._setState = function(newState, reason) {
+  var player = this;
+
   if (reason) {
     reason = ' for reason "' + reason + '"';
   } else {
@@ -123,6 +130,18 @@ Player.prototype._setState = function(newState, reason) {
       this.stateAsString(newState) + reason);
 
   this.trigger('playback-state-did-change', newState, oldState);
+
+  // background timer to record elapsed playback
+  if (newState !== Player.PlaybackState.PLAYING) {
+    if (this._elapseInterval) {
+      clearInterval(this._elapseInterval);
+      this._elapseInterval = null;
+    }
+  } else {
+    this._elapseInterval = setInterval(function() {
+      player._onPlaybackElapsedInterval();
+    }, this._reportElapseIntervalInMS);
+  }
 
   if (newState === Player.PlaybackState.UNAVAILABLE) {
     this.trigger('player-not-available');
@@ -296,6 +315,28 @@ Player.prototype.skip = function() {
   }
 };
 
+/**
+ * Cancel any pending tasks, stop and destroy any pending
+ * or playing songs. This object is unusable after
+ * this call.
+ */
+
+Player.prototype.destroy = function() {
+  var session = this.session;
+
+  this.session = null;
+  session.destroy();
+
+  _.each(this._sounds, function(sound) {
+    sound.destroy();
+  });
+
+  if (this._elapseInterval) {
+    clearInterval(this._elapseInterval);
+    this._elapseInterval = null;
+  }
+};
+
 
 Player.prototype._onSessionAvailable = function() {
   var player = this;
@@ -314,8 +355,10 @@ Player.prototype._onSessionNotAvailable = function() {
   this._setState(Player.PlaybackState.UNAVAILABLE, 'Unable to create a session');
 };
 
-Player.prototype._onSessionUnexpectedError = function() {
-  this._setState(Player.PlaybackState.UNAVAILABLE, 'Unexpected session error');
+Player.prototype._onSessionUnexpectedError = function(error) {
+  this._setState(Player.PlaybackState.READY_TO_PLAY, 'Unexpected session error');
+
+  this.trigger('unexpected-error', error);
 };
 
 Player.prototype._onSessionNoMoreMusic = function() {
@@ -402,6 +445,31 @@ Player.prototype._onSessionActiveStationDidChange = function() {
   }
 };
 
+Player.prototype._onPlaybackElapsedInterval = function() {
+  if (this._state !== Player.PlaybackState.PLAYING) {
+    return;
+  }
+
+  var currentPlay = this.session.currentPlay;
+
+  if (!currentPlay) {
+    warn('playback elapsed and we are in PLAYING mode, but no current play!');
+    return;
+  }
+
+  if (!this._playingSound) {
+    warn('playback elapsed and we are in PLAYING mode, but no playing sound!');
+    return;
+  }
+
+  if (this._playingSound._play.id !== currentPlay.id) {
+    warn('playing sound does not match current play');
+    return;
+  }
+ 
+  this.session.updatePlay(Math.floor(this._playingSound.position() / 1000));
+};
+
 Player.prototype._prepareSound = function(play) {
   var player = this;
 
@@ -449,6 +517,8 @@ Player.prototype._prepareSound = function(play) {
           return;
         }
 
+        player.session.updatePlay(Math.floor(sound.position() / 1000));
+
         player._setState(Player.PlaybackState.PAUSED, 'Audio paused');
       }
       
@@ -456,7 +526,6 @@ Player.prototype._prepareSound = function(play) {
     finish: function(dueToError) { 
       var currentPlay = player.session.currentPlay;
 
-console.log('sound finish callback', play, currentPlay);
       if (!currentPlay) {
         warn('audio finished for (' + play.id + '), but there is no current play');
         return;
@@ -585,6 +654,17 @@ Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
  * was denied.
  *
  * @event Player.skip-denied
+ */
+
+/**
+ * This event announces that we had an unexpected
+ * response from the server. This value is just passed
+ * on from the {@link Session#event:unexpected-error}
+ * event. The player class will reset itself back
+ * to the READY_TO_PLAY state and
+ * then emit this so the user can be informed.
+ *
+ * @event Player.unexpected-error
  */
 
 /**

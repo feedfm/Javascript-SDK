@@ -89,6 +89,7 @@
           Feed.Speaker.getShared.restore();
           Feed.Session.prototype.setCredentials.restore();
 
+          player.destroy();
           done();
         });
 
@@ -137,6 +138,7 @@
       var onCreateSound;
       var onResponsesComplete;
       var playId;
+      var testingComplete;
 
       function sessionResponse() {
         return {
@@ -200,6 +202,7 @@
         onCreateSound = null;
         onResponsesComplete = null;
         playId = 0;
+        testingComplete = false;
 
         xhr = sinon.useFakeXMLHttpRequest();
         xhr.onCreate = function(xhr) {
@@ -237,7 +240,7 @@
                 pause: function()    { assert.fail(); },
                 position: function() { assert.fail(); },
                 resume: function()   { assert.fail(); },
-                destroy: function()  { assert.fail(); }
+                destroy: function()  { if (!testingComplete) { assert.fail(); } }
               }, Events);
 
               _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
@@ -272,6 +275,7 @@
 
         onCreateSound = function() {
           setTimeout(function() {
+            testingComplete = true; player.destroy();
             done();
           }, 20);
         };
@@ -306,6 +310,7 @@
                                      Feed.Player.PlaybackState.WAITING_FOR_ITEM,
                                      Feed.Player.PlaybackState.STALLED,
                                      Feed.Player.PlaybackState.PLAYING ]);
+          testingComplete = true; player.destroy();
           done();
         };
 
@@ -323,7 +328,7 @@
       });
 
 
-      it('should advanced to the next song after the first completes', function(done) {
+      it('should advance to the next song after the first completes', function(done) {
         var first = playResponse();
         var second = playResponse();
         var third = playResponse();
@@ -336,6 +341,7 @@
                        startResponse(),
                        third);
 
+        var destroyCalled = false;
         onCreateSound = function(sound) {
 
           sound.play = function() { 
@@ -358,6 +364,13 @@
               assert.fail();
             }
           };
+
+          sound.destroy = function() {
+            if (!testingComplete) {
+              assert.equal(sound.url, first.play.audio_file.url);
+              destroyCalled = true;
+            }
+          };
         };
 
         var states = [];
@@ -369,6 +382,8 @@
                                      Feed.Player.PlaybackState.PLAYING,
                                      Feed.Player.PlaybackState.STALLED,
                                      Feed.Player.PlaybackState.PLAYING ]);
+          assert(destroyCalled);
+          testingComplete = true; player.destroy();
           done();
         };
 
@@ -436,6 +451,7 @@
 
           assert.match(requests[4].url, /invalidate$/);
           
+          testingComplete = true; player.destroy();
           done();
         };
 
@@ -459,7 +475,8 @@
         responses.push(sessionResponse(),
                        first,
                        startResponse(),
-                       second);
+                       second,
+                       successResponse()); // for the elapse call
 
         onCreateSound = function(sound) {
 
@@ -473,6 +490,11 @@
             } else {
               assert.fail();
             }
+          };
+
+          sound.position = function() {
+            assert.equal(sound.url, first.play.audio_file.url);
+            return 2000;
           };
 
           sound.pause = function() {
@@ -508,6 +530,7 @@
                                        Feed.Player.PlaybackState.PLAYING,
                                        Feed.Player.PlaybackState.PAUSED,
                                      ]);
+            testingComplete = true; player.destroy();
             done();
           }
         });
@@ -522,7 +545,8 @@
         responses.push(sessionResponse(),
                        first,
                        startResponse(),
-                       second);
+                       second,
+                       successResponse()); // for the elapse
 
         onCreateSound = function(sound) {
 
@@ -560,6 +584,11 @@
             } else {
               assert.fail();
             }
+          };
+
+          sound.position = function() {
+            assert.equal(sound.url, first.play.audio_file.url);
+            return 1000;
           };
 
           sound.resume = function() {
@@ -613,6 +642,7 @@
                                        Feed.Player.PlaybackState.PAUSED,
                                        Feed.Player.PlaybackState.PLAYING
                                      ]);
+            testingComplete = true; player.destroy();
             done();
           }
         });
@@ -656,7 +686,9 @@
           };
 
           sound.destroy = function() { 
-            assert.equal(sound.url, first.play.audio_file.url);
+            if (!testingComplete) {
+              assert.equal(sound.url, first.play.audio_file.url);
+            }
           };
         };
 
@@ -670,6 +702,7 @@
                                      Feed.Player.PlaybackState.REQUESTING_SKIP,
                                      Feed.Player.PlaybackState.STALLED,
                                      Feed.Player.PlaybackState.PLAYING ]);
+          testingComplete = true; player.destroy();
           done();
         };
 
@@ -695,6 +728,7 @@
                        first,
                        startResponse(),
                        second,
+                       successResponse(), // elapse response
                        successResponse(), // skip response
                        startResponse(),   // start second song response
                        third);            // queue up third song
@@ -725,6 +759,12 @@
             }
           };
 
+          sound.position = function() {
+            assert.equal(sound.url, first.play.audio_file.url);
+
+            return 1000;
+          };
+
           sound.pause = function() {
             assert.equal(sound.url, first.play.audio_file.url);
 
@@ -732,7 +772,9 @@
           };
 
           sound.destroy = function() { 
-            assert.equal(sound.url, first.play.audio_file.url);
+            if (!testingComplete) {
+              assert.equal(sound.url, first.play.audio_file.url);
+            }
           };
         };
 
@@ -747,6 +789,7 @@
                                      Feed.Player.PlaybackState.REQUESTING_SKIP,
                                      Feed.Player.PlaybackState.STALLED,
                                      Feed.Player.PlaybackState.PLAYING ]);
+          testingComplete = true; player.destroy();
           done();
         };
 
@@ -825,8 +868,66 @@
             assert.isNull(first);
             assert.isNull(second);
 
+            testingComplete = true; player.destroy();
             done();
           }
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
+      it('should send elapse updates while playing a song', function(done) {
+        this.timeout(4000);
+
+        var firstPlay = playResponse();
+
+        responses.push(sessionResponse(),
+                       firstPlay,
+                       startResponse(),
+                       playResponse(),
+                       successResponse(), // first elapse callback
+                       successResponse()); // second elapse callback
+
+        onCreateSound = function(sound) {
+          sound.play = function() { 
+            setTimeout(function() {
+              sound.trigger('play');
+            }, 1);
+          };
+
+          sound.position = function() {
+            assert.equal(sound.url, firstPlay.play.audio_file.url);
+          };
+
+          sound.pause = function() { 
+            sound.trigger('pause');
+          };
+        };
+
+        var states = [];
+
+        onResponsesComplete = function() {
+          console.log('complete!');
+          assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                     Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING ]);
+
+          
+          testingComplete = true; player.destroy();
+          done();
+        };
+
+        var player = new Feed.Player({
+          reportElapseIntervalInMS: 1000
+        });
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
         });
 
         player.setCredentials('a', 'b');
