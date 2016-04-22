@@ -52,8 +52,9 @@ var Player = function(options) {
   this.session.on('active-station-did-change', this._onSessionActiveStationDidChange, this);
   this.session.on('current-play-did-change', this._onSessionCurrentPlayDidChange, this);
   this.session.on('next-play-available', this._onSessionNextPlayAvailable, this);
+  this.session.on('discard-next-play', this._onSessionDiscardNextPlay, this);
   this.session.on('no-more-music', this._onSessionNoMoreMusic, this);
-  this.session.on('skip-status-did-change', this._onSessionSkipStatusDidCHange, this);
+  this.session.on('skip-status-did-change', this._onSessionSkipStatusDidChange, this);
   this.session.on('unexpected-error', this._onSessionUnexpectedError, this);
 
   // add event handling
@@ -77,6 +78,13 @@ var Player = function(options) {
    */
 
   this._sounds = { };
+
+  /**
+   * Reference to most recently started sound
+   * @private
+   */
+
+  this._playingSound = null;
 };
 
 /**
@@ -185,6 +193,17 @@ Player.prototype.prepareToPlay = function() {
 };
 
 /**
+ * Stop playback, if any, and switch to the passed-in
+ * station. A call to {@link Player#prepareToPlay} or
+ * {@link Player#play} should be made to resume
+ * pulling music for playback.
+ */
+
+Player.prototype.setStation = function(station) {
+  this.session.setStation(station);
+};
+
+/**
  * Start or resume music playback
  */
 
@@ -272,6 +291,8 @@ Player.prototype.skip = function() {
   if ((this._state === Player.PlaybackState.PLAYING) ||
       (this._state === Player.PlaybackState.PAUSED)) {
     this._setState(Player.PlaybackState.REQUESTING_SKIP, 'User requested skip');
+
+    this.session.requestSkip();
   }
 };
 
@@ -339,6 +360,15 @@ Player.prototype._onSessionNextPlayAvailable = function(nextPlay) {
   }
 };
 
+Player.prototype._onSessionDiscardNextPlay = function(play) {
+  var sound = this._sounds[play.id];
+
+  if (sound) {
+    delete this._sounds[play.id];
+    sound.destroy();
+  }
+};
+
 Player.prototype._onSessionSkipStatusDidChange = function(canSkip) {
   if (this._state === Player.PlaybackState.REQUESTING_SKIP) {
     if (canSkip === false) {
@@ -361,12 +391,15 @@ Player.prototype._onSessionSkipStatusDidChange = function(canSkip) {
       this._setState(Player.PlaybackState.PLAYING);
 
       this.trigger('skip-failed');
+
     }
   }
 };
 
 Player.prototype._onSessionActiveStationDidChange = function() {
-
+  if (this._state === Player.PlaybackState.WAITING_FOR_ITEM) {
+    this._setState(Player.PlaybackState.READY_TO_PLAY);
+  }
 };
 
 Player.prototype._prepareSound = function(play) {
@@ -420,7 +453,7 @@ Player.prototype._prepareSound = function(play) {
       }
       
     },
-    finish: function() { 
+    finish: function(dueToError) { 
       var currentPlay = player.session.currentPlay;
 
 console.log('sound finish callback', play, currentPlay);
@@ -434,25 +467,42 @@ console.log('sound finish callback', play, currentPlay);
         return;
       }
 
-      if (!player._sounds[currentPlay.id]) {
-        warn('attempting to delete reference to active sound for play ' + currentPlay.id + ' but it does not exist');
-
-      } else {
-        delete player._sounds[currentPlay.id];
-      }
-
-      player.session.playCompleted();
+      player.session.playCompleted(dueToError);
     },
 
     elapsed: function() { }
   });
 
+  sound._play = play;
+
   return sound;
 };
 
 Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
-  if ((this._state === Player.PlaybackState.PLAYING) ||
-      (this._state === Player.PlaybackState.REQUESTING_SKIP)) {
+  if (currentPlay !== null) {
+    // keep track of actively playing song
+    this._playingSound = this._sounds[currentPlay.id];
+
+    if (!this._playingSound) {
+      warn('playback started for play ' + currentPlay.id + ' but we have no reference to its sound');
+    }
+
+  } else if ((currentPlay === null) && (this._playingSound)) {
+    // stop playing sound and remove refs to it
+    delete this._sounds[this._playingSound._play.id];
+    this._playingSound.destroy();
+    this._playingSound = null;
+
+  }
+
+  if ((this._state === Player.PlaybackState.STALLED) && (currentPlay !== null)) {
+    this._setState(Player.PlaybackState.PLAYING, 'Playback of play ' + currentPlay.id + ' began');
+    this.trigger('play-started', currentPlay);
+
+  } else if ((this._state === Player.PlaybackState.PLAYING) ||
+             (this._state === Player.PlaybackState.REQUESTING_SKIP) ||
+             (this._state === Player.PlaybackState.PAUSED) || 
+             ((currentPlay === null) && (this._state === Player.PlaybackState.STALLED))) {
     if (currentPlay != null) {
       warn('current play set to non-null while in playing or requesting skip state');
       return;
@@ -469,8 +519,8 @@ Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
         var sound = this._sounds[nextPlay.id];
 
         if (!sound) {
-          // its possible we opted to not start loading the sound, so here
-          // we kick that off
+          // its possible we opted to not start loading the sound earlier, 
+          // so here we kick that off
           sound = this._prepareSound(nextPlay);
           this._sounds[nextPlay.id] = sound;
 
@@ -478,19 +528,9 @@ Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
         }
 
         this._setState(Player.PlaybackState.STALLED, 'advancing to next song');
-        console.log('advanced state');
         sound.play();
       }
     }
-
-  } else if (this._state === Player.PlaybackState.STALLED) {
-    if (currentPlay === null) {
-      warn('current play set to null while in stalled state');
-      return;
-    }
-
-    this._setState(Player.PlaybackState.PLAYING, 'Playback of play ' + currentPlay.id + ' began');
-    this.trigger('play-started', currentPlay);
 
   }
 

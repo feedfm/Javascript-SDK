@@ -52,7 +52,8 @@ var speaker = null;
  *
  * Note, particularly, that the {@link Sound#event:play} 
  * and {@link Sound#event:finish} events will always
- * be called, even if the file is missing or bad.
+ * be called, even if the file is missing or bad, unless
+ * the 'destroy' method is called first.
  *
  * Use the {@link Speaker#create} method to create
  * a new sound, rather than using this constructor.
@@ -174,8 +175,11 @@ Sound.prototype = {
   },
 
   /**
-   * stop playing the given sound clip, unload it,
-   * and disable any attached event handlers.
+   * Stop playing the given sound clip, unload it,
+   * and disable any attached event handlers. Note 
+   * that if this is called while the song is playing,
+   * it will stop the song and no 'finish' event or
+   * any other events will be emitted.
    */
 
   destroy: function() {

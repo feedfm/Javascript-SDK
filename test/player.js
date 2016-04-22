@@ -146,7 +146,8 @@
             client_id: 'abc123'
           },
           stations: [
-            { id: 'station one', title: 'station one' }
+            { id: 'station one id', title: 'station one' },
+            { id: 'station two id', title: 'station two' }
           ]
         };
       }
@@ -235,7 +236,8 @@
                 play: function()     { assert.fail(); },
                 pause: function()    { assert.fail(); },
                 position: function() { assert.fail(); },
-                resume: function()   { assert.fail(); }
+                resume: function()   { assert.fail(); },
+                destroy: function()  { assert.fail(); }
               }, Events);
 
               _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
@@ -326,13 +328,13 @@
         var second = playResponse();
         var third = playResponse();
 
-        responses.push(sessionResponse());
-        responses.push(first);
-        responses.push(startResponse());
-        responses.push(second);
-        responses.push(successResponse());
-        responses.push(startResponse());
-        responses.push(third);
+        responses.push(sessionResponse(),
+                       first,
+                       startResponse(),
+                       second,
+                       successResponse(),
+                       startResponse(),
+                       third);
 
         onCreateSound = function(sound) {
 
@@ -341,11 +343,11 @@
             if (sound.url === first.play.audio_file.url) {
               setTimeout(function() {
                 sound.trigger('play');
-              }, 1);
 
-              setTimeout(function() {
-                sound.trigger('finish');
-              }, 50);
+                setTimeout(function() {
+                  sound.trigger('finish');
+                }, 40);
+              }, 1);
 
             } else if (sound.url === second.play.audio_file.url) {
               setTimeout(function() {
@@ -383,502 +385,460 @@
         player.setCredentials('a', 'b');
       });
 
-    });
+      it('should advanced to the next song after the first completes due to error', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+        var third = playResponse();
 
-/*
-    describe('streaming', function() {
-      var player;
+        responses.push(sessionResponse(),
+                       first,
+                       startResponse(),
+                       second,
+                       successResponse(), // ack for 'invalid' notifiation
+                       startResponse(),
+                       third);
 
-      // fake speaker implementation
-      var speaker = {
-        create: function(url, options) {
-          if (songQueue.length === 0) {
-            assert.fail('tried to create song, but nothing is queued up');
-          }
+        onCreateSound = function(sound) {
 
-          var song = songQueue.shift();
+          sound.play = function() { 
 
-          _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
-            if (ev in options) {
-              song.on(ev, options[ev]);
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+
+                setTimeout(function() {
+                  sound.trigger('finish', true); // signify error completion
+                }, 40);
+              }, 1);
+
+            } else if (sound.url === second.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+            } else {
+              assert.fail();
             }
-          });
+          };
 
-          return song;
-        }
-      };
+          sound.destroy = function() { };
+        };
 
-      beforeEach(function(done) {
-        songQueue = [];
+        var states = [];
 
-        sinon.stub(Feed.Speaker, 'getShared', function() {
-          var d = $.Deferred();
-          d.resolve(speaker);
+        onResponsesComplete = function() {
+          assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                     Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING ]);
 
-          return d.promise();
+          assert.match(requests[4].url, /invalidate$/);
+          
+          done();
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
         });
 
-        // create a player and get past the session setup
-        // (we assume stage of things has already been tested)
-        player = new Feed.Player();
-
-        sinon.stub(player.session, 'setCredentials');
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
+        });
 
         player.setCredentials('a', 'b');
+      });
 
-        player.once('playback-state-did-change', function() {
-          done();
+      it('should allow us to pause a playing song', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+
+        responses.push(sessionResponse(),
+                       first,
+                       startResponse(),
+                       second);
+
+        onCreateSound = function(sound) {
+
+          sound.play = function() { 
+
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+
+          sound.pause = function() {
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('pause');
+              }, 1);
+            }
+          };
+        };
+
+        var states = [];
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
         });
 
-        player.session.trigger('session-available');
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
+
+          if (newState === Feed.Player.PlaybackState.PLAYING) {
+            setTimeout(function() {
+              player.pause();
+            }, 10);
+
+          } else if (newState === Feed.Player.PlaybackState.PAUSED) {
+            // success!
+            assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                       Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                       Feed.Player.PlaybackState.STALLED,
+                                       Feed.Player.PlaybackState.PLAYING,
+                                       Feed.Player.PlaybackState.PAUSED,
+                                     ]);
+            done();
+          }
+        });
+
+        player.setCredentials('a', 'b');
       });
 
-      afterEach(function() {
-        Feed.Speaker.getShared.restore();
+      it('should allow us to resume a paused song', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+
+        responses.push(sessionResponse(),
+                       first,
+                       startResponse(),
+                       second);
+
+        onCreateSound = function(sound) {
+
+          sound._calls = 0;
+          sound._playing = false;
+
+          sound.play = function() { 
+
+            if (sound.url === first.play.audio_file.url) {
+              assert.equal(sound._playing, false);
+              assert.equal(sound._calls, 0);
+              sound._playing = true;
+              sound._calls++;
+
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+
+          sound.pause = function() {
+            if (sound.url === first.play.audio_file.url) {
+              assert.equal(sound._playing, true);
+              assert.equal(sound._calls, 1);
+              sound._playing = false;
+              sound._calls++;
+
+              setTimeout(function() {
+                sound.trigger('pause');
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+
+          sound.resume = function() {
+            if (sound.url === first.play.audio_file.url) {
+              assert.equal(sound._playing, false);
+              assert.equal(sound._calls, 2);
+              sound._playing = true;
+              sound._calls++;
+              
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+            } else {
+              assert.fail();
+            }
+          };
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        var states = [];
+
+        player.on('playback-state-did-change', function(newState, oldState) {
+          states.push(newState);
+
+          if ((newState === Feed.Player.PlaybackState.PLAYING) &&
+              (oldState === Feed.Player.PlaybackState.STALLED)) {
+            // pause shortly after playback starts
+            setTimeout(function() {
+              player.pause();
+            }, 10);
+          
+          } else if ((newState === Feed.Player.PlaybackState.PAUSED) &&
+                     (oldState === Feed.Player.PlaybackState.PLAYING)) {
+            // resume playback shortly after pause
+            setTimeout(function() {
+              player.play();
+            }, 10);
+
+          } else if ((newState === Feed.Player.PlaybackState.PLAYING) &&
+                     (oldState === Feed.Player.PlaybackState.PAUSED)) {
+            // success after resuming from pause
+            assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                       Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                       Feed.Player.PlaybackState.STALLED,
+                                       Feed.Player.PlaybackState.PLAYING,
+                                       Feed.Player.PlaybackState.PAUSED,
+                                       Feed.Player.PlaybackState.PLAYING
+                                     ]);
+            done();
+          }
+        });
+
+        player.setCredentials('a', 'b');
       });
-      */
 
-/*
-      function createSound() {
-        var sound = new Event();
+      it('should allow us to skip a playing song', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+        var third = playResponse();
 
-        return sound;
-      }
+        responses.push(sessionResponse(),
+                       first,
+                       startResponse(),
+                       second,
+                       successResponse(), // skip response
+                       startResponse(),   // start second song response
+                       third);            // queue up third song
 
+        onCreateSound = function(sound) {
 
-      it('will request a play and create a sound when told to prepareToPlay', function() {
+          sound.play = function() { 
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
 
+                setTimeout(function() {
+                  player.skip();
+                }, 10);
+              }, 1);
+
+            } else if (sound.url === second.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+
+          sound.destroy = function() { 
+            assert.equal(sound.url, first.play.audio_file.url);
+          };
+        };
+
+        var states = [];
+
+        onResponsesComplete = function() {
+          assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                     Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING,
+                                     Feed.Player.PlaybackState.REQUESTING_SKIP,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING ]);
+          done();
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
+        });
+
+        player.setCredentials('a', 'b');
       });
-      */
+
+      it('should allow us to skip a paused song', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+        var third = playResponse();
+
+        responses.push(sessionResponse(),
+                       first,
+                       startResponse(),
+                       second,
+                       successResponse(), // skip response
+                       startResponse(),   // start second song response
+                       third);            // queue up third song
+
+        onCreateSound = function(sound) {
+
+          sound.play = function() { 
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+
+                setTimeout(function() {
+                  player.pause();
+
+                  setTimeout(function() {
+                    player.skip();
+                  }, 10);
+                }, 10);
+              }, 1);
+
+            } else if (sound.url === second.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+
+          sound.pause = function() {
+            assert.equal(sound.url, first.play.audio_file.url);
+
+            sound.trigger('pause');
+          };
+
+          sound.destroy = function() { 
+            assert.equal(sound.url, first.play.audio_file.url);
+          };
+        };
+
+        var states = [];
+
+        onResponsesComplete = function() {
+          assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                     Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING,
+                                     Feed.Player.PlaybackState.PAUSED,
+                                     Feed.Player.PlaybackState.REQUESTING_SKIP,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING ]);
+          done();
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
+      it('should stop the active song and discard next song when changing station during playback', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+        var sess = sessionResponse();
+
+        responses.push(sess,
+                       first,
+                       startResponse(),
+                       second);
+
+        onCreateSound = function(sound) {
+
+          sound.play = function() { 
+
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+
+                setTimeout(function() {
+                  player.setStation(sess.stations[1]);
+                }, 100);
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+
+          sound.destroy = function() { 
+            if (first && (sound.url === first.play.audio_file.url)) {
+              console.log('destroying first');
+              first = null;
+            } else if (second && (sound.url === second.play.audio_file.url)) {
+              console.log('destroying second');
+              second = null;
+            }
+          };
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        var states = [];
+
+        player.on('playback-state-did-change', function(newState, oldState) {
+          states.push(newState);
+
+          if ((newState === Feed.Player.PlaybackState.READY_TO_PLAY) &&
+              (oldState === Feed.Player.PlaybackState.WAITING_FOR_ITEM)) {
+            assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                       Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                       Feed.Player.PlaybackState.STALLED,
+                                       Feed.Player.PlaybackState.PLAYING,
+                                       Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                       Feed.Player.PlaybackState.READY_TO_PLAY ]);
+
+            assert.isNull(first);
+            assert.isNull(second);
+
+            done();
+          }
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
+    });
 
   });
 })();
 
 /*
-  describe('preparation', function() {
-    var player;
 
-    beforeEach(function() {
-      // create a player and get it to a point where
-      // it is waiting for a session-available event
-      // from the session it owns
-      player = new Feed.Player();
-
-      sinon.stub(player.session, 'setCredentials');
-
-      player.setCredentials('a', 'b');
-    });
-
-//        player.session.trigger('session-available');
-  });
-
-    beforeEach(function() {
-      requests = [];
-      plays = [];
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement/10000', function(response) {
-        console.log('placement');
-        requests.push('placement');
-
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
-          success: true,
-          placement: {
-            id: '10000',
-            name: 'placmeent'
-          },
-          stations: [
-            { id: '222', name: 'station 222' },
-            { id: '333', name: 'station 333' },
-            { id: '444', name: 'station 444' },
-          ]
-        }));
-      });
-
-      server.respondWith('GET', 'https://feed.fm/missing', function(response) {
-        console.log('missing');
-
-        response.respond(404,  { }, 'Sorry, that is missing');
-      });
-
-      server.respondWith('GET', 'https://feed.fm/api/v2/placement', function(response) {
-        console.log('placement');
-        requests.push('placement');
-
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
-          success: true,
-          placement: {
-            id: '1234',
-            name: 'placmeent'
-          },
-          stations: [
-            { id: '222', name: 'station 222' },
-            { id: '333', name: 'station 333' },
-            { id: '444', name: 'station 444' },
-          ]
-        }));
-      });
-
-      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
-        console.log('play');
-        requests.push('play');
-
-        var rp = plays.shift();
-
-        if (rp) {
-          response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, play: rp }));
-        } else {
-          response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false, error: { code: 9, message: 'no more plays' } }));
-        }
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/start/, function(response) {
-        console.log('start');
-        requests.push('start');
-
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/complete/, function(response) {
-        console.log('complete');
-        requests.push('complete');
-
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
-        console.log('skip');
-        requests.push('skip');
-
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-      });
-
-      server.respondWith('POST', /https:\/\/feed\.fm\/api\/v2\/play\/\d+\/invalidate/, function(response) {
-        console.log('invalidate');
-        requests.push('invalidate');
-
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-      });
-    });
-
-    it('exports the base API', function() {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      assert.property(player, 'play');
-      assert.property(player, 'tune');
-      assert.property(player, 'pause');
-      assert.property(player, 'skip');
-      assert.property(player, 'setPlacementId');
-      assert.property(player, 'setStationId');
-      assert.property(player, 'on');
-      assert.property(player, 'off');
-    });
-
-    it('will start tuning when play is called', function(done) {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      var mock = sinon.mock(player);
-      
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-
-      player.setPlacementId('10000');
-
-      plays.push(validPlay());
-
-      player.play();
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        done();
-
-      }, 100);
-    });
-
-
-    it('will allow us to pause a play', function(done) {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      var mock = sinon.mock(player);
-
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-paused');
-
-      player.setPlacementId('10000');
-
-      plays.push(validPlay());
-
-      player.play();
-
-      setTimeout(function() {
-        player.pause();
-      }, 300);
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        done();
-
-      }, 400);
-    });
-
-    it('will allow us to resume a play', function(done) {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      var mock = sinon.mock(player);
-
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-paused');
-      mock.expects('trigger').withArgs('play-resumed');
-
-      player.setPlacementId('10000');
-
-      plays.push(validPlay());
-
-      player.play();
-
-      setTimeout(function() {
-        player.pause();
-      }, 200);
-
-      setTimeout(function() {
-        player.play();
-      }, 350);
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        done();
-
-      }, 500);
-    });
-
-    it('will allow us to pause, resume, and then pause and resume a play again', function(done) {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-      player.setPlacementId('10000');
-
-      plays.push(validPlay());
-      plays.push(validPlay());
-
-      player.on('play-completed', function() {
-        // this has to be done after we've loaded the swf, or we have timing issues
-        var mock = sinon.mock(player);
-
-        mock.expects('trigger').withArgs('play-active');
-        mock.expects('trigger').withArgs('play-started');
-        mock.expects('trigger').withArgs('play-paused');
-        mock.expects('trigger').withArgs('play-resumed');
-        mock.expects('trigger').withArgs('play-paused');
-        mock.expects('trigger').withArgs('play-resumed');
-
-        player.play();
-
-        setTimeout(function() {
-          console.log('about to pause');
-          player.pause();
-        }, 200);
-
-        setTimeout(function() {
-          console.log('about to play');
-          player.play();
-        }, 250);
-
-        setTimeout(function() {
-          console.log('about to pause again');
-          player.pause();
-        }, 300);
-
-        setTimeout(function() {
-          console.log('about to play again');
-          player.play();
-        }, 350);
-
-        setTimeout(function() {
-          console.log('verifying');
-          mock.verify();
-
-          player.destroy();
-
-          done();
-
-        }, 500);
-      });
-
-      player.play();
-
-    });
-
-    it('will finish a play and move on to the next one', function(done) {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      var mock = sinon.mock(player);
-
-      // queue up two plays for the test
-      plays.push(validPlay());
-      plays.push(validPlay());
-
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('plays-exhausted');
-
-      player.setPlacementId('10000'); 
-
-      player.play();
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        done();
-
-      }, 1900);
-    });
-
-    it('will let us skip a play', function(done) {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      var mock = sinon.mock(player);
-
-      plays.push(validPlay());
-      plays.push(validPlay());
-
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-
-      player.setPlacementId('10000');
-
-      player.play();
-
-      setTimeout(function() {
-        player.skip();
-
-      }, 200);
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        done();
-
-      }, 600);
-    });
-
-    it('will invalidate a play with a bad finish result', function(done) {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      var mock = sinon.mock(player);
-
-      var invalidPlay = validPlay();
-      invalidPlay.audio_file.codec = 'aac';
-      invalidPlay.audio_file.url = 'bad.m4a';
-
-      plays.push(invalidPlay);
-      plays.push(validPlay());
-
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-
-      player.setPlacementId('10000');
-
-      player.play();
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        // make sure there's an 'invalidate' call in there
-        assert.deepEqual(requests, ['placement', 'client', 'play', 'start', 'play', 'invalidate', 'start', 'play'], 'invalidate call should have been called');
-
-        done();
-
-      }, 400);
-    });
-
-    it('if we skip a play that is being paused, it will start up the next play immediately', function(done) {
-      var player = new Feed.Player('token', 'secret', speakerOptions);
-
-      var mock = sinon.mock(player);
-
-      plays.push(validPlay());
-      plays.push(validPlay());
-
-      mock.expects('trigger').withArgs('placement-changed');
-      mock.expects('trigger').withArgs('placement');
-      mock.expects('trigger').withArgs('station-changed');
-      mock.expects('trigger').withArgs('stations');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-      mock.expects('trigger').withArgs('play-paused');
-      mock.expects('trigger').withArgs('play-completed');
-      mock.expects('trigger').withArgs('play-active');
-      mock.expects('trigger').withArgs('play-started');
-
-      player.setPlacementId('10000');
-
-      player.play();
-
-      setTimeout(function() {
-        player.pause();
-      }, 300);
-
-      setTimeout(function() {
-        player.skip();
-      }, 350);
-
-      setTimeout(function() {
-        mock.verify();
-
-        player.destroy();
-
-        done();
-
-      }, 600);
-    });
 
     it('will continue playing when we switch stations', function(done) {
       this.timeout(4000);

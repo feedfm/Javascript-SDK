@@ -54,7 +54,7 @@
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Player.html#.event:skip-denied">Player.event:skip-denied</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
+					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Player.html#.event:skip-denied">Player.event:skip-denied</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:discard-next-play">Session#event:discard-next-play</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
 				</ul>
 			</li>
 			
@@ -1505,7 +1505,7 @@ the callback is invoked, it will be removed.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id="playCompleted"><span class="type-signature"></span>playCompleted()</h4>
+    <h4 class="name" id="playCompleted"><span class="type-signature"></span>playCompleted(<span class="optional">dueToError</span>)</h4>
     
     
 </dt>
@@ -1524,6 +1524,68 @@ a request for the next song is in progress or has completed.</p>
     
 
     
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>dueToError</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>if true, then playback completed due to an error</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
     
 
     
@@ -1676,7 +1738,8 @@ next value for <a href="Session.html#nextPlay">Session#nextPlay</a>.</p>
     
     <div class="description">
         <p>If we are unable to start playback of <a href="Session.html#nextPlay">Session#nextPlay</a>,
-then call this in place of <a href="Session.html#playStarted">Session#playStarted</a> to report
+then call this (with no arguments) in place of
+<a href="Session.html#playStarted">Session#playStarted</a> to report
 the song as being unplayable. This will kick off a request for
 a new <a href="Session.html#nextPlay">Session#nextPlay</a> value (and associated 
 <a href="Session.html#event:next-play-available">Session#event:next-play-available</a> event).</p>
@@ -2316,8 +2379,10 @@ ask server for a session, leading ultimately to
     <div class="description">
         <p>Set the current station from which we pull music and trigger
 an <a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a> event. This kills
-any background requests for new plays and throws away any
-existing <a href="Session.html#nextPlay">Session#nextPlay</a> value. You'll need to
+any background requests for new plays, throws away any
+existing <a href="Session.html#nextPlay">Session#nextPlay</a> value, emits a <a href="Session.html#event:discard-next-play">Session#event:discard-next-play</a>
+event, and sets <a href="Session.html#currentPlay">Session#currentPlay</a>
+to null. You'll need to
 call <a href="Session.html#requestNextPlay">Session#requestNextPlay</a> to start pulling in new music after
 making this call or receiving the <a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a>
 event.</p>
@@ -3357,6 +3422,91 @@ the <a href="Session.html#currentPlay">Session#currentPlay</a>.</p>
             
 <hr>
 <dt>
+    <h4 class="name" id="event:discard-next-play">discard-next-play</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This indicates we've thrown away the <a href="Session.html#nextPlay">Session#nextPlay</a>
+value, and any resources related to it can be thrown away.</p>
+    </div>
+    
+
+    
+
+    
+        <h5>Type: 
+<span class="param-type"><a href="Play.html">Play</a></span>
+
+
+</h5>
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id="event:next-play-available">next-play-available</h4>
     
     
@@ -3880,7 +4030,7 @@ server, and so music retrieval has stopped.</p>
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-04-20T17:16:46-07:00
+		on 2016-04-21T17:31:51-07:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>

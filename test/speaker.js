@@ -202,6 +202,32 @@
           done();
         }, 1400);
       });
+
+      it.only('will not trigger finish event if playing song is destroyed', function(done) {
+        var song = speaker.create('hutz.mp3', { 
+          play: function() { 
+            setTimeout(function() {
+              song.destroy();
+
+              setTimeout(function() {
+                // finish was not called!
+                done();
+              }, 200);
+
+            }, 200);
+          },
+          pause: function() {
+            assert.fail();
+          },
+          finish: function() {
+            assert.fail();
+          }
+        });
+
+        assert.isNotNull(song);
+
+        song.play();
+      });
     });
   });
 })();

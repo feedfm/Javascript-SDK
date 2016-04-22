@@ -17,7 +17,7 @@
       server.restore();
 
       // delete the stored cid
-      Feed.Auth.deleteClientUUID();
+      Feed.Client.deleteClientUUID();
     });
 
     describe('base API', function() {
@@ -402,7 +402,7 @@
       session.setCredentials('x', 'y');
     });
 
-    it('still trigger the active-station-did-change event after changing the station', function(done) {
+    it('will trigger the active-station-did-change event after changing the station', function(done) {
       server.autoRespond = true;
 
       server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
@@ -474,9 +474,16 @@
         }
       });
 
+      var discardCalled = false;
+      session.on('discard-next-play', function(next) {
+        assert.isNotNull(next);
+        discardCalled = true;
+      });
+
       session.on('active-station-did-change', function() {
         assert.isNull(session.currentPlay);
         assert.isNull(session.nextPlay);
+        assert.isTrue(discardCalled, true);
 
         done();
       });

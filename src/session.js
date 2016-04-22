@@ -266,8 +266,10 @@ Session.prototype._setCurrentPlay = function(currentPlay) {
 /**
  * Set the current station from which we pull music and trigger
  * an {@link Session#event:active-station-did-change} event. This kills
- * any background requests for new plays and throws away any
- * existing {@link Session#nextPlay} value. You'll need to
+ * any background requests for new plays, throws away any
+ * existing {@link Session#nextPlay} value, emits a {@link Session#event:discard-next-play}
+ * event, and sets {@link Session#currentPlay}
+ * to null. You'll need to
  * call {@link Session#requestNextPlay} to start pulling in new music after
  * making this call or receiving the {@link Session#event:active-station-did-change}
  * event.
@@ -288,8 +290,14 @@ Session.prototype.setStation = function(station) {
   this.activeStation = station;
   
   this._cancelOutstandingRequests();
-  this.currentPlay = null;
-  this.nextPlay = null;
+
+  if (this.nextPlay) {
+    var nextPlay = this.nextPlay;
+    this.nextPlay = null;
+    this.trigger('discard-next-play', nextPlay);
+  }
+
+  this._setCurrentPlay(null);
 
   this.trigger('active-station-did-change', station);
 };
@@ -549,12 +557,20 @@ Session.prototype.updatePlay = function(elapsedTime) {
  * Inform the server that the current song has completed,
  * set {@link Session#currentPlay} to null, and ensure that
  * a request for the next song is in progress or has completed.
+ *
+ * @param {boolean} [dueToError] if true, then playback completed due to an error
  */
 
-Session.prototype.playCompleted = function() {
+Session.prototype.playCompleted = function(dueToError) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
-  this._oneShotRequest(Request.requestComplete);
+  if (dueToError) {
+    if (this.currentPlay) {
+      this._oneShotRequest(Request.requestInvalidate);
+    }
+  } else {
+    this._oneShotRequest(Request.requestComplete);
+  }
 
   if (!this.nextPlay && !this.nextPlayInProgress) {
     // We might have run out of music. Ask the server again for a song
@@ -686,7 +702,8 @@ Session.prototype.requestSkip = function(success, failure) {
 
 /**
  * If we are unable to start playback of {@link Session#nextPlay},
- * then call this in place of {@link Session#playStarted} to report
+ * then call this (with no arguments) in place of
+ * {@link Session#playStarted} to report
  * the song as being unplayable. This will kick off a request for
  * a new {@link Session#nextPlay} value (and associated 
  * {@link Session#event:next-play-available} event).
@@ -778,6 +795,14 @@ Session.prototype.handleUnexpectedError = function(err) {
  * value.
  *
  * @event Session#next-play-available
+ * @type {Play}
+ */
+
+/**
+ * This indicates we've thrown away the {@link Session#nextPlay}
+ * value, and any resources related to it can be thrown away.
+ *
+ * @event Session#discard-next-play
  * @type {Play}
  */
 
