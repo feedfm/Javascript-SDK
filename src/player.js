@@ -219,6 +219,9 @@ Player.prototype.prepareToPlay = function() {
  */
 
 Player.prototype.setStation = function(station) {
+  if (this._state === Player.PlaybackState.PLAYING) {
+    this.session.updatePlay(Math.floor(this._playingSound.position() / 1000));
+  }
   this.session.setStation(station);
 };
 
@@ -603,6 +606,20 @@ Player.prototype._onSessionCurrentPlayDidChange = function(currentPlay) {
 
   }
 
+};
+
+/**
+ * Return a list of stations the server wants us to
+ * know about. These can be used for {@link Player#setStation}
+ * calls, and if they have 'audio_file' properties,
+ * you can retrieve a list of songs available in the
+ * station.
+ *
+ * @return {Station[]} array of stations
+ */
+
+Player.prototype.getStations = function() {
+  return this.session.stations || [ ];
 };
 
 

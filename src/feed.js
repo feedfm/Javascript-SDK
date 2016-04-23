@@ -8,6 +8,7 @@ var Request = require('./request');
 var Client = require('./client');
 var Speaker = require('./speaker');
 var Player = require('./player');
+var AudioFile = require('./audio_file');
 
 /*
 var log = require('./log');
@@ -33,7 +34,8 @@ var Feed = {
   // used for testing
   Auth: Auth,
   Request: Request,
-  Client: Client
+  Client: Client,
+  AudioFile: AudioFile
 
 //  Player: Player,
 //  PlayerView: PlayerView,

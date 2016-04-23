@@ -82,6 +82,10 @@ var DEFAULT_BITRATE = 128;
  * in it from next to current (by calling {@link Session#playStarted}), the class
  * tries to get another song queued up for you automatically.
  *
+ * This class can also be used to request specific audio files
+ * by calling {@link Session#requestPlay} to request a specific
+ * song.
+ *
  * @constructor
  * @param {object} options - options for the session
  * @param {string} [options.audioFormats=mp3] - string with comma separated list of 
@@ -290,15 +294,7 @@ Session.prototype.setStation = function(station) {
   log('active station changed to ' + station);
   this.activeStation = station;
   
-  this._cancelOutstandingRequests();
-
-  if (this.nextPlay) {
-    var nextPlay = this.nextPlay;
-    this.nextPlay = null;
-    this.trigger('discard-next-play', nextPlay);
-  }
-
-  this._setCurrentPlay(null);
+  this._reset();
 
   this.trigger('active-station-did-change', station);
 };
@@ -340,7 +336,7 @@ Session.prototype._requestSession = function() {
 
       session.available = true;
 
-      session.trigger('session-available');
+      session.trigger('session-available', session.stations);
 
     } else {
       // session is not available to this client
@@ -461,6 +457,69 @@ Session.prototype.requestNextPlay = function() {
   };
 
   this._sendRequest(playRequest);
+};
+
+/**
+ * A call to this method causes any existing {@link Session#nextPlay}
+ * value to be discarded and {@link Session#currentPlay} to be set
+ * to null. Then a request is made to the server for a play
+ * with the provided audio file and things resume just as
+ * if a call to {@link Session#requestNextPlay} were made.
+ *
+ * If the user is not allowed to play the requested file, an
+ * {@link unexpected error will be triggered and music retrieval
+ * will not progress.
+ *
+ * @param {AudioFile} audioFile - the audio file you wish to play
+ */
+
+Session.prototype.requestPlay = function(audioFile) {
+  if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
+
+  var session = this;
+  this._reset();
+
+  var playRequest = Request.requestPlay(this.activeStation.id, 
+                this.supportedAudioFormats, this.maxBitrate, audioFile.id);
+
+  playRequest.success = function(res) {
+    var nextPlay;
+    
+    if (res.play) {
+      nextPlay = new Play(res.play);
+    }
+
+    if (nextPlay) {
+      session._nextPlaySucceeded(nextPlay);
+    } else {
+      session._nextPlayFailed(new Error('FMErrorCodeUnexpectedReturnType'));
+    }
+  };
+
+  playRequest.failure = function(err) {
+    session._nextPlayFailed(err);
+  };
+
+  this._sendRequest(playRequest);
+};
+
+/**
+ * Stop any pending requests and throw away current
+ * and next play values.
+ *
+ * @private
+ */
+
+Session.prototype._reset = function() {
+  this._cancelOutstandingRequests();
+
+  if (this.nextPlay) {
+    var nextPlay = this.nextPlay;
+    this.nextPlay = null;
+    this.trigger('discard-next-play', nextPlay);
+  }
+
+  this._setCurrentPlay(null);
 };
 
 Session.prototype._nextPlaySucceeded = function(nextPlay) {
@@ -767,15 +826,7 @@ Session.prototype._handleUnexpectedError = function(err) {
   } else if (this.available) {
     log('unexpected error after sesion available - so triggering unexpected error and resetting things');
 
-    this._cancelOutstandingRequests();
-
-    if (this.nextPlay) {
-      var nextPlay = this.nextPlay;
-      this.nextPlay = null;
-      this.trigger('discard-next-play', nextPlay);
-    }
-
-    this._setCurrentPlay(null);
+    this._reset();
 
     this.trigger('unexpected-error', err);
 
@@ -790,6 +841,9 @@ Session.prototype._handleUnexpectedError = function(err) {
  * after {@link Session#setCredentials} is called. Upon receipt of
  * this event, {@link Session#requestNextPlay} should be called to
  * kick of retrieving music from Feed.fm.
+ *
+ * An array of {@link Station} entries is passed along with this
+ * event.
  *
  * @event Session#session-available
  */

@@ -191,7 +191,7 @@ Request.requestSession = function() {
  * Create request object to request a new play
  */
 
-Request.requestPlay = function(stationId, audioFormats, maxBitrate) {
+Request.requestPlay = function(stationId, audioFormats, maxBitrate, audioFileId) {
   var req = new Request();
   req.endpoint = 'play';
   req.type = 'POST';
@@ -200,6 +200,10 @@ Request.requestPlay = function(stationId, audioFormats, maxBitrate) {
   req.data.station_id = stationId;
   req.data.formats = audioFormats;
   req.data.max_bitrate = maxBitrate;
+
+  if (audioFileId) {
+    req.data.audio_file_id = audioFileId;
+  }
 
   return req;
 };

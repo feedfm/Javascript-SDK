@@ -806,7 +806,7 @@
         player.setCredentials('a', 'b');
       });
 
-      it('should stop the active song and discard next song when changing station during playback', function(done) {
+      it.only('should stop the active song and discard next song when changing station during playback', function(done) {
         var first = playResponse();
         var second = playResponse();
         var sess = sessionResponse();
@@ -814,7 +814,8 @@
         responses.push(sess,
                        first,
                        startResponse(),
-                       second);
+                       second,
+                       successResponse());  // record elapse of first play
 
         onCreateSound = function(sound) {
 
@@ -832,6 +833,10 @@
             } else {
               assert.fail();
             }
+          };
+
+          sound.position = function() {
+            assert.equal(sound.url, first.play.audio_file.url);
           };
 
           sound.destroy = function() { 

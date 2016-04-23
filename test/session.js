@@ -72,7 +72,9 @@
       });
 
       var session = new Feed.Session();
-      session.on('session-available', done);
+      session.on('session-available', function() {
+        done();
+      });
 
       session.setCredentials('x', 'y');
     });
@@ -975,42 +977,184 @@
       session.setCredentials('x', 'y');
     });
 
+    it('will request a specific audio file', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var afId = 'af 1';
+      var af = new Feed.AudioFile({ id: afId });
+
+      var plays = [];
+      var requests = [];
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(xhr) {
+        requests.push(xhr);
+
+        var play = validPlayResponse();
+        plays.push(play);
+
+        xhr.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestPlay(af);
+      });
+
+      session.once('next-play-available', function() {
+        // make sure the play request included the audio file id
+        assert(requests.length > 0, 'should be at least one request');
+        assert.match(requests[0].requestBody, /audio_file_id=af\+1/, 'request should include audio file id');
+
+        done();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('will cancel current and next plays before getting specific audio file', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var afId = 'af 1';
+      var af = new Feed.AudioFile({ id: afId });
+
+      var plays = [];
+      var requests = [];
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(xhr) {
+        requests.push(xhr);
+
+        var play = validPlayResponse();
+        plays.push(play);
+
+        xhr.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        // get nextPlay
+        session.requestNextPlay();
+      });
+
+      var currentPlayRemoved = false;
+      session.on('current-play-did-change', function(currentPlay) {
+        if (currentPlay === null) {
+          currentPlayRemoved = true;
+        }
+      });
+
+      var nextPlayDiscarded = false;
+      session.on('discard-next-play', function() {
+        nextPlayDiscarded = true;
+      });
+
+      var nextPlays = [];
+      session.on('next-play-available', function(nextPlay) {
+        nextPlays.push(nextPlay);
+
+        if (nextPlays.length === 1) {
+          session.playStarted();
+
+        } else if (nextPlays.length === 2) {
+          // we've now got a currentPlay and a nextPlay
+          session.requestPlay(af);
+          
+        } else if (nextPlays.length === 3) {
+          assert(nextPlayDiscarded);
+          assert(currentPlayRemoved);
+          assert.isNull(session.currentPlay);
+          assert.match(requests[2].requestBody, /audio_file_id=af\+1/, 'final request should include audio file id');
+
+          done();
+  
+        }
+      });
+
+/*
+        // make sure the play request included the audio file id
+        assert(requests.length > 0, 'should be at least one request');
+        assert.match(requests[0].requestBody, /audio_file_id=af\+1/, 'request should include audio file id');
+
+        done();
+      });
+      */
+
+      session.setCredentials('x', 'y');
+    });
+
     var counter = 0;
     function validPlayResponse(id) {
       if (!id) { id = counter++; }
+
+      var station = validStation(0);
 
       return {
         'success': true,
         'play': {
           'id': '' + id,
-          'station': {
-            'id': '599',
-            'name': 'East Bay'
-          },
-          'audio_file': {
-            'id': '665',
-            'duration_in_seconds': '300',
-            'track': {
-                'id': '15224887',
-                'title': '3030'
-            },
-            'release': {
-                'id': '1483477',
-                'title': 'Deltron 3030'
-            },
-            'artist': {
-                'id': '766824',
-                'name': 'Del the Funky Homosapien'
-            },
-            'codec': 'aac',
-            'bitrate': '128',
-            'url': 'https://feed.fm/audiofile-665-original.aac'
-          }
+          'station': station,
+          'audio_file': validAudioFile(id)
         }
       };
     }
 
+    function validStation(id, audioFiles) {
+      var station = {
+        'id': 'station ' + id,
+        'name': 'station name ' + id
+      };
+
+      if (audioFiles) {
+        station.audio_files = audioFiles;
+        station.on_demand = true;
+      }
+
+      return station;
+    }
+
+    function validAudioFile(id) {
+      return {
+        'id': '' + id,
+        'duration_in_seconds': '300',
+        'track': {
+            'id': 'track id for af ' + id,
+            'title': 'track for af ' + id
+        },
+        'release': {
+            'id': 'release id for af ' + id,
+            'title': 'release for af ' + id
+        },
+        'artist': {
+            'id': 'artist id for af ' + id,
+            'name': 'artist for af ' + id
+        },
+        'codec': 'aac',
+        'bitrate': '128',
+        'url': 'https://feed.fm/audiofile-' + id + '.aac'
+      };
+    }
+
     function validSessionResponse() {
+      var odStation = validStation('od-station', [
+        validAudioFile(0),
+        validAudioFile(1),
+        validAudioFile(2)
+      ]);
+
       return {
         success: true, 
         session: {
@@ -1020,7 +1164,7 @@
         },
         stations: [
           { id: 'first-station', name: 'first station' },
-          { id: 'second-station', name: 'second station' }
+          odStation
         ]
       };
     }
