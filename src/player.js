@@ -472,7 +472,7 @@ Player.prototype._onSessionSkipStatusDidChange = function(canSkip) {
 
 Player.prototype._onSessionActiveStationDidChange = function() {
   if (this._state === Player.PlaybackState.WAITING_FOR_ITEM) {
-    this._setState(Player.PlaybackState.READY_TO_PLAY);
+    this.session.requestNextPlay();
   }
 };
 
@@ -659,7 +659,7 @@ Player.prototype.getStations = function() {
  */
 
 Player.prototype.like = function(playId) {
-  this._session.requestLike(playId);
+  this.session.requestLike(playId);
 };
 
 /**
@@ -671,7 +671,7 @@ Player.prototype.like = function(playId) {
  */
 
 Player.prototype.dislike = function(playId) {
-  this._session.requestDislike(playId);
+  this.session.requestDislike(playId);
 };
 
 /**
@@ -683,7 +683,7 @@ Player.prototype.dislike = function(playId) {
  */
 
 Player.prototype.unlike = function(playId) {
-  this._session.requestUnlike(playId);
+  this.session.requestUnlike(playId);
 };
 
 

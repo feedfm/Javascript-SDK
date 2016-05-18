@@ -812,22 +812,28 @@
         player.setCredentials('a', 'b');
       });
 
-      it('should stop the active song and discard next song when changing station during playback', function(done) {
+      it.only('should stop the active song and discard next song, and advance to next song when changing station during playback', function(done) {
         var first = playResponse();
         var second = playResponse();
+        var third = playResponse();
+        var fourth = playResponse();
         var sess = sessionResponse();
 
         responses.push(sess,
                        first,
                        startResponse(),
                        second,
-                       successResponse());  // record elapse of first play
+                       successResponse(), // record elapse of first play on station change
+                       third,
+                       successResponse(), // start of third song
+                       fourth
+                       );
 
         onCreateSound = function(sound) {
 
           sound.play = function() { 
 
-            if (sound.url === first.play.audio_file.url) {
+            if (first && (sound.url === first.play.audio_file.url)) {
               setTimeout(function() {
                 sound.trigger('play');
 
@@ -835,6 +841,20 @@
                   player.setStation(sess.stations[1]);
                 }, 100);
               }, 1);
+
+            } else if (third && (sound.url === third.play.audio_file.url)) {
+              assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                         Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                         Feed.Player.PlaybackState.STALLED,
+                                         Feed.Player.PlaybackState.PLAYING,
+                                         Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                         Feed.Player.PlaybackState.STALLED ]);
+
+              assert.isNull(first);
+              assert.isNull(second);
+
+              testingComplete = true; player.destroy();
+              done();
 
             } else {
               assert.fail();
@@ -863,25 +883,8 @@
         });
 
         var states = [];
-
-        player.on('playback-state-did-change', function(newState, oldState) {
+        player.on('playback-state-did-change', function(newState) {
           states.push(newState);
-
-          if ((newState === Feed.Player.PlaybackState.READY_TO_PLAY) &&
-              (oldState === Feed.Player.PlaybackState.WAITING_FOR_ITEM)) {
-            assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
-                                       Feed.Player.PlaybackState.WAITING_FOR_ITEM,
-                                       Feed.Player.PlaybackState.STALLED,
-                                       Feed.Player.PlaybackState.PLAYING,
-                                       Feed.Player.PlaybackState.WAITING_FOR_ITEM,
-                                       Feed.Player.PlaybackState.READY_TO_PLAY ]);
-
-            assert.isNull(first);
-            assert.isNull(second);
-
-            testingComplete = true; player.destroy();
-            done();
-          }
         });
 
         player.setCredentials('a', 'b');
@@ -997,6 +1000,80 @@
             testingComplete = true; player.destroy();
             done();
           }
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
+      it('will update the elapsed time for the current song before changing stations', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+        var third = playResponse();
+
+        responses.push(sessionResponse(),
+                       first,
+                       startResponse(),
+                       second,
+                       successResponse(), // elapsed time response
+                       successResponse(), // skip response
+                       startResponse(),   // start second song response
+                       third);            // queue up third song
+
+        onCreateSound = function(sound) {
+
+          sound.play = function() { 
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+
+                setTimeout(function() {
+                  player.skip();
+                }, 10);
+              }, 1);
+
+            } else if (sound.url === second.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+
+          sound.destroy = function() { 
+            if (!testingComplete) {
+              assert.equal(sound.url, first.play.audio_file.url);
+            }
+          };
+
+          sound.position = function() {
+            assert.equal(sound.url, first.play.audio_file.url);
+          };
+        };
+
+        var states = [];
+
+        onResponsesComplete = function() {
+          assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                     Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING,
+                                     Feed.Player.PlaybackState.REQUESTING_SKIP,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING ]);
+          testingComplete = true; player.destroy();
+          done();
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
         });
 
         player.setCredentials('a', 'b');
