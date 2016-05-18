@@ -52,7 +52,7 @@ $('#popout').on('click', function() {
 
 $('#delete').on('click', function() {
   // delete client identifier to get past skip limits
-  player.session._deleteStoredCid();
+  Feed.Client.deleteClientUUID();
 });
 
 $('#tune').on('click', function() {
