@@ -812,7 +812,7 @@
         player.setCredentials('a', 'b');
       });
 
-      it.only('should stop the active song and discard next song, and advance to next song when changing station during playback', function(done) {
+      it('should stop the active song and discard next song, and advance to next song when changing station during playback', function(done) {
         var first = playResponse();
         var second = playResponse();
         var third = playResponse();
