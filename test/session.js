@@ -1096,6 +1096,203 @@
       session.setCredentials('x', 'y');
     });
 
+    it('after a play is started, we can like it', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      var like = /https:\/\/feed.fm\/api\/v2\/play\/(\d+)\/like/;
+      server.respondWith('POST', like, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+
+        var match = like.exec(response.url);
+
+        assert.equal(match[1], plays[0].play.id, 'play should be current one');
+        done();
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
+
+        if (startCount <= 1) {
+          session.playStarted();
+
+        }
+      });
+
+      session.on('current-play-did-change', function() {
+        session.requestLike();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('we can like a random play id', function(done) {
+      server.autoRespond = true;
+
+      var playId = '123123';
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var like = /https:\/\/feed.fm\/api\/v2\/play\/(\d+)\/like/;
+      server.respondWith('POST', like, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+
+        var match = like.exec(response.url);
+
+        assert.equal(match[1], playId, 'play should be requested one');
+        done();
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestLike(playId);
+      });
+      
+      session.setCredentials('x', 'y');
+    });
+
+    it('after a play is started, we can dislike it', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      var like = /https:\/\/feed.fm\/api\/v2\/play\/(\d+)\/dislike/;
+      server.respondWith('POST', like, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+
+        var match = like.exec(response.url);
+
+        assert.equal(match[1], plays[0].play.id, 'play should be current one');
+        done();
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
+
+        if (startCount <= 1) {
+          session.playStarted();
+
+        }
+      });
+
+      session.on('current-play-did-change', function() {
+        session.requestDislike();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
+    it('after a play is started, we can unlike it', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      var like = /https:\/\/feed.fm\/api\/v2\/play\/(\d+)\/like/;
+      server.respondWith('DELETE', like, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+
+        var match = like.exec(response.url);
+
+        assert.equal(match[1], plays[0].play.id, 'play should be current one');
+        done();
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
+
+        if (startCount <= 1) {
+          session.playStarted();
+
+        }
+      });
+
+      session.on('current-play-did-change', function() {
+        session.requestUnlike();
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
     var counter = 0;
     function validPlayResponse(id) {
       if (!id) { id = counter++; }

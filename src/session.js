@@ -650,32 +650,38 @@ Session.prototype.playCompleted = function(dueToError) {
 
 /**
  * Mark the currently playing songs as liked.
+ *
+ * @param {string} [playId] play to like, or current song if unspecified
  */
 
-Session.prototype.requestLike = function() {
+Session.prototype.requestLike = function(playId) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
-  this._oneShotRequest(Request.requestLike);
+  this._oneShotRequest(Request.requestLike, playId);
 };
 
 /**
  * Mark the currently playing song as neither liked nor disliked.
+ *
+ * @param {string} [playId] play to unlike, or current song if unspecified
  */
 
-Session.prototype.requestUnlike = function() {
+Session.prototype.requestUnlike = function(playId) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
-  this._oneShotRequest(Request.requestUnlike);
+  this._oneShotRequest(Request.requestUnlike, playId);
 };
 
 /**
  * Mark the currently playing song as disliked.
+ *
+ * @param {string} [playId] play to dislike, or current song if unspecified
  */
 
-Session.prototype.requestDislike = function() {
+Session.prototype.requestDislike = function(playId) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
-  this._oneShotRequest(Request.requestDislike);
+  this._oneShotRequest(Request.requestDislike, playId);
 };
 
 /**
@@ -686,12 +692,14 @@ Session.prototype.requestDislike = function() {
  * @private
  */
 
-Session.prototype._oneShotRequest = function(ctor) {
-  if (!this.currentPlay) {
-    return;
-  }
+Session.prototype._oneShotRequest = function(ctor, playId) {
+  if (!playId) {
+    if (!this.currentPlay) {
+      return;
+    }
 
-  var playId = this.currentPlay.id;
+    playId = this.currentPlay.id;
+  }
 
   var request = ctor(playId);
   request.failure = function(err) {

@@ -887,7 +887,7 @@
         player.setCredentials('a', 'b');
       });
 
-      it.only('should send elapse updates while playing a song', function(done) {
+      it('should send elapse updates while playing a song', function(done) {
         this.timeout(4000);
 
         var firstPlay = playResponse();
@@ -941,7 +941,7 @@
         player.setCredentials('a', 'b');
       });
 
-      it.only('should send elapse when pausing a song', function(done) {
+      it('should send elapse when pausing a song', function(done) {
         this.timeout(4000);
 
         var firstPlay = playResponse();

@@ -650,6 +650,42 @@ Player.prototype.getStations = function() {
   return this.session.stations || [ ];
 };
 
+/**
+ * Tell the server that the user likes the current
+ * (or specified) song.
+ *
+ * @param {string} [playId] id of play that the user likes,
+ *      or the currently playing one if not specified
+ */
+
+Player.prototype.like = function(playId) {
+  this._session.requestLike(playId);
+};
+
+/**
+ * Tell the server that the user dislikes the current
+ * (or specified) song.
+ *
+ * @param {string} [playId] id of play that the user dislikes,
+ *      or the currently playing one if not specified
+ */
+
+Player.prototype.dislike = function(playId) {
+  this._session.requestDislike(playId);
+};
+
+/**
+ * Tell the server that the user neither likes nor dislikes the current
+ * (or specified) song.
+ *
+ * @param {string} [playId] id of play that the user dislikes,
+ *      or the currently playing one if not specified
+ */
+
+Player.prototype.unlike = function(playId) {
+  this._session.requestUnlike(playId);
+};
+
 
 /**
  * This event signifies that this client may
