@@ -123,6 +123,7 @@
           Feed.Speaker.getShared.restore();
           Feed.Session.prototype.setCredentials.restore();
 
+          player.destroy();
           done();
         });
 
@@ -659,6 +660,7 @@
                        first,
                        startResponse(),
                        second,
+                       successResponse(), // elapsed time response
                        successResponse(), // skip response
                        startResponse(),   // start second song response
                        third);            // queue up third song
@@ -689,6 +691,10 @@
             if (!testingComplete) {
               assert.equal(sound.url, first.play.audio_file.url);
             }
+          };
+
+          sound.position = function() {
+            assert.equal(sound.url, first.play.audio_file.url);
           };
         };
 
@@ -806,7 +812,7 @@
         player.setCredentials('a', 'b');
       });
 
-      it.only('should stop the active song and discard next song when changing station during playback', function(done) {
+      it('should stop the active song and discard next song when changing station during playback', function(done) {
         var first = playResponse();
         var second = playResponse();
         var sess = sessionResponse();

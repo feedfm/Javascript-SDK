@@ -467,7 +467,7 @@ Session.prototype.requestNextPlay = function() {
  * if a call to {@link Session#requestNextPlay} were made.
  *
  * If the user is not allowed to play the requested file, an
- * {@link unexpected error will be triggered and music retrieval
+ * {@link Session#event:unexpected-error} will be triggered and music retrieval
  * will not progress.
  *
  * @param {AudioFile} audioFile - the audio file you wish to play

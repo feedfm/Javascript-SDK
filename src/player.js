@@ -227,12 +227,17 @@ Player.prototype.setStation = function(station) {
 
 /**
  * Start or resume music playback
+ *
+ * @param {AudioFile} [song] - optional specific song to play.
  */
 
-Player.prototype.play = function() {
+Player.prototype.play = function(audioFile) {
   var sound;
 
-  if (this._state === Player.PlaybackState.READY_TO_PLAY) {
+  if (audioFile) {
+    this.session.requestPlay(audioFile);
+
+  } else if (this._state === Player.PlaybackState.READY_TO_PLAY) {
     var nextPlay = this.session.nextPlay;
 
     if (nextPlay === null) {
@@ -312,10 +317,33 @@ Player.prototype.skip = function() {
 
   if ((this._state === Player.PlaybackState.PLAYING) ||
       (this._state === Player.PlaybackState.PAUSED)) {
+
+    if (this._state === Player.PlaybackState.PLAYING) {
+      this._reportElapsedTime();
+    }
+
     this._setState(Player.PlaybackState.REQUESTING_SKIP, 'User requested skip');
 
     this.session.requestSkip();
   }
+};
+
+Player.prototype._reportElapsedTime = function() {
+  var currentPlay = this.session.currentPlay;
+
+  if (!currentPlay) {
+    return;
+  }
+
+  if (!this._playingSound) {
+    return;
+  }
+
+  if (this._playingSound._play.id !== currentPlay.id) {
+    return;
+  }
+ 
+  this.session.updatePlay(Math.floor(this._playingSound.position() / 1000));
 };
 
 /**
@@ -453,7 +481,7 @@ Player.prototype._onPlaybackElapsedInterval = function() {
     return;
   }
 
-  var currentPlay = this.session.currentPlay;
+  var currentPlay = this.session && this.session.currentPlay;
 
   if (!currentPlay) {
     warn('playback elapsed and we are in PLAYING mode, but no current play!');
