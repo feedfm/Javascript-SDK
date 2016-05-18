@@ -1086,7 +1086,6 @@
 
 /*
  *  tests from the previous iteration of the player:
- */
 
     it('will allow us to suspend and unsuspend the player while playing a song', function(done) {
       // run player.play(). wait for 3 seconds. then suspend. then create a new
