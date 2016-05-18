@@ -651,6 +651,18 @@ Player.prototype.getStations = function() {
 };
 
 /**
+ * Return a station object with the requested name.
+ *
+ * @return {Station} station with the requested name, or undefined
+ */
+
+Player.prototype.getStation = function(name) {
+  return _.find(this.session.stations, function(station) {
+    return (station.name === name);
+  });
+};
+
+/**
  * Tell the server that the user likes the current
  * (or specified) song.
  *
