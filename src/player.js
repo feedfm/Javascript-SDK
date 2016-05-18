@@ -39,7 +39,7 @@ var warn = log;
  * @param {object} [options] - configuration options. These also include
  *       all the options in {@link Speaker}.
  * @param {boolean} [options.debug=false] - if true, debug to console
- * @param {number}  [options.reportElapseIntervalInMS] - how often to report elapsed playback, in milliseconds
+ * @param {number}  [options.reportElapseIntervalInMS=30000] - how often to report elapsed playback, in milliseconds
  */
 
 var Player = function(options) {

@@ -887,7 +887,7 @@
         player.setCredentials('a', 'b');
       });
 
-      it('should send elapse updates while playing a song', function(done) {
+      it.only('should send elapse updates while playing a song', function(done) {
         this.timeout(4000);
 
         var firstPlay = playResponse();
@@ -910,9 +910,6 @@
             assert.equal(sound.url, firstPlay.play.audio_file.url);
           };
 
-          sound.pause = function() { 
-            sound.trigger('pause');
-          };
         };
 
         var states = [];
@@ -939,6 +936,67 @@
 
         player.on('playback-state-did-change', function(newState) {
           states.push(newState);
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
+      it.only('should send elapse when pausing a song', function(done) {
+        this.timeout(4000);
+
+        var firstPlay = playResponse();
+
+        responses.push(sessionResponse(),
+                       firstPlay,
+                       startResponse(),
+                       playResponse(),
+                       successResponse()); // elapse callback
+
+        onCreateSound = function(sound) {
+          sound.play = function() { 
+            setTimeout(function() {
+              sound.trigger('play');
+            }, 1);
+          };
+
+          sound.position = function() {
+            assert.equal(sound.url, firstPlay.play.audio_file.url);
+          };
+
+          sound.pause = function() { 
+            sound.trigger('pause');
+          };
+        };
+
+        var states = [];
+
+        var player = new Feed.Player({
+          reportElapseIntervalInMS: 1000
+        });
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
+
+          if (newState === Feed.Player.PlaybackState.PLAYING) {
+            setTimeout(function() {
+              player.pause();
+            }, 500);
+
+          } else if (newState === Feed.Player.PlaybackState.PAUSED) {
+            assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                       Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                       Feed.Player.PlaybackState.STALLED,
+                                       Feed.Player.PlaybackState.PLAYING,
+                                       Feed.Player.PlaybackState.PAUSED ]);
+
+            
+            testingComplete = true; player.destroy();
+            done();
+          }
         });
 
         player.setCredentials('a', 'b');
