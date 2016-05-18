@@ -645,6 +645,10 @@ Session.prototype.updatePlay = function(elapsedTime) {
 Session.prototype.playCompleted = function(dueToError) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
+  if (!this.currentPlay) {
+    return; // nothing to report
+  }
+
   if (dueToError) {
     if (this.currentPlay) {
       this._oneShotRequest(Request.requestInvalidate);

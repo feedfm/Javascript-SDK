@@ -4,14 +4,15 @@
 </head>
 <body>
 
-<button id="tune">tune</button>
+<button id="play">request next play</button>
 <button id="start">start</button>
+<button id="invalid">reject</button>
 <button id="skip">skip</button>
-<button id="invalid">invalid</button>
 <button id="complete">complete</button>
+<button id="bad-complete">complete with error</button>
 
 <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../dist/feed.js" type="application/javascript"></script>
+<script src="../../dist/feed.js" type="application/javascript"></script>
 
 <script>
 
@@ -19,17 +20,16 @@ var session = new Feed.Session();
 
 session.setCredentials('demo', 'demo');
 
-/*
 session.on('all', function() {
   console.log('event sprung!', arguments);
 });
 
-$('#tune').on('click', function() {
-  session.tune();
+$('#play').on('click', function() {
+  session.requestNextPlay();
 });
 
 $('#start').on('click', function() {
-  session.reportPlayStarted();
+  session.playStarted();
 });
 
 $('#skip').on('click', function() {
@@ -37,13 +37,17 @@ $('#skip').on('click', function() {
 });
 
 $('#invalid').on('click', function() {
-  session.requestInvalidate();
+  session.rejectPlay();
 });
 
 $('#complete').on('click', function() {
-  session.reportPlayCompleted();
+  session.playCompleted();
 });
-*/
+
+$('#bad-complete').on('click', function() {
+  session.playCompleted(true);
+});
+
 
 </script>
 
