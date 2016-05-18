@@ -36,8 +36,9 @@ var warn = log;
  *
  * @constructor
  * @mixes Events
- * @param {object} [options] - configuration options. These also include
- *       all the options in {@link Speaker}.
+ * @param {object} [options] - configuration options. See also 
+ *       all the options in {@link Speaker}, which are passed on
+ *       from here.
  * @param {boolean} [options.debug=false] - if true, debug to console
  * @param {number}  [options.reportElapseIntervalInMS=30000] - how often to report elapsed playback, in milliseconds
  */
@@ -653,13 +654,48 @@ Player.prototype.getStations = function() {
 /**
  * Return a station object with the requested name.
  *
+ * @param {string} [name] - station name to look for or, if not
+ *    specified, return the current station
  * @return {Station} station with the requested name, or undefined
  */
 
 Player.prototype.getStation = function(name) {
+  if (!name) {
+    return this.session.activeStation;
+  }
+
   return _.find(this.session.stations, function(station) {
     return (station.name === name);
   });
+};
+
+/**
+ * Return false if the user absolutely cannot skip the current
+ * song, and true otherwise.
+ *
+ * @return {boolean}
+ */
+
+Player.prototype.getCanSkip = function() {
+  return this.session.canSkip;
+};
+
+/**
+ * Return details about the song currently
+ * playing or paused.
+ *
+ * @return {Play} current play, if one is playing/paused, or null
+ */
+
+Player.prototype.getCurrentPlay = function() {
+  if ((this._state === Player.PlaybackState.PLAYING) ||
+      (this._state === Player.PlaybackState.PAUSED)) {
+    return this.session.currentPlay;
+
+  } else {
+    return null;
+
+  }
 };
 
 /**
@@ -740,6 +776,14 @@ Player.prototype.unlike = function(playId) {
  * has begun playback
  *
  * @event Player.play-started
+ */
+
+/**
+ * This event announces that whatever was
+ * previously playing has now stopped
+ * playback.
+ *
+ * @event Player.play-completed
  */
 
 /**

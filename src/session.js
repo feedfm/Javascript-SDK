@@ -116,6 +116,15 @@ var Session = function(options) {
    */
   this.stations = [];         // holds list of known stations
 
+  /**
+   * Placement we are pulling music from, as handed to us when our
+   * session was created.
+   *
+   * @private
+   */
+
+  this.placementId = null;
+
   /** 
    * @readonly
    * @member {boolean} - when true, music is available; when false, no music is available;
@@ -336,6 +345,10 @@ Session.prototype._requestSession = function() {
 
       session.available = true;
 
+      if (res.placement && res.placement.id) {
+        session.placementId = res.placement.id;
+      }
+
       session.trigger('session-available', session.stations);
 
     } else {
@@ -435,7 +448,7 @@ Session.prototype.requestNextPlay = function() {
 
   this.nextPlayInProgress = true;
 
-  var playRequest = Request.requestPlay(this.activeStation.id, 
+  var playRequest = Request.requestPlay(this.placementId, this.activeStation.id, 
                 this.supportedAudioFormats, this.maxBitrate);
 
   playRequest.success = function(res) {
@@ -479,7 +492,7 @@ Session.prototype.requestPlay = function(audioFile) {
   var session = this;
   this._reset();
 
-  var playRequest = Request.requestPlay(this.activeStation.id, 
+  var playRequest = Request.requestPlay(this.placementId, this.activeStation.id, 
                 this.supportedAudioFormats, this.maxBitrate, audioFile.id);
 
   playRequest.success = function(res) {

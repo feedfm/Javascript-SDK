@@ -191,12 +191,13 @@ Request.requestSession = function() {
  * Create request object to request a new play
  */
 
-Request.requestPlay = function(stationId, audioFormats, maxBitrate, audioFileId) {
+Request.requestPlay = function(placementId, stationId, audioFormats, maxBitrate, audioFileId) {
   var req = new Request();
   req.endpoint = 'play';
   req.type = 'POST';
   req.retryCount = 3;  // if this fails, the user can retry later
 
+  req.data.placement_id = placementId;
   req.data.station_id = stationId;
   req.data.formats = audioFormats;
   req.data.max_bitrate = maxBitrate;

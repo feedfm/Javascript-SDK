@@ -1359,6 +1359,9 @@
           client_id: 'client id',
           timestamp: Math.floor(Date.now() / 1000)
         },
+        placement: {
+          id: 'placement-id'
+        },
         stations: [
           { id: 'first-station', name: 'first station' },
           odStation

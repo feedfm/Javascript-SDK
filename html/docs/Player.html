@@ -54,7 +54,7 @@
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Player.html#.event:skip-denied">Player.event:skip-denied</a></li><li><a href="Player.html#.event:unexpected-error">Player.event:unexpected-error</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:discard-next-play">Session#event:discard-next-play</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
+					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-completed">Player.event:play-completed</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Player.html#.event:skip-denied">Player.event:skip-denied</a></li><li><a href="Player.html#.event:unexpected-error">Player.event:unexpected-error</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:discard-next-play">Session#event:discard-next-play</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
 				</ul>
 			</li>
 			
@@ -187,8 +187,9 @@ playback is granted.</p></div>
 
             
 
-            <td class="description last"><p>configuration options. These also include
-      all the options in <a href="Speaker.html">Speaker</a>.</p>
+            <td class="description last"><p>configuration options. See also 
+      all the options in <a href="Speaker.html">Speaker</a>, which are passed on
+      from here.</p>
                 <h6 class="method-params-label method-subparams-label">Properties</h6>
                 
 
@@ -960,6 +961,208 @@ this call.</p>
             
 <hr>
 <dt>
+    <h4 class="name" id="getCanSkip"><span class="type-signature"></span>getCanSkip()</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>Return false if the user absolutely cannot skip the current
+song, and true otherwise.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">boolean</span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="getCurrentPlay"><span class="type-signature"></span>getCurrentPlay()</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>Return details about the song currently
+playing or paused.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Returns:</h5>
+    
+            
+<div class="param-desc">
+    <p>current play, if one is playing/paused, or null</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Play.html">Play</a></span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id="getState"><span class="type-signature"></span>getState()</h4>
     
     
@@ -1058,7 +1261,7 @@ this call.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id="getStation"><span class="type-signature"></span>getStation()</h4>
+    <h4 class="name" id="getStation"><span class="type-signature"></span>getStation(<span class="optional">name</span>)</h4>
     
     
 </dt>
@@ -1075,6 +1278,69 @@ this call.</p>
     
 
     
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Argument</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>station name to look for or, if not
+   specified, return the current station</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
     
 
     
@@ -3271,6 +3537,86 @@ this station, so playback has stopped.</p>
             
 <hr>
 <dt>
+    <h4 class="name" id=".event:play-completed">play-completed</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event announces that whatever was
+previously playing has now stopped
+playback.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
     <h4 class="name" id=".event:play-started">play-started</h4>
     
     
@@ -3801,7 +4147,7 @@ then emit this so the user can be informed.</p>
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-05-18T15:20:26-07:00
+		on 2016-05-18T16:05:06-07:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>
