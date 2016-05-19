@@ -214,29 +214,39 @@ Player.prototype.prepareToPlay = function() {
 
 /**
  * Stop playback, if any, and switch to the passed-in
- * station. A call to {@link Player#prepareToPlay} or
- * {@link Player#play} should be made to resume
- * pulling music for playback.
+ * station. A new song will be requested and playback
+ * will start immediately.
+ *
+ * @param {string} stationId the id of the station to tune to
  */
 
-Player.prototype.setStation = function(station) {
+Player.prototype.setStation = function(stationId) {
   if (this._state === Player.PlaybackState.PLAYING) {
     this.session.updatePlay(Math.floor(this._playingSound.position() / 1000));
   }
-  this.session.setStation(station);
+  this.session.setStation(stationId);
 };
 
 /**
- * Start or resume music playback
+ * Start or resume music playback. If an audio file is specified, then
+ * the current station is changed to the station with that file (if
+ * we're not in that station already) and that song is queued up and
+ * playback begun.
  *
- * @param {AudioFile} [song] - optional specific song to play.
+ * @param {string} [audio file id] - optional specific song to play.
+ * @param {string} [station id] - optional id of station holding song
  */
 
-Player.prototype.play = function(audioFile) {
+Player.prototype.play = function(audioFileId, stationId) {
   var sound;
 
-  if (audioFile) {
-    this.session.requestPlay(audioFile);
+  if (audioFileId) {
+    var foundFile = this.session.requestPlay(audioFileId, stationId);
+
+    if (foundFile) {
+      // make sure we start playback when the song is loaded
+      this._setState(Player.PlaybackState.WAITING_FOR_ITEM, 'User requesting specific file');
+    }
 
   } else if (this._state === Player.PlaybackState.READY_TO_PLAY) {
     var nextPlay = this.session.nextPlay;
@@ -471,10 +481,12 @@ Player.prototype._onSessionSkipStatusDidChange = function(canSkip) {
   }
 };
 
-Player.prototype._onSessionActiveStationDidChange = function() {
+Player.prototype._onSessionActiveStationDidChange = function(station) {
   if (this._state === Player.PlaybackState.WAITING_FOR_ITEM) {
     this.session.requestNextPlay();
   }
+
+  this.trigger('active-station-did-change', station);
 };
 
 Player.prototype._onPlaybackElapsedInterval = function() {
@@ -743,6 +755,13 @@ Player.prototype.unlike = function(playId) {
  * after being {@link Player.PlaybackState.UNINITIALIZED}
  *
  * @event Player.player-available
+ */
+
+/**
+ * This event announces that the current active station
+ * has changed. The new station is passed as an argument.
+ *
+ * @event Player.active-station-did-change
  */
 
 /**

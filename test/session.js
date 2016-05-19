@@ -413,7 +413,7 @@
 
       var session = new Feed.Session();
       session.once('session-available', function() {
-        session.setStation(session.stations[1]);
+        session.setStation(session.stations[1].id);
       });
 
       session.once('active-station-did-change', function(station) {
@@ -471,7 +471,7 @@
 
         } else {
           // second play has been queued up - now change the station
-          session.setStation(session.stations[1]);
+          session.setStation(session.stations[1].id);
 
         }
       });
@@ -980,11 +980,13 @@
     it('will request a specific audio file', function(done) {
       server.autoRespond = true;
 
+      var sr = validSessionResponse();
+
       server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(sr));
       });
 
-      var afId = 'af 1';
+      var afId = sr.stations[1].audio_files[0].id;
       var af = new Feed.AudioFile({ id: afId });
 
       var plays = [];
@@ -1001,13 +1003,13 @@
 
       var session = new Feed.Session();
       session.once('session-available', function() {
-        session.requestPlay(af);
+        session.requestPlay(af.id);
       });
 
       session.once('next-play-available', function() {
         // make sure the play request included the audio file id
         assert(requests.length > 0, 'should be at least one request');
-        assert.match(requests[0].requestBody, /audio_file_id=af\+1/, 'request should include audio file id');
+        assert.match(requests[0].requestBody, new RegExp('audio_file_id=' + afId), 'request should include audio file id');
 
         done();
       });
@@ -1018,11 +1020,13 @@
     it('will cancel current and next plays before getting specific audio file', function(done) {
       server.autoRespond = true;
 
+      var sr = validSessionResponse();
+
       server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
-        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(sr));
       });
 
-      var afId = 'af 1';
+      var afId = sr.stations[1].audio_files[0].id;
       var af = new Feed.AudioFile({ id: afId });
 
       var plays = [];
@@ -1071,13 +1075,13 @@
 
         } else if (nextPlays.length === 2) {
           // we've now got a currentPlay and a nextPlay
-          session.requestPlay(af);
+          session.requestPlay(af.id);
           
         } else if (nextPlays.length === 3) {
           assert(nextPlayDiscarded);
           assert(currentPlayRemoved);
           assert.isNull(session.currentPlay);
-          assert.match(requests[2].requestBody, /audio_file_id=af\+1/, 'final request should include audio file id');
+          assert.match(requests[2].requestBody, new RegExp('audio_file_id=' + afId), 'final request should include audio file id');
 
           done();
   

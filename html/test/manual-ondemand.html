@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  .song.active {
+    background-color: red;
+  }
+</style>
+</head>
+<body>
+
+<button id="tune">prepare</button>
+<button id="play">play</button>
+<button id="pause">pause</button>
+<button id="skip">skip</button>
+
+<br/>
+<br/>
+<br/>
+
+<button id="delete">delete client cookie</button>
+
+<br/>
+<br/>
+<br/>
+
+<div id="station"></div>
+
+<ul id="songs"></ul>
+
+<script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+<script src="../../dist/feed.js" type="application/javascript"></script>
+
+<script>
+console.log('creating...');
+var player = new Feed.Player({ 
+  debug: true, 
+  swfBase: '../dist' 
+});
+console.log('created!');
+
+player.on('all', function() {
+  console.log('event sprung!', arguments);
+});
+
+player.on('player-available', function() {
+  var stations = player.getStations();
+
+  for (var i = 0; i < stations.length; i++) {
+    var station = stations[i];
+
+    if (station.audio_files && station.audio_files.length) {
+      var html = '<li>' + station.name;
+      html += '<ul>';
+
+      var songs = [];
+
+      for (var j = 0; j < station.audio_files.length; j++) {
+        var song = station.audio_files[j];
+
+        songs.push('<li class="song" data-id="' + song.id + '">' + song.track.title + '</li>');
+      }
+
+      html += songs.join('\n');
+
+      html += '</ul>';
+      html += '</li>';
+
+      $('#songs').append(html);
+    }
+  }
+});
+
+player.on('play-started', function(play) {
+  $('#station').text('Now playing ' + player.getStation().name);
+  $('#songs .song').removeClass('active');
+  $('#songs .song[data-id=' + play.audio_file.id + ']').addClass('active');
+});
+
+player.setCredentials('demo', 'demo');
+
+
+$('#songs').on('click', '.song', function(e) {
+  var $el = $(e.currentTarget);
+  var audioFileId = $el.data('id');
+
+  console.log('want to play ', audioFileId);
+  player.play(audioFileId);
+});
+
+$('#delete').on('click', function() {
+  // delete client identifier to get past skip limits
+  Feed.Client.deleteClientUUID();
+});
+
+$('#tune').on('click', function() {
+  player.prepareToPlay();
+});
+
+$('#play').on('click', function() {
+  player.play();
+});
+
+$('#pause').on('click', function() {
+  player.pause();
+});
+
+$('#skip').on('click', function() {
+  player.skip();
+});
+</script>
+
+</body>
+</html>

@@ -288,15 +288,24 @@ Session.prototype._setCurrentPlay = function(currentPlay) {
  * making this call or receiving the {@link Session#event:active-station-did-change}
  * event.
  *
- * @param {object} station - a station (available from 
- *    {@link Session#stations})
+ * @param {string} station - a station id (a list of stations are
+ *      available from {@link Session#stations})
  */
 
-Session.prototype.setStation = function(station) {
+Session.prototype.setStation = function(stationId) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
-  if (station === this.activeStation) {
+  if (stationId === this.activeStation.id) {
     log('ignoring attempt to re-set active station');
+    return;
+  }
+
+  var station = _.find(this.stations, function(station) {
+    return station.id === stationId;
+  });
+
+  if (!station) {
+    log('ignoring attempt to switch to unknown station with id "' + stationId + '"');
     return;
   }
 
@@ -473,6 +482,65 @@ Session.prototype.requestNextPlay = function() {
 };
 
 /**
+ * Search through available stations for
+ * the given audio file.
+ *
+ * @param {string} audioFileId - id of requested audio file
+ * @param {string} [stationId] - id of station containing audio file. If the
+ *   station doesn't have the file, we'll check all the other stations.
+ * @return {object} object with `audioFile` and `station` properties that might
+ *   be null if we didn't find the requested audio file.
+ */
+
+Session.prototype._findAudioFileAndStation = function(audioFileId, stationId) {
+  var audioFile;
+  var station;
+
+  if (audioFileId) {
+    audioFileId = audioFileId.toString();
+  }
+
+  if (stationId) {
+    stationId = stationId.toString();
+
+    station = _.find(this.stations, function(station) { return station.id === stationId; });
+
+    if (station && station.on_demand) {
+      audioFile = _.find(station.audio_files, function(af) { return af.id === audioFileId; });
+    }
+  }
+
+  if (audioFile) {
+    log('found requested audio file for on-demand play');
+
+  } else {
+    var stations = this.stations.slice();
+
+    var matchingAudioFile = function(af) {
+      return af.id === audioFileId;
+    };
+
+    // look through all on-demand stations for the audio file
+    while (!audioFile && (stations.length > 0)) {
+      if (stations[0].on_demand) {
+        audioFile = _.find(stations[0].audio_files, matchingAudioFile);
+
+        if (audioFile) {
+          station = stations[0];
+        }
+      }
+
+      stations.shift();
+    }
+  }
+
+  return {
+    audioFile: audioFile,
+    station: station
+  };
+};
+
+/**
  * A call to this method causes any existing {@link Session#nextPlay}
  * value to be discarded and {@link Session#currentPlay} to be set
  * to null. Then a request is made to the server for a play
@@ -483,17 +551,27 @@ Session.prototype.requestNextPlay = function() {
  * {@link Session#event:unexpected-error} will be triggered and music retrieval
  * will not progress.
  *
- * @param {AudioFile} audioFile - the audio file you wish to play
+ * @param {string} audioFileId - id of the audio file you wish to play
+ * @param {string} [stationId] - id of the station with the requested audio file
+ * @return {boolean} - true if we found the requested audio file
  */
 
-Session.prototype.requestPlay = function(audioFile) {
+
+Session.prototype.requestPlay = function(audioFileId, stationId) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
+
+  var afs = this._findAudioFileAndStation(audioFileId, stationId);
+
+  if (!afs.audioFile) {
+    log('ignoring request to play song because we cannot find it anywhere');
+    return false;
+  }
 
   var session = this;
   this._reset();
 
-  var playRequest = Request.requestPlay(this.placementId, this.activeStation.id, 
-                this.supportedAudioFormats, this.maxBitrate, audioFile.id);
+  var playRequest = Request.requestPlay(this.placementId, afs.station.id,
+                this.supportedAudioFormats, this.maxBitrate, afs.audioFile.id);
 
   playRequest.success = function(res) {
     var nextPlay;
@@ -514,6 +592,16 @@ Session.prototype.requestPlay = function(audioFile) {
   };
 
   this._sendRequest(playRequest);
+
+  if (this.activeStation.id !== afs.station.id) {
+    this.activeStation = afs.station;
+
+    // triggered after we started our request so any 'requestNextPlay'
+    // calls in response to this event are effectively ignored.
+    this.trigger('active-station-did-change', afs.station);
+  }
+
+  return true;
 };
 
 /**

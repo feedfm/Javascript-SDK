@@ -838,7 +838,7 @@
                 sound.trigger('play');
 
                 setTimeout(function() {
-                  player.setStation(sess.stations[1]);
+                  player.setStation(sess.stations[1].id);
                 }, 100);
               }, 1);
 

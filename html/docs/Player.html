@@ -54,7 +54,7 @@
 			<li class="dropdown">
 				<a href="events.list.html" class="dropdown-toggle" data-toggle="dropdown">Events<b class="caret"></b></a>
 				<ul class="dropdown-menu ">
-					<li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-completed">Player.event:play-completed</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Player.html#.event:skip-denied">Player.event:skip-denied</a></li><li><a href="Player.html#.event:unexpected-error">Player.event:unexpected-error</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:discard-next-play">Session#event:discard-next-play</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
+					<li><a href="Player.html#.event:active-station-did-change">Player.event:active-station-did-change</a></li><li><a href="Player.html#.event:no-more-music">Player.event:no-more-music</a></li><li><a href="Player.html#.event:play-completed">Player.event:play-completed</a></li><li><a href="Player.html#.event:play-started">Player.event:play-started</a></li><li><a href="Player.html#.event:playback-state-did-change">Player.event:playback-state-did-change</a></li><li><a href="Player.html#.event:player-available">Player.event:player-available</a></li><li><a href="Player.html#.event:player-not-available">Player.event:player-not-available</a></li><li><a href="Player.html#.event:skip-denied">Player.event:skip-denied</a></li><li><a href="Player.html#.event:unexpected-error">Player.event:unexpected-error</a></li><li><a href="Session.html#event:active-station-did-change">Session#event:active-station-did-change</a></li><li><a href="Session.html#event:current-play-did-change">Session#event:current-play-did-change</a></li><li><a href="Session.html#event:discard-next-play">Session#event:discard-next-play</a></li><li><a href="Session.html#event:next-play-available">Session#event:next-play-available</a></li><li><a href="Session.html#event:no-more-music">Session#event:no-more-music</a></li><li><a href="Session.html#event:session-available">Session#event:session-available</a></li><li><a href="Session.html#event:session-not-available">Session#event:session-not-available</a></li><li><a href="Session.html#event:skip-status-did-change">Session#event:skip-status-did-change</a></li><li><a href="Session.html#event:unexpected-error">Session#event:unexpected-error</a></li><li><a href="Sound.html#event:elapse">Sound#event:elapse</a></li><li><a href="Sound.html#event:finish">Sound#event:finish</a></li><li><a href="Sound.html#event:pause">Sound#event:pause</a></li><li><a href="Sound.html#event:play">Sound#event:play</a></li>
 				</ul>
 			</li>
 			
@@ -2394,7 +2394,7 @@ the callback is invoked, it will be removed.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id="play"><span class="type-signature"></span>play(<span class="optional">song</span>)</h4>
+    <h4 class="name" id="play"><span class="type-signature"></span>play(<span class="optional">audio file id</span>, <span class="optional">station id</span>)</h4>
     
     
 </dt>
@@ -2402,7 +2402,10 @@ the callback is invoked, it will be removed.</p>
 
     
     <div class="description">
-        <p>Start or resume music playback</p>
+        <p>Start or resume music playback. If an audio file is specified, then
+the current station is changed to the station with that file (if
+we're not in that station already) and that song is queued up and
+playback begun.</p>
     </div>
     
 
@@ -2439,13 +2442,13 @@ the callback is invoked, it will be removed.</p>
 
         <tr>
             
-                <td class="name"><code>song</code></td>
+                <td class="name"><code>audio file id</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">AudioFile</span>
+<span class="param-type">string</span>
 
 
 
@@ -2467,6 +2470,40 @@ the callback is invoked, it will be removed.</p>
             
 
             <td class="description last"><p>optional specific song to play.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>station id</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>optional id of station holding song</p></td>
         </tr>
 
     
@@ -2775,7 +2812,7 @@ long time for the state change.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id="setStation"><span class="type-signature"></span>setStation()</h4>
+    <h4 class="name" id="setStation"><span class="type-signature"></span>setStation(stationId)</h4>
     
     
 </dt>
@@ -2784,9 +2821,8 @@ long time for the state change.</p>
     
     <div class="description">
         <p>Stop playback, if any, and switch to the passed-in
-station. A call to <a href="Player.html#prepareToPlay">Player#prepareToPlay</a> or
-<a href="Player.html#play">Player#play</a> should be made to resume
-pulling music for playback.</p>
+station. A new song will be requested and playback
+will start immediately.</p>
     </div>
     
 
@@ -2795,6 +2831,56 @@ pulling music for playback.</p>
     
 
     
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>stationId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>the id of the station to tune to</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
     
 
     
@@ -3454,6 +3540,85 @@ receive the true name of the event as the first argument).</p>
         <h3 class="subsection-title">Events</h3>
 
         <dl>
+            
+<hr>
+<dt>
+    <h4 class="name" id=".event:active-station-did-change">active-station-did-change</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>This event announces that the current active station
+has changed. The new station is passed as an argument.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dd>
+
+        
             
 <hr>
 <dt>
@@ -4147,7 +4312,7 @@ then emit this so the user can be informed.</p>
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-05-18T16:23:17-07:00
+		on 2016-05-19T14:17:13-07:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>
