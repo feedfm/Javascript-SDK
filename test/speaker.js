@@ -66,9 +66,9 @@
           }
         });
 
-        song.play();
-
         assert.isNotNull(song);
+
+        song.play();
       });
 
       it('will play a bad song object and trigger a finish event with failure', function(done) {
