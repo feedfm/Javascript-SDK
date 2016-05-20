@@ -812,6 +812,81 @@
         player.setCredentials('a', 'b');
       });
 
+      it('should skip the playing song if we dislike it', function(done) {
+        var first = playResponse();
+        var second = playResponse();
+        var third = playResponse();
+
+        responses.push(sessionResponse(),
+                       first,
+                       startResponse(),
+                       second,
+                       successResponse(), // dislike response
+                       successResponse(), // elapsed time response
+                       successResponse(), // skip response
+                       startResponse(),   // start second song response
+                       third);            // queue up third song
+
+        onCreateSound = function(sound) {
+
+          sound.play = function() { 
+            if (sound.url === first.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+
+                setTimeout(function() {
+                  player.dislike();
+                }, 10);
+              }, 1);
+
+            } else if (sound.url === second.play.audio_file.url) {
+              setTimeout(function() {
+                sound.trigger('play');
+              }, 1);
+
+            } else {
+              assert.fail();
+            }
+          };
+
+          sound.destroy = function() { 
+            if (!testingComplete) {
+              assert.equal(sound.url, first.play.audio_file.url);
+            }
+          };
+
+          sound.position = function() {
+            assert.equal(sound.url, first.play.audio_file.url);
+          };
+        };
+
+        var states = [];
+
+        onResponsesComplete = function() {
+          assert.deepEqual(states, [ Feed.Player.PlaybackState.READY_TO_PLAY,
+                                     Feed.Player.PlaybackState.WAITING_FOR_ITEM,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING,
+                                     Feed.Player.PlaybackState.REQUESTING_SKIP,
+                                     Feed.Player.PlaybackState.STALLED,
+                                     Feed.Player.PlaybackState.PLAYING ]);
+          testingComplete = true; player.destroy();
+          done();
+        };
+
+        var player = new Feed.Player();
+
+        player.on('player-available', function() {
+          player.play();
+        });
+
+        player.on('playback-state-did-change', function(newState) {
+          states.push(newState);
+        });
+
+        player.setCredentials('a', 'b');
+      });
+
       it('should stop the active song and discard next song, and advance to next song when changing station during playback', function(done) {
         var first = playResponse();
         var second = playResponse();

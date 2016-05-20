@@ -713,6 +713,79 @@
       session.setCredentials('x', 'y');
     });
 
+    it('will mark a skip as due to a dislike', function(done) {
+      server.autoRespond = true;
+
+      server.respondWith('POST', 'https://feed.fm/api/v2/session', function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+      });
+
+      var plays = [];
+      server.respondWith('POST', 'https://feed.fm/api/v2/play', function(response) {
+        var play = validPlayResponse();
+        plays.push(play);
+
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(play));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/start/, function(response) {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true,
+          can_skip: false
+        }));
+      });
+
+      server.respondWith('POST', /https:\/\/feed.fm\/api\/v2\/play\/\d+\/skip/, function(response) {
+        assert.match(response.requestBody, new RegExp('dislike=true'), 'request should be reported as due to a dislike');
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({
+          success: true
+        }));
+      });
+
+      var session = new Feed.Session();
+      session.once('session-available', function() {
+        session.requestNextPlay();
+      });
+      
+      var startCount = 0;
+      session.on('next-play-available', function() {
+        startCount++;
+
+        if (startCount === 1) {
+          // start playback of first incoming play
+          session.playStarted();
+
+        } // don't care about subsequent plays at the moment
+      });
+
+      var currentCount = 0;
+      session.on('current-play-did-change', function() {
+        currentCount++;
+
+        if (currentCount === 1) {
+          assert.isNotNull(session.currentPlay, 'should have a current play now');
+
+          setTimeout(function() {
+            // ask to skip this song and attribute it to a dislike
+            session.requestSkip(true);
+          }, 10);
+
+        } else if (currentCount === 2) {
+          // after the first play is skipped, currentPlay will be set to null
+          assert.isNull(session.currentPlay, 'should clear out current play upon successful skip');
+
+          done();
+
+        } else {
+          assert.fail('should not have changed current play again');
+
+        }
+
+      });
+
+      session.setCredentials('x', 'y');
+    });
+
     it('will not update currentPlay when the current song may not be skipped, but it will change skip status', function(done) {
       server.autoRespond = true;
 

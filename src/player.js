@@ -318,9 +318,12 @@ Player.prototype.pause = function() {
  * to the next song, or it will trigger a 
  * {@link Player#event:skip-denied} event and the
  * current song will continue playing.
+ *
+ * @param {boolean} [dueToDislike] if true, then this skip was
+ *    triggered due to a 'dislike' button press (for reporting)
  */
 
-Player.prototype.skip = function() {
+Player.prototype.skip = function(dueToDislike) {
   if (!this.session.canSkip) {
     this.trigger('skip-denied');
     return;
@@ -333,9 +336,9 @@ Player.prototype.skip = function() {
       this._reportElapsedTime();
     }
 
-    this._setState(Player.PlaybackState.REQUESTING_SKIP, 'User requested skip');
+    this._setState(Player.PlaybackState.REQUESTING_SKIP, 'User requested skip' + (dueToDislike ? ' due to dislike' : ''));
 
-    this.session.requestSkip();
+    this.session.requestSkip(dueToDislike);
   }
 };
 
@@ -732,6 +735,19 @@ Player.prototype.like = function(playId) {
 
 Player.prototype.dislike = function(playId) {
   this.session.requestDislike(playId);
+
+  if ((this._state !== Player.PlaybackState.PLAYING) &&
+      (this._state !== Player.PlaybackState.PAUSED)) {
+    // nothing to skip
+    return;
+  }
+
+  if (playId && (playId !== this.session.currentPlay.id)) {
+    // can't skip a song we aren't playing
+    return;
+  }
+
+  this.skip(true);
 };
 
 /**

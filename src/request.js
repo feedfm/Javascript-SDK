@@ -239,13 +239,17 @@ Request.requestElapse = function(playId, elapsedTime) {
  * Create request to ask server if we can skip song
  */
 
-Request.requestSkip = function(playId, elapsedTime) {
+Request.requestSkip = function(playId, elapsedTime, dueToDislike) {
   var req = new Request();
   req.endpoint = 'play/' + playId + '/skip';
   req.type = 'POST';
 
   if (elapsedTime > 0) {
     req.data.seconds = elapsedTime;
+  }
+
+  if (dueToDislike) {
+    req.data.dislike = true;
   }
 
   return req;

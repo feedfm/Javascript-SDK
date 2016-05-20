@@ -66,7 +66,7 @@ var DEFAULT_BITRATE = 128;
  *   // playback of it and call session.rejectPlay() (if the song couldn't
  *   // be retrieved or started) or session.playStarted() followed by
  *   // session.requestSkip() or session.playCompleted().
- *   // Iff nextPlay is null then we're still waiting for the next
+ *   // If nextPlay is null then we're still waiting for the next
  *   // song and can expect a next-play-available event soon.
  * });
  *
@@ -824,32 +824,28 @@ Session.prototype._oneShotRequest = function(ctor, playId) {
  * server disallows the skip (despite {@link Session#canSkip} being
  * true) a {@link Session#event:skip-status-did-change}
  * event is triggered.
+ *
+ * @param {boolean} [dueToDislike] if true, the skip is reported
+ *   as being triggered due to the user disliking a song
  */
 
-Session.prototype.requestSkip = function(success, failure) {
+Session.prototype.requestSkip = function(dueToDislike) {
   if (this.auth === null) { throw new Error('setCredentials has not been called on Session'); }
 
   var session = this;
 
   if (this.currentPlay === null) {
     log('tried to skip but no currently playing song');
-    if (failure) {
-      failure(new Error('FMErrorCodeInvalidSkip'));
-    }
     return;
   }
 
-  var skipRequest = Request.requestSkip(this.currentPlay.id, -1);
+  var skipRequest = Request.requestSkip(this.currentPlay.id, -1, dueToDislike);
   skipRequest.success = function() {
     session._setCurrentPlay(null);
 
     if (!session.nextPlay && !session.nextPlayInProgress) {
       // We might have run out of music. Ask the server again for a song
       session.requestNextPlay();
-    }
-
-    if (success) {
-      success();
     }
   };
 
@@ -861,18 +857,10 @@ Session.prototype.requestSkip = function(success, failure) {
         session.trigger('skip-status-did-change', session.canSkip);
       }
 
-      if (failure) {
-        failure(err);
-      }
-
       return;
     }
 
-    if (failure) {
-      failure(err);
-    } else {
-      session._handleUnexpectedError(err);
-    }
+    session._handleUnexpectedError(err);
   };
 
   this._sendRequest(skipRequest);
