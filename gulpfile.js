@@ -14,7 +14,6 @@ var uglify = require('gulp-uglify');
 var sourcemaps = require('gulp-sourcemaps');
 var assign = require('lodash.assign');
 var concat = require('gulp-concat');
-var merge = require('merge-stream');
 
 // browserify, minify, gen source maps
 function buildScript(file, watch) {
