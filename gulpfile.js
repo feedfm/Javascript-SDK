@@ -13,6 +13,8 @@ var gutil = require('gulp-util');
 var uglify = require('gulp-uglify');
 var sourcemaps = require('gulp-sourcemaps');
 var assign = require('lodash.assign');
+var concat = require('gulp-concat');
+var merge = require('merge-stream');
 
 // browserify, minify, gen source maps
 function buildScript(file, watch) {
@@ -54,14 +56,21 @@ function preserveComments(node, comment) {
   return comment.type === 'comment2' && /@preserve|@license|@cc_on|^\!/i.test(comment.value);
 }
 
-
-
-
-gulp.task('build', function() {
+gulp.task('build-base', function() {
   return buildScript('feed.js', false);
 });
 
-gulp.task('default', ['build'], function() {
+gulp.task('build-with-dependencies', [ 'build-base' ], function() {
+  return gulp.src([ 'node_modules/jquery/dist/jquery.min.js', 
+                    'node_modules/underscore/underscore-min.js', 
+                    './dist/feed.js' ])
+    .pipe(concat('feed-jquery-underscore.js'))
+    .pipe(gulp.dest('./dist'));
+});
+
+gulp.task('build', [ 'build-base', 'build-with-dependencies' ]);
+
+gulp.task('default', ['build-base'], function() {
   return buildScript('feed.js', true);
 });
 

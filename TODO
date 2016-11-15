@@ -1,7 +1,6 @@
 
 prefix javascript with a banner
 make sure jshint goes over everything
-make sure to include source maps
 pull out console log messages in production version
 consolidate tests
 

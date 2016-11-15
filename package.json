@@ -1,6 +1,6 @@
 {
   "name": "feed-javascript-player",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "devDependencies": {
     "browserify": "^13.0.0",
     "gulp": "^3.9.1",
@@ -17,12 +17,14 @@
   },
   "dependencies": {
     "browserify-shim": "^3.8.12",
+    "gulp-concat": "^2.6.1",
     "jquery": "^2.2.1",
     "js-base64": "^2.1.9",
     "soundmanager2": "^2.97.20150601-a",
     "underscore": "^1.8.3"
   },
   "browserify-shim": {
-    "jquery": "global:jQuery"
+    "jquery": "global:jQuery",
+    "underscore": "global:_"
   }
 }
