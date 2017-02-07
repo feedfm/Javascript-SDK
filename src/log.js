@@ -27,10 +27,6 @@
  *
  **/
 
-// allow external code to swap in their own logger
-if (typeof feedLogger === 'function') {
-  return feedLogger;
-}
 
 // Tell IE9 to use its built-in console
 if (Function.prototype.bind && (typeof console === 'object' || typeof console === 'function') && typeof console.log === 'object') {
@@ -92,6 +88,12 @@ var log = function () {
     }
   }
 };
+
+// allow external code to swap in their own logger
+if (typeof feedLogger === 'function') {
+  log = feedLogger;
+}
+
 
 module.exports = log;
 
