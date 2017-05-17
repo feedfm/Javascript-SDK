@@ -233,6 +233,9 @@ Session.prototype._getDefaultPlacementInformation = function(delay) {
   var ajax = { 
     url: self.config.baseUrl + '/api/v2/placement',
     type: 'GET',
+    data: {
+      client_id: self.config.clientId
+    },
     dataType: 'json',
     timeout: 6000
   };
@@ -302,6 +305,9 @@ Session.prototype._getPlacementInformation = function(delay) {
   var ajax = { 
     url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId,
     type: 'GET',
+    data: {
+      client_id: self.config.clientId
+    },
     dataType: 'json',
     timeout: 6000
   };
