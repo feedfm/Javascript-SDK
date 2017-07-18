@@ -3,6 +3,9 @@
 
 // should be updated to automatically deal with releases:
 // https://github.com/gulpjs/gulp/blob/master/docs/recipes/automate-release-workflow.md
+//
+
+var VERSION = '2.0.0';
 
 var watchify = require('watchify');
 var browserify = require('browserify');
@@ -40,7 +43,7 @@ function buildScript(file, watch) {
         .pipe(uglify({ output: { ascii_only: true, comments: preserveComments } }))
         .on('error', gutil.log)
       .pipe(sourcemaps.write('./'))
-      .pipe(gulp.dest('./dist'));
+      .pipe(gulp.dest('./dist/' + VERSION));
   }
 
   bundler.on('update', function() {
@@ -62,23 +65,23 @@ gulp.task('build-base', function() {
 gulp.task('build-with-jquery-underscore', [ 'build-base' ], function() {
   return gulp.src([ 'node_modules/jquery/dist/jquery.min.js', 
                     'node_modules/underscore/underscore-min.js', 
-                    './dist/feed.js' ])
+                    './dist/' + VERSION + '/feed.js' ])
     .pipe(concat('feed-jquery-underscore.js'))
-    .pipe(gulp.dest('./dist'));
+    .pipe(gulp.dest('./dist/' + VERSION));
 });
 
 gulp.task('build-with-underscore', [ 'build-base' ], function() {
   return gulp.src([ 'node_modules/underscore/underscore-min.js', 
-                    './dist/feed.js' ])
+                    './dist/' + VERSION + 'feed.js' ])
     .pipe(concat('feed-underscore.js'))
-    .pipe(gulp.dest('./dist'));
+    .pipe(gulp.dest('./dist/' + VERSION));
 });
 
 gulp.task('build-with-jquery', [ 'build-base' ], function() {
   return gulp.src([ 'node_modules/jquery/dist/jquery.min.js', 
-                    './dist/feed.js' ])
+                    './dist/' + VERSION + 'feed.js' ])
     .pipe(concat('feed-jquery.js'))
-    .pipe(gulp.dest('./dist'));
+    .pipe(gulp.dest('./dist/' + VERSION));
 });
 
 gulp.task('build', [ 
