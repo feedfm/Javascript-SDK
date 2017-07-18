@@ -178,10 +178,12 @@ Session.prototype.setPlacementId = function(placementId) {
 };
 
 Session.prototype.setStationId = function(stationId) {
-  this.config.stationId = stationId;
-  this.trigger('station-changed', stationId);
+  if (this.config.stationId != stationId) {
+    this.config.stationId = stationId;
+    this.trigger('station-changed', stationId);
 
-  this._retune();
+    this._retune();
+  }
 };
 
 Session.prototype.setFormats = function(formats) {
