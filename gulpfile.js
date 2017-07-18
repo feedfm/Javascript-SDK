@@ -59,7 +59,7 @@ gulp.task('build-base', function() {
   return buildScript('feed.js', false);
 });
 
-gulp.task('build-with-dependencies', [ 'build-base' ], function() {
+gulp.task('build-with-jquery-underscore', [ 'build-base' ], function() {
   return gulp.src([ 'node_modules/jquery/dist/jquery.min.js', 
                     'node_modules/underscore/underscore-min.js', 
                     './dist/feed.js' ])
@@ -67,7 +67,26 @@ gulp.task('build-with-dependencies', [ 'build-base' ], function() {
     .pipe(gulp.dest('./dist'));
 });
 
-gulp.task('build', [ 'build-base', 'build-with-dependencies' ]);
+gulp.task('build-with-underscore', [ 'build-base' ], function() {
+  return gulp.src([ 'node_modules/underscore/underscore-min.js', 
+                    './dist/feed.js' ])
+    .pipe(concat('feed-underscore.js'))
+    .pipe(gulp.dest('./dist'));
+});
+
+gulp.task('build-with-jquery', [ 'build-base' ], function() {
+  return gulp.src([ 'node_modules/jquery/dist/jquery.min.js', 
+                    './dist/feed.js' ])
+    .pipe(concat('feed-jquery.js'))
+    .pipe(gulp.dest('./dist'));
+});
+
+gulp.task('build', [ 
+  'build-base',
+  'build-with-jquery-underscore',
+  'build-with-underscore',
+  'build-with-jquery'
+]);
 
 gulp.task('default', ['build-base'], function() {
   return buildScript('feed.js', true);
