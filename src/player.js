@@ -79,7 +79,7 @@ var Session = require('./session');
 
 function supports_html5_storage() {
   try {
-    return 'localStorage' in window && window['localStorage'] !== null;
+    return 'localStorage' in window && window['localStorage'] !== null && (window.localStorage['feed-test'] = true);
   } catch (e) {
     return false;
   }

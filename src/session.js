@@ -1024,7 +1024,7 @@ Session.prototype.unsuspend = function(saved) {
 
 function supports_html5_storage() {
   try {
-    return 'localStorage' in window && window['localStorage'] !== null;
+    return 'localStorage' in window && window['localStorage'] !== null && (window.localStorage['feed-test'] = true);
   } catch (e) {
     log('browser does not support html5 localstorage', e.message);
     return false;
