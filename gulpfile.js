@@ -72,14 +72,14 @@ gulp.task('build-with-jquery-underscore', [ 'build-base' ], function() {
 
 gulp.task('build-with-underscore', [ 'build-base' ], function() {
   return gulp.src([ 'node_modules/underscore/underscore-min.js', 
-                    './dist/' + VERSION + 'feed.js' ])
+                    './dist/' + VERSION + '/feed.js' ])
     .pipe(concat('feed-underscore.js'))
     .pipe(gulp.dest('./dist/' + VERSION));
 });
 
 gulp.task('build-with-jquery', [ 'build-base' ], function() {
   return gulp.src([ 'node_modules/jquery/dist/jquery.min.js', 
-                    './dist/' + VERSION + 'feed.js' ])
+                    './dist/' + VERSION + '/feed.js' ])
     .pipe(concat('feed-jquery.js'))
     .pipe(gulp.dest('./dist/' + VERSION));
 });
