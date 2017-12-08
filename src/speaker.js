@@ -107,6 +107,12 @@ var Sound = function(options) {
         obj.on(ev, options[ev]);
       }
     });
+
+    this.gain = options.gain || 0;
+
+  } else {
+    this.gain = 0;
+
   }
 
   return obj;
@@ -192,7 +198,21 @@ Sound.prototype = {
       this.lastTrigger = event;
       this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
     }
+  },
+
+  gainAdjustedVolume: function(volume) {
+    if (!this.gain) {
+      log('no volume adjustment');
+      return volume;
+    }
+
+    var adjusted = Math.max(Math.min(volume * (50 * Math.pow(10, this.gain / 20)), 100), 0);
+
+    log('volume adjusted from ' + volume + ' to ' + adjusted + ' due to gain of ' + this.gain);
+
+    return adjusted;
   }
+
 };
 
 var Speaker = function(options) {
@@ -266,7 +286,7 @@ Speaker.prototype = {
       var sound = this._createSM2Sound({
         id: 'silence',
         url: this.silence,
-        volume: 0,
+        volume: 1,
         autoPlay: true,
         type: 'audio/mp3'
       });
@@ -298,7 +318,7 @@ Speaker.prototype = {
     sound.sm2Sound = this._createSM2Sound({
       id: sound.id,
       url: sound.url,
-      volume: speaker.vol,
+      volume: sound.gainAdjustedVolume(speaker.vol),
       autoPlay: false,
       type: 'audio/mp3',
       onfinish: function() {
@@ -364,7 +384,7 @@ Speaker.prototype = {
       this.vol = value;
 
       _.each(this.outstandingPlays, function(song) {
-        song.sm2Sound.setVolume(value);
+        song.sm2Sound.setVolume(song.gainAdjustedVolume(value));
       });
 
       this.trigger('volume', value);

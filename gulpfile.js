@@ -5,7 +5,7 @@
 // https://github.com/gulpjs/gulp/blob/master/docs/recipes/automate-release-workflow.md
 //
 
-var VERSION = '2.0.0';
+var VERSION = '1.9.0';
 
 var watchify = require('watchify');
 var browserify = require('browserify');
