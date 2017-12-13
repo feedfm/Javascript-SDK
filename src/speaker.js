@@ -81,7 +81,7 @@
 
 var _ = require('underscore');
 var $ = require('jquery');
-var log = require('./log');
+var log = require('./nolog');
 var Events = require('./events');
 var util = require('./util');
 var SoundManager = require('soundmanager2');

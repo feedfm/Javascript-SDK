@@ -106,11 +106,12 @@
 
 var _ = require('underscore');
 var $ = require('jquery');
-var log = require('./log');
+var log = require('./nolog');
 var Events = require('./events');
 var util = require('./util');
 var Base64 = require('js-base64').Base64;
 var Cookie = require('tiny-cookie');
+var version = require('./version');
 
 var Session = function(token, secret, options) {
   options = options || { };
@@ -124,7 +125,6 @@ var Session = function(token, secret, options) {
     // stations
     // clientId
     baseUrl: util.addProtocol(options.baseUrl || '//feed.fm', true),
-    secure: true,
     formats: 'mp3,aac',
     maxBitrate: 128,
     timeOffset: 0,
@@ -216,11 +216,7 @@ Session.prototype.tune = function() {
 
   // pull information in about the placement, followed by
   // a request for the next play
-  if (!this.config.placementId) {
-    this._getDefaultPlacementInformation();
-  } else {
-    this._getPlacementInformation();
-  }
+  this._getDefaultPlacementInformation();
 };
 
 // _getDefaultPlacementInformation
@@ -287,62 +283,6 @@ Session.prototype._failedDefaultPlacementInformation = function(delay, response)
   // otherwise, try again in a bit
   delay = delay ? (delay * 2) : 500;
   _.delay(_.bind(this._getDefaultPlacementInformation, this, delay), delay);
-};
-
-// _getPlacementInformation
-Session.prototype._getPlacementInformation = function(delay) {
-  var self = this;
-
-  if (!this.config.placementId) {
-    throw new Error('no placementId set');
-  }
-
-  if (this.config.placement && (this.config.placement.id === this.config.placementId)) {
-    // already have placement info
-    // kick off request for next play
-    this._requestNextPlay();
-    return;
-  }
-
-  var ajax = { 
-    url: self.config.baseUrl + '/api/v2/placement/' + self.config.placementId,
-    type: 'GET',
-    data: {
-      client_id: self.config.clientId
-    },
-    dataType: 'json',
-    timeout: 6000
-  };
-
-  // request placement info from server
-  log('requesting placement information from server');
-  self._signedAjax(ajax)
-    .done(_.bind(self._receivePlacementInformation, self))
-    .fail(_.bind(self._failedPlacementInformation, self, delay, ajax));
-};
-
-Session.prototype._receivePlacementInformation = function(placementInformation) {
-  if (placementInformation && placementInformation.success && placementInformation.placement) {
-    this.config.placement = placementInformation.placement;
-    this.config.stations = placementInformation.stations;
-
-    this.trigger('placement', placementInformation.placement);
-
-    if (!('stationId' in this.config) && (placementInformation.stations.length > 0)) {
-      this.config.stationId = placementInformation.stations[0].id;
-      this.trigger('station-changed', this.config.stationId);
-    }
-
-    this.trigger('stations', placementInformation.stations);
-
-    // kick off request for next play
-    this._requestNextPlay();
-  }
-};
-
-Session.prototype._failedPlacementInformation = function(delay) {
-  delay = delay ? (delay * 2) : 500;
-  _.delay(_.bind(this._getPlacementInformation, this, delay), delay);
 };
 
 Session.prototype.getActivePlacement = function() {
@@ -1065,6 +1005,8 @@ Session.prototype._sign = function(request) {
   request.headers = {
     Authorization: authorization
   };
+
+  request.headers["X-Feed-SDK"] = version;
 
   return request;
 };

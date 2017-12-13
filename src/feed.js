@@ -7,7 +7,7 @@
  */
 
 var Session = require('./session');
-var log = require('./log');
+var log = require('./nolog');
 var PlayerView = require('./player-view');
 var Player = require('./player');
 var getSpeaker = require('./speaker');

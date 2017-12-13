@@ -72,7 +72,7 @@
 
 var _ = require('underscore');
 var $ = require('jquery');
-var log = require('./log');
+var log = require('./nolog');
 var getSpeaker = require('./speaker');
 var Events = require('./events');
 var Session = require('./session');
