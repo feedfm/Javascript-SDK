@@ -157,8 +157,13 @@ Player.prototype._onPlayActive = function(play) {
     gain: (play.audio_file.replaygain_track_gain || 0) + (play.station.pre_gain || 0)
   };
 
-  if (play.startPosition) {
-    options.startPosition = play.startPosition;
+  if (play.audio_file.extra && play.audio_file.extra.trim_start) {
+    options.startPosition = play.audio_file.extra.trim_start * 1000;
+  }
+
+  if (play.audio_file.extra && play.audio_file.extra.trim_end &&
+      play.audio_file.duration_in_seconds) {
+    options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
   }
 
   var sound = this.speaker.create(play.audio_file.url, options);

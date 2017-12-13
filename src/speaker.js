@@ -20,6 +20,8 @@
  *
  *          startPosition:  specifies the time offset (in milliseconds) that the
  *                          sound should begin playback at when we begin playback.
+ *          endPosition:    specifies the time offset (in milliseconds) that the
+ *                          sound should stop playback 
  *          play:           event handler for 'play' event
  *          pause:          event handler for 'pause' event
  *          finish:         event handler for 'finish' event
@@ -100,6 +102,10 @@ var Sound = function(options) {
   if (options) {
     if ('startPosition' in options) {
       this.startPosition = options.startPosition;
+    }
+
+    if ('endPosition' in options) {
+      this.endPosition = options.endPosition;
     }
 
     _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
@@ -371,7 +377,14 @@ Speaker.prototype = {
         log(sound.id + ': onbufferchange');
       },
       whileplaying: function() {
-        sound.trigger('elapse');
+        if ((sound.position() > 0) && (sound.endPosition > 0)  && (sound.position() >= sound.endPosition)) {
+          log(sound.id + ': onfinish (due to trim)');
+          this.destruct();
+          delete speaker.outstandingPlays[sound.id];
+          sound._nonRepeatTrigger('finish');
+        } else {
+          sound.trigger('elapse');
+        }
       }
     });
 
