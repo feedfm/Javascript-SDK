@@ -2,26 +2,27 @@
   "name": "feed-javascript-player",
   "version": "0.3.1",
   "devDependencies": {
-    "browserify": "^13.0.0",
+    "browserify": "^14.5.0",
     "gulp": "^3.9.1",
-    "gulp-header": "^1.7.1",
-    "gulp-sourcemaps": "^1.6.0",
-    "gulp-uglify": "^1.5.3",
-    "gulp-util": "^3.0.7",
-    "lodash.assign": "^4.0.6",
-    "tiny-cookie": "^0.5.5",
-    "vinyl-buffer": "^1.0.0",
-    "vinyl-source-stream": "^1.1.0",
-    "vinyl-transform": "^1.0.0",
-    "watchify": "^3.7.0"
+    "gulp-header": "^1.8.9",
+    "gulp-sourcemaps": "^2.6.1",
+    "gulp-uglify": "^3.0.0",
+    "gulp-util": "^3.0.8",
+    "lodash.assign": "^4.2.0",
+    "tiny-cookie": "^2.1.1",
+    "watchify": "^3.9.0"
   },
   "dependencies": {
-    "browserify-shim": "^3.8.12",
+    "browserify-shim": "^3.8.14",
     "gulp-concat": "^2.6.1",
-    "jquery": "^2.2.1",
-    "js-base64": "^2.1.9",
-    "soundmanager2": "^2.97.20150601-a",
-    "underscore": "^1.8.3"
+    "jquery": "^3.2.1",
+    "js-base64": "^2.4.0",
+    "soundmanager2": "^2.97.20170602",
+    "underscore": "^1.8.3",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-fs": "^3.0.0",
+    "vinyl-source-stream": "^1.1.0",
+    "vinyl-transform": "^1.0.0"
   },
   "browserify-shim": {
     "jquery": "global:jQuery",

@@ -1,6 +1,6 @@
 # accessory [![Build Status](https://travis-ci.org/bendrucker/accessory.svg?branch=master)](https://travis-ci.org/bendrucker/accessory)
 
-> Create property accessor statements for dot paths
+> Create property accessor/caller statements for dot paths
 
 
 ## Install
@@ -20,6 +20,9 @@ accessory('window', 'foo.bar')
 
 accessory('window', 'foo\\.bar')
 //=> window['foo.bar']
+
+accessory('window', 'foo.bar(baz)')
+//=> window['foo']['bar'](baz)
 ```
 
 ## API
@@ -38,7 +41,7 @@ The source identifier which will prepend the accessors.
 *Required*  
 Type: `string`  
 
-A dot property path.
+A dot property path, including function calls.
 
 
 ## License
