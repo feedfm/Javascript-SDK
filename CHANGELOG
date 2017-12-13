@@ -1,0 +1,8 @@
+
+1.9.0
+  - added support for trim_start and trim_end
+  - export version number on Feed.version
+  - clean up versioning
+  - disable console logs
+  - send out client version in HTTP request headers
+
