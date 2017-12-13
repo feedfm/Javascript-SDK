@@ -87,6 +87,7 @@ var log = require('./nolog');
 var Events = require('./events');
 var util = require('./util');
 var SoundManager = require('soundmanager2');
+var version = require('./version');
 
 // fake console to redirect soundmanager2 to the feed logger
 var feedConsole = {
@@ -224,7 +225,7 @@ Sound.prototype = {
 var Speaker = function(options) {
   var speaker = this;
 
-  options = _.extend({ swfBase: '//feed.fm/js/latest/' }, options);
+  options = _.extend({ swfBase: '//feed.fm/js/' + version + '/' }, options);
 
   this.onReadyPromise = $.Deferred();
 

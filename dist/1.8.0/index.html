@@ -1,0 +1,55 @@
+<html>
+<body>
+
+<script>
+  document.write('Time is ' + new Date());
+</script>
+
+<button id="button">play!</button>
+<button id="submit">submit!</button>
+
+<pre id="text">
+
+</pre>
+
+
+<script src="http://feed.fm/js/latest/feed-remote-log.js"></script>
+<!-- <script src="http://code.jquery.com/jquery-2.1.1.min.js"></script> -->
+<script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+<script>
+  function log(text) {
+    $('#text').append(text + '\n');
+  }
+
+  $.ajax({
+    url: 'http://feed.fm/api/v2/oauth/time',
+    type: 'GET'
+  }).then(function(r) {
+    log("got a good response!" + r);
+  });
+
+  log('constructing...');
+  var player = new Feed.Player(
+   'c1bc1650347902c5136f9988e55dfc494f2c161a',
+   '7a363199971a71a1934bae2e916cbd1ee507624a',
+   { secure: false }
+  );
+
+  log('removing stored cid');
+  player.session._deleteStoredCid();
+
+  player.on('all', function(event) {
+    log(event);
+  });
+
+  $('#submit').on('click', function() {
+    log('submitting');
+    Feed.log.submit();
+  });
+
+  log('starting..');
+  player.play();
+
+</script>
+</body>
+</html>
