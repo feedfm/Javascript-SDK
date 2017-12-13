@@ -153,7 +153,7 @@ Player.prototype._onPlayActive = function(play) {
     play: _.bind(this._onSoundPlay, this, play.id),
     pause: _.bind(this._onSoundPause, this, play.id),
     finish:  _.bind(this._onSoundFinish, this, play.id),
-    elapse: _.bind(this._onSoundElapse, this, play.id)
+    elapse: _.bind(this._onSoundElapse, this, play.id),
     gain: (play.audio_file.replaygain_track_gain || 0) + (play.station.pre_gain || 0)
   };
 

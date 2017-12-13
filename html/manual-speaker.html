@@ -4,15 +4,20 @@
 </head>
 <body>
 
-<button id="play">play</button>
-<input type="text" id="url" name="url">
+<p>
+<button id="play">play</button><br/>
+</p>
+<p>
+  url: <input type="text" id="url" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3"><br/>
+  gain: <input type="text" id="gain" value="0">
+</p>
 
 <br/>
 <br/>
 <br/>
 
 <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../dist/feed.js" type="application/javascript"></script>
+<script src="../dist/feed-underscore.js" type="application/javascript"></script>
 
 <script>
 
@@ -24,6 +29,7 @@ var speaker = getSpeaker({ }, function() {
 
 $('#play').on('click', function() {
   var url = $('#url').val();
+  var gain = $('#gain').val();
 
   console.log('trying to play', url);
 
@@ -38,7 +44,9 @@ $('#play').on('click', function() {
 
     finish: function() {
       console.log('finish ', url);
-    }
+    },
+
+    gain: gain
   });
 
   sound.play();

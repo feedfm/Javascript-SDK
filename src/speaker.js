@@ -206,9 +206,9 @@ Sound.prototype = {
       return volume;
     }
 
-    var adjusted = Math.max(Math.min(volume * (50 * Math.pow(10, this.gain / 20)), 100), 0);
+    var adjusted = Math.max(Math.min((volume / 100) * (50 * Math.pow(10, this.gain / 20)), 100), 0);
 
-    log('volume adjusted from ' + volume + ' to ' + adjusted + ' due to gain of ' + this.gain);
+    log('gain adjustment is ' + this.gain + ', and final adjusted volume is ' + adjusted);
 
     return adjusted;
   }
