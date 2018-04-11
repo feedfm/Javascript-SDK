@@ -97,8 +97,12 @@ var feedConsole = {
   error: log
 };
 
-var Sound = function(options) { 
+var Sound = function(speaker, options, id, url) { 
   var obj = _.extend(this, Events);
+
+  obj.id = id;
+  obj.url = url;
+  obj.speaker = speaker;
 
   if (options) {
     if ('startPosition' in options) {
@@ -127,81 +131,42 @@ var Sound = function(options) {
 
 Sound.prototype = {
   play: function() {
-    var sound = this;
-
-    if (this.sm2Sound) {
-      if (!this.sm2Sound.fake && this.startPosition) {
-        var startPosition = this.startPosition;
-
-        this.sm2Sound.load({
-          whileloading: function() {
-            if ((this.playState === 0) && (this.duration > startPosition)) {
-              // start playback as soon as we can
-              this.setPosition(startPosition);
-              this.play();
-            }
-          }
-        });
-      } else if (this.sm2Sound.isHTML5) {
-        this.sm2Sound.play();
-      } else {
-        // deal with Flash callback issues
-        setTimeout(function() {
-          sound.sm2Sound.play();
-        }, 1);
-      }
-    }
+    return this.speaker._playSound(this);
   },
 
   // pause playback of the current sound clip
   pause: function() {
-    if (this.sm2Sound) {
-      this.sm2Sound.pause();
-    }
+    return this.speaker._pauseSound(this);
   },
 
   // resume playback of the current sound clip
   resume: function() {
-    if (this.sm2Sound) {
-      this.sm2Sound.resume();
-    }
+    return this.speaker._playSound(this);
   },
 
   // elapsed number of milliseconds played
   position: function() {
-    if (this.sm2Sound) {
-      return this.sm2Sound.position;
-    } else {
-      return 0;
-    }
+    return this.speaker._position(this);
   },
 
   // duration in milliseconds of the song
   // (this may change until the song is full loaded)
   duration: function() {
-    if (this.sm2Sound) {
-      var d = this.sm2Sound.duration;
-      return d ? d : 1;
-    } else {
-      return 1;
-    }
+    return this.speaker._duration(this);
   },
 
   // stop playing the given sound clip, unload it, and disable events
   destroy: function() {
-    log('destroy triggered for', this.id);
-
-    if (this.sm2Sound) {
-      delete speaker.outstandingPlays[this.id];
-      this.sm2Sound.destruct();
-      this.sm2Sound = null;
-    }
-
     this.off();
+
+    log(this.id + ' being called to destroy');
+    this.speaker._destroySound(this);
   },
 
   _nonRepeatTrigger: function(event) {
     if (this.lastTrigger !== event) {
+      log('***' + this.id + ':' + event + '***');
+
       this.lastTrigger = event;
       this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
     }
@@ -223,11 +188,11 @@ Sound.prototype = {
 };
 
 var Speaker = function(options) {
-  var speaker = this;
-
   options = _.extend({ swfBase: '//feed.fm/js/' + version + '/' }, options);
 
-  this.onReadyPromise = $.Deferred();
+  var speaker = this;
+
+  speaker.onReadyPromise = $.Deferred();
 
   var config = {
     wmode: 'transparent',
@@ -236,8 +201,8 @@ var Speaker = function(options) {
     html5PollingInterval: 500,
     debugMode: options.debug || false,
     useConsole: options.debug ? true : false, // feedConsole : null,
-    debugFlash: options.debug || false,
-    preferFlash: options.preferFlash || false,
+    debugFlash: false,
+    preferFlash: false,
     url: util.addProtocol(options.swfBase, true),
     onready: function() {
       var preferred;
@@ -283,113 +248,293 @@ var Speaker = function(options) {
 Speaker.prototype = {
   vol: 100,
   outstandingPlays: { },
-  mobileInitialized: false,
   onReadyPromise: null,
 
-  initializeForMobile: function() {
-    if (!this.mobileInitialized) {
-      // Just play a blank mp3 file that we know the location of, presumably
-      // while we ping the server for the song we want
-      var sound = this._createSM2Sound({
-        id: 'silence',
-        url: this.silence,
-        volume: 1,
-        autoPlay: true,
-        type: 'audio/mp3'
-      });
+  sm2Sound: null,      // singleton Soundmanager2 sound object
+  currentSound: null,  // currently playing sound
+  nextSound: null,     // song to play when current is stopped
 
-      this.mobileInitialized = !sound.fake;
+  mobileInitialized: false, // true if we've created an audio object
+
+  initializeForMobile: function() {
+    // On mobile devices, we need to kick off playback of a sound in
+    // response to a user event. This does that.
+    if (!this.sm2Sound && !this.currentSound && !this.mobileIntialized) {
+      log('initializing for mobile');
+      var sound = this.create(this.silence, { });
+      sound.play();
+
+      this.mobileInitialized = true;
+    } else {
+      log('mobile already initialized');
     }
   },
 
-  // start playing the given clip and return sound object
+  // Create and return new sound object. This does not auto-player.
   create: function(url, callbacks) {
-    var sound = new Sound(callbacks);
-    sound.id = _.uniqueId('play');
-    sound.url = url;
+    var id = _.uniqueId('feed-play-');
+    var sound = new Sound(this, callbacks, id, url);
+
+    log('created play ' + id + ' (' + url + ')');
 
     this.outstandingPlays[sound.id] = sound;
-
-    this._createAndAssignSM2Sound(sound);
 
     return sound;
   },
 
-  _createSM2Sound: function(options) { 
-    return window.soundManager.createSound(options);
-  },
-
-  _createAndAssignSM2Sound: function(sound) {
+  /*
+   * Kick off playback of the requested sound.
+   */
+  
+  _playSound: function(sound) {
     var speaker = this;
 
-    sound.sm2Sound = this._createSM2Sound({
-      id: sound.id,
+    if (!this.sm2Sound) {
+      // create the singleton Audio instance for playback
+      log('constructing new Audio instance');
+
+      this.currentSound = sound;
+
+      var options = this._sm2options(sound);
+      this.sm2Sound = window.soundManager.createSound(options);
+
+      if (sound.startPosition > 0) {
+        log(sound.id + ' starting with offset');
+        // play will kick off once enough of the song has loaded
+
+      } else {
+        log(sound.id + ' starting immediately');
+        this.sm2Sound.play();
+      }
+
+      return;
+
+    } else if (this.currentSound === sound) {
+      if (this.sm2Sound.paused) {
+        log(sound.id + ' was paused, so resuming');
+
+        // resume playback
+        this.sm2Sound.resume();
+
+      } else {
+
+        // start playback
+        var options = this._sm2options(sound);
+        if (sound.startPosition > 0) {
+          log(sound.id + ' starting with offset');
+          this.sm2Sound.load(options); // play will kick off once enough of the song has loaded
+
+        } else {
+          log(sound.id + ' starting immediately');
+          this.sm2Sound.play(options);
+
+        }
+
+      }
+
+    } else if (!this.currentSound) {
+      log(sound.id + ' wants to start; no other active song');
+
+      this.currentSound = sound;
+
+      // start playback
+      var options = this._sm2options(sound);
+      if (sound.startPosition > 0) {
+        log(sound.id + ' starting with offset');
+        this.sm2Sound.load(options); // play will kick off once enough of the song has loaded
+
+      } else {
+        log(sound.id + ' starting immediately');
+        this.sm2Sound.play(options);
+
+      }
+ 
+    } else {
+      log(sound.id + ' wants to start; stopping active song');
+
+      speaker.nextSound = sound;
+
+      // stop current sound, and then advance to 'nextSound' upon receiving 'onstop' event
+      this.sm2Sound.stop();
+
+    }
+  },
+
+  _destroySound: function(sound) {
+    log('want to destroy, and current is', sound, this.currentSound);
+
+    if (this.currentSound === sound) {
+      log('destroy triggered for current sound', sound.id);
+      this.sm2Sound.stop();
+
+    } else {
+      log('destroy triggered for inactive sound', sound.id);
+      delete speaker.outstandingPlays[this.id];
+    }
+  },
+
+  _pauseSound: function(sound) {
+    if ((sound === this.currentSound) && this.sm2Sound) {
+      this.sm2Sound.pause();
+    }
+  },
+
+  _position: function(sound) {
+    if ((sound === this.currentSound) && this.sm2Sound) {
+      return this.sm2Sound.position;
+    } else {
+      return 0;
+    }
+  },
+
+  _duration: function(sound) {
+    if ((sound === this.currentSound) && this.sm2Sound) {
+      var d = this.sm2Sound.duration;
+      return d ? d : 1;
+    } else {
+      return 1;
+    }
+  },
+
+  _sm2options: function(sound) {
+    var speaker = this;
+
+    return {
+      id: "feed.fm",
       url: sound.url,
       volume: sound.gainAdjustedVolume(speaker.vol),
       autoPlay: false,
       type: 'audio/mp3',
       onfinish: function() {
-        log(sound.id + ': onfinish');
-        this.destruct();
-        delete speaker.outstandingPlays[sound.id];
-        sound._nonRepeatTrigger('finish');
+        // on next run loop, make this not the active sound anymore, and
+        // kick off any other sound waiting for our completion
+        speaker._finishAndAdvance(sound);
       },
+
       onid3: function() {
         log(sound.id + ': onid3');
       },
+
       onstop: function() {
-        log(sound.id + ': onstop');
+        delete speaker.outstandingPlays[sound.id];
+
+        if (speaker.currentSound == sound) {
+          log(sound.id + ' stopped');
+          speaker.currentSound = null;
+
+          if (speaker.nextSound) {
+            log(sound.id + ' kicking off next sound');
+            speaker.currentSound = speaker.nextSound;
+            speaker.nextSound = null;
+
+            speaker.currentSound.play();
+
+          } else {
+            log('no next song to kick off after stopping ' + sound.id);
+
+          }
+
+        } else {
+          log(sound.id + ' stopped, but wasn\' active song, so ignoring');
+
+        }
       },
+
       onsuspend: function() {
         log(sound.id + ': suspend');
       },
+
       onresume: function() {
         log(sound.id + ': onresume');
         sound._nonRepeatTrigger('play');
       },
+
       onplay: function() {
         log(sound.id + ': onplay');
         sound._nonRepeatTrigger('play');
       },
+
       onpause: function() {
         log(sound.id + ': pause');
         sound._nonRepeatTrigger('pause');
       },
+
       onload: function(success) {
         log(sound.id + ': onload', success);
         if (!success) {
-         log(sound.id + ' failure!');
-          sound._nonRepeatTrigger('finish', true);
-          // consider this a failure
-          log('destroying after onload failure');
-          sound.destroy();
+          log(sound.id + ' load failure!');
+          speaker._finishAndAdvance(sound, true);
         }
       },
+
       ondataerror: function() {
         log(sound.id + ': ondataerror');
-        sound._nonRepeatTrigger('finish', true);
-        log('destroying after ondataerr');
-        sound.destroy();
+        speaker._finishAndAdvance(sound, true);
       },
+
       onconnect: function() {
         log(sound.id + ': onconnect' );
       },
+
       onbufferchange: function() {
         log(sound.id + ': onbufferchange');
       },
+
+      whileloading: function() {
+        var startPosition = sound.startPosition;
+
+        if ((speaker.currentSound === sound) 
+            && (speaker.sm2Sound.playState === 0) 
+            && (sound.duration > startPosition)) {
+          // start playback as soon as we can
+          speaker.sm2Sound.setPosition(startPosition);
+          speaker.sm2Sound.play();
+        }
+      },
+
       whileplaying: function() {
         if ((sound.position() > 0) && (sound.endPosition > 0)  && (sound.position() >= sound.endPosition)) {
-          log(sound.id + ': onfinish (due to trim)');
-          this.destruct();
-          delete speaker.outstandingPlays[sound.id];
-          sound._nonRepeatTrigger('finish');
+          if (speaker.currentSound === sound) {
+            log(sound.id + ': playback hit trim');
+            // stop playback, which triggers 'onstop' event, which triggers 'finish' call
+            speaker.sm2Sound.stop();
+
+          } else {
+            log(sound.id + ': playback hit trim, but it is not current sound, so ignoring');
+
+          }
         } else {
           sound.trigger('elapse');
         }
       }
-    });
+    };
+  },
 
-    return sound;
+  _finishAndAdvance: function(sound, err) {
+    var speaker = this;
+
+    // send out finish event on next run loop.
+    // (next loop prevents error when we re-use the Audio object
+    //  before the current sm2Sound fully stops/finishes)
+    setTimeout(function() {
+      delete speaker.outstandingPlays[sound.id];
+
+      if (speaker.currentSound == sound) {
+        log(sound.id + ' no longer active sound');
+        speaker.currentSound = null;
+
+        if (speaker.nextSound) {
+          log(sound.id + ' kicking off next sound, which techincally shouldn\'t happen');
+          speaker.currentSound = speaker.nextSound;
+          speaker.nextSound = null;
+
+          speaker.currentSound.play();
+        }
+      }
+
+      log(sound.id + ' triggering finish');
+      sound._nonRepeatTrigger('finish', err);
+    }, 1);
   },
 
   // set or get the volume (0-100)
@@ -397,9 +542,9 @@ Speaker.prototype = {
     if (typeof value !== 'undefined') {
       this.vol = value;
 
-      _.each(this.outstandingPlays, function(song) {
-        song.sm2Sound.setVolume(song.gainAdjustedVolume(value));
-      });
+      if (this.sm2Sound && this.currentSound) {
+        this.currentSound.setVolume(song.gainAdjustedVolume(value));
+      }
 
       this.trigger('volume', value);
     }
@@ -414,7 +559,7 @@ _.extend(Speaker.prototype, Events);
 
 var speaker = null;
 
-// there should only ever be a single instance of 'Speaker'
+// only export a single speaker
 module.exports = function(options, onReady) {
   if (speaker === null) {
     speaker = new Speaker(options);

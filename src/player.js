@@ -324,9 +324,8 @@ Player.prototype._onPlayCompleted = function(play) {
   this.state.activePlay.sound.destroy();
   delete this.state.activePlay;
 
-  // Force us into play mode in case we were paused and hit
   // skip to complete the current song.
-  this.state.paused = false;
+  //this.state.paused = false;
 };
 
 Player.prototype._onPlaysExhausted = function() {
@@ -355,9 +354,10 @@ Player.prototype.play = function() {
   var player = this;
 
   this.initializeSpeaker.then(function() {
-    player.speaker.initializeForMobile();
 
     if (!player.session.isTuned()) {
+      player.speaker.initializeForMobile();
+
       // not currently playing music
       player.state.paused = false;
 
@@ -371,6 +371,12 @@ Player.prototype.play = function() {
       } else {
         player.state.activePlay.sound.play();
       }
+
+    } else {
+      // waiting for network request to complete
+      player.speaker.initializeForMobile();
+      player.state.paused = false;
+
     }
   });
 };
@@ -415,6 +421,8 @@ Player.prototype.dislike = function() {
 
   this.trigger('play-disliked');
 
+  // start playback if we're paused and try to advance to next song
+  this.state.paused = false;
   this.skip();
 };
 
@@ -424,6 +432,8 @@ Player.prototype.skip = function() {
     return;
   }
 
+  // start playback if we're paused
+  this.state.paused = false;
   this.session.requestSkip();
 };
 

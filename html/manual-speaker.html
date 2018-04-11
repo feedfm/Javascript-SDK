@@ -6,9 +6,15 @@
 
 <p>
 <button id="play">play</button><br/>
+<button id="pause">pause</button><br/>
+<button id="resume">resume</button><br/>
+<button id="destroy">destroy</button><br/>
 </p>
 <p>
-  url: <input type="text" id="url" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3"><br/>
+  <ul>
+    <li><label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3">fitty</option></label></li>
+    <li><label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1516153155-47682.m4a">classic</option></label></li>
+  </ul>
   gain: <input type="text" id="gain" value="0">
 </p>
 
@@ -17,7 +23,7 @@
 <br/>
 
 <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../dist/feed-underscore.js" type="application/javascript"></script>
+<script src="../dist/latest/feed-underscore.js" type="application/javascript"></script>
 
 <script>
 
@@ -27,13 +33,14 @@ var speaker = getSpeaker({ }, function() {
   console.log('on ready!', arguments);
 });
 
+var sound;
 $('#play').on('click', function() {
-  var url = $('#url').val();
+  var url = $('[name=url]:checked').val();
   var gain = $('#gain').val();
 
   console.log('trying to play', url);
 
-  var sound = speaker.create(url, {
+  sound = speaker.create(url, {
     play: function() {
       console.log('play ', url);
     },
@@ -50,6 +57,18 @@ $('#play').on('click', function() {
   });
 
   sound.play();
+});
+
+$('#pause').on('click', function() {
+  sound.pause();
+});
+
+$('#resume').on('click', function() {
+  sound.resume();
+});
+
+$('#destroy').on('click', function() {
+  sound.destroy();
 });
 
 </script>

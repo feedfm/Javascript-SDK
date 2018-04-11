@@ -224,7 +224,8 @@ Session.prototype._getDefaultPlacementInformation = function(delay) {
   var self = this;
 
   if (this.config.placementId && this.config.placement && (this.config.placement.id === this.config.placementId)) {
-    // already have placement info
+    // already have placement info, so kick off request for next play
+    this._requestNextPlay();
     return;
   }
 
