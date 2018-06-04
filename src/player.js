@@ -94,8 +94,6 @@ var Player = function(token, secret, options) {
 
   options = options || {};
 
-  this.skipPlayDelay = !!options.skipPlayDelay;
-
   _.extend(this, Events);
 
   var session = this.session = new Session(token, secret, options);
@@ -171,9 +169,9 @@ Player.prototype._onPlayActive = function(play) {
   this.state.activePlay = {
     id: play.id,
     sound: sound,
-    startReportedToServer: false, // wether we got a 'play-started' event from session
-    soundCompleted: false,        // wether the sound object told us it finished playback
-    playStarted: false,           // wether playback started on the sound object yet
+    startReportedToServer: false, // whether we got a 'play-started' event from session
+    soundCompleted: false,        // whether the sound object told us it finished playback
+    playStarted: false,           // whether playback started on the sound object yet
     previousPosition: 0           // last time we got an 'elapse' callback
   };
 
