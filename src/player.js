@@ -13,15 +13,11 @@
  *  Create this with:
  *    player = new Feed.Player(token, secret[, options])
  *
- *  'options' may be any option that 'Feed.Session' and 'Feed.Speaker' accept
- *
- *  Then set the optional placement and station that we're pulling
- *  from:
- *
- *    player.setPlacementId(xxx);
- *      set placement on session, which should stop any current plays
- *    player.setStationId(xxx);
- *      set station on session, which should stop any current plays
+ *  options can be:
+ *    trimming: false,      // when true, song start/end trims will be honored
+ *    crossfadeIn: false,   // when true, songs do not fade in - they start at full volume
+ *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
+ *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions
  *
  *  Then control playback with:
  *
@@ -33,6 +29,7 @@
  *    unlike() - tell the server to remove the 'like' for this song
  *    dislike() - tell the server we dislike this song, and skip to the next one
  *    skip() - request to skip the current song
+ *    setStationId(xxx) - switch to a differen station 
  *
  *  player has a current state that can be queried with 'getCurrentState()':
  *    playing - if session.hasActivePlayStarted() and we're not paused
@@ -49,6 +46,8 @@
  *    play-completed  - this play has completed playback
  *    plays-exhausted - there are no more plays available from this placement/station combo
  *    skip-denied - the given song could not be skipped due to DMCA rules
+ *    stations - this is passed with an array of station objects that have station
+ *      names and ids
  *  
  *  and the play object adds some new events:
  *    play-paused - the currently playing song was paused
@@ -93,6 +92,11 @@ var Player = function(token, secret, options) {
   };
 
   options = options || {};
+
+  this.trimming = options.trimming || false;
+  this.normalizeVolume = options.normalizeVolume || true;
+  this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
+  this.crossfadeIn = options.crossfadeIn || false;
 
   _.extend(this, Events);
 
@@ -161,16 +165,27 @@ Player.prototype._onPlayActive = function(play) {
     pause: _.bind(this._onSoundPause, this, play.id),
     finish:  _.bind(this._onSoundFinish, this, play.id),
     elapse: _.bind(this._onSoundElapse, this, play.id),
-    gain: (play.audio_file.replaygain_track_gain || 0) + (play.station.pre_gain || 0)
   };
 
-  if (play.audio_file.extra && play.audio_file.extra.trim_start) {
+  if (this.normalizeVolume) {
+    options.gain = (play.audio_file.replaygain_track_gain || 0) + (play.station.pre_gain || 0);
+  }
+
+  if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_start) {
     options.startPosition = play.audio_file.extra.trim_start * 1000;
   }
 
-  if (play.audio_file.extra && play.audio_file.extra.trim_end &&
+  if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_end &&
       play.audio_file.duration_in_seconds) {
     options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
+  }
+
+  if (this.secondsOfCrossfade) {
+    if (this.crossfadeIn) {
+      options.fadeInSeconds = this.secondsOfCrossfade;
+    }
+
+    options.fadeOutSeconds = this.secondsOfCrossfade;
   }
 
   var sound = this.speaker.create(play.audio_file.url, options);

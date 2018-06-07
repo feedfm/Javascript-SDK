@@ -78,7 +78,7 @@
 
 var _ = require('underscore');
 var $ = require('jquery');
-var log = require('./log');
+var log = require('./nolog');
 var Events = require('./events');
 var util = require('./util');
 var version = require('./version');
@@ -166,14 +166,14 @@ Sound.prototype = {
 
   // elapsed number of milliseconds played
   position: function() {
-    log(this.id + ' sound position');
+    //log(this.id + ' sound position');
     return this.speaker._position(this);
   },
 
   // duration in milliseconds of the song
   // (this may change until the song is full loaded)
   duration: function() {
-    log(this.id + ' sound duration');
+    //log(this.id + ' sound duration');
     return this.speaker._duration(this);
   },
 
@@ -191,7 +191,7 @@ Sound.prototype = {
 
     var adjusted = Math.max(Math.min((volume / 100) * (50 * Math.pow(10, this.gain / 20)), 100), 0) / 100;
 
-    log('gain adjustment is ' + this.gain + ', and final adjusted volume is ' + adjusted);
+    //log('gain adjustment is ' + this.gain + ', and final adjusted volume is ' + adjusted);
 
     return adjusted;
   }
@@ -368,7 +368,7 @@ Speaker.prototype = {
     var currentVolume = audio.volume;
     var calculatedVolume = sound.gainAdjustedVolume(this.vol);
 
-    log('setting volume', { currentTime: currentTime, currentVolume: currentVolume, calculatedVolume: calculatedVolume, sound: sound });
+    //log('setting volume', { currentTime: currentTime, currentVolume: currentVolume, calculatedVolume: calculatedVolume, sound: sound });
 
     if ((sound.fadeInStart != sound.fadeInEnd) && (currentTime >= sound.fadeInStart) && (currentTime <= sound.fadeInEnd)) {
       // ramp up from 0 - 100%
@@ -381,7 +381,7 @@ Speaker.prototype = {
     }
 
     if (currentVolume != calculatedVolume) {
-      log('updating volume to ' + calculatedVolume);
+      log(audio.src + ' updating volume ' + ((currentVolume < calculatedVolume) ? '▲' : '▼') + ' to ' + calculatedVolume);
       audio.volume = calculatedVolume;
     }
   },
@@ -484,6 +484,7 @@ Speaker.prototype = {
           .then(function() {
             log('resumed playback');
             sound.trigger('play');
+
         
           })
           .catch(function(error) { 
@@ -535,12 +536,20 @@ Speaker.prototype = {
           log('success starting playback');
           speaker.activeSound = sound;
 
+          // configure fade-out now that metadata is loaded
           if (sound.fadeOutSeconds && (sound.fadeOutEnd === 0)) {
             sound.fadeOutStart = speaker.activeAudio.duration - sound.fadeOutSeconds;
             sound.fadeOutEnd = speaker.activeAudio.duration;
           }
 
+          var paused = speaker.activeAudio.paused;
+
           sound.trigger('play');
+
+          if (paused) {
+            sound.trigger('pause');
+          }
+
         })
         .catch(function(error) {
           log('error starting playback', error);
@@ -562,12 +571,7 @@ Speaker.prototype = {
   },
 
   _pauseSound: function(sound) {
-    if (sound !== this.activeSound) {
-      return;
-    }
-
-    if (sound.url !== this.activeAudio.src) {
-      log('trying to pause current song, but it is not in the active audio player');
+    if ((sound != null) && (sound !== this.activeSound)) {
       return;
     }
 
