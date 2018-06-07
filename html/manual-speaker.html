@@ -5,6 +5,7 @@
 <body>
 
 <p>
+<button id="prepare">prepare</button><br/>
 <button id="play">play</button><br/>
 <button id="pause">pause</button><br/>
 <button id="resume">resume</button><br/>
@@ -12,18 +13,37 @@
 </p>
 <p>
   <ul>
-    <li><label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3">fitty</option></label></li>
-    <li><label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1516153155-47682.m4a">classic</option></label></li>
+    <li>
+      <label><input type="radio" name="url" value="http://s3.amazonaws.com/feedfm-audio/1408925951-71958.m4a" checked="checked">short audio</label>
+    </li><li>
+      <label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3">good long audio</label><br/>
+    </li><li>
+      <label><input type="radio" name="url" value="http://google.com/">google</label><br/>
+    </li><li>
+      <label><input type="radio" name="url" value="http://s3.amazonaws.com/feedfm-audio/1408842300-22034.m4a">bad audio</label><br/>
+    </li>
   </ul>
-  gain: <input type="text" id="gain" value="0">
+  </ul>
+  gain: <input type="text" id="gain" value="0"><br/>
+  fadeIn: <input type="text" id="fadein" value="5"><br/>
+  fadeOut: <input type="text" id="fadeout" value="5"><br/>
 </p>
 
 <br/>
 <br/>
 <br/>
 
+<script>
+/*
+  window.feedLogger = function(arguments) {
+    console.log.apply(console, arguments.slice(0));
+  };
+  */
+</script>
+
 <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../dist/latest/feed-underscore.js" type="application/javascript"></script>
+<script src="../node_modules/underscore/underscore-min.js"></script>
+<script src="../dist/latest/feed.js" type="application/javascript"></script>
 
 <script>
 
@@ -33,25 +53,40 @@ var speaker = getSpeaker({ }, function() {
   console.log('on ready!', arguments);
 });
 
+$('#prepare').on('click', function() {
+  var url = $('[name=url]:checked').val();
+
+  speaker.prepare(url);
+});
+
 var sound;
 $('#play').on('click', function() {
   var url = $('[name=url]:checked').val();
-  var gain = $('#gain').val();
+  var gain = +$('#gain').val();
+  var fadeIn = $('#fadein').val();
+  var fadeOut = $('#fadeout').val();
 
   console.log('trying to play', url);
 
   sound = speaker.create(url, {
     play: function() {
-      console.log('play ', url);
+      console.log('*** play ', url);
     },
 
     pause: function() {
-      console.log('pause ', url);
+      console.log('*** pause ', url);
     },
 
-    finish: function() {
-      console.log('finish ', url);
+    finish: function(err) {
+      console.log('*** finish ', url, err);
     },
+
+    elapse: function() {
+      console.log('*** elapse', url);
+    },
+
+    fadeInSeconds: fadeIn,
+    fadeOutSeconds: fadeOut,
 
     gain: gain
   });

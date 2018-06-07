@@ -101,6 +101,7 @@ var Player = function(token, secret, options) {
   this.session.on('play-started', this._onPlayStarted, this);
   this.session.on('play-completed', this._onPlayCompleted, this);
   this.session.on('plays-exhausted', this._onPlaysExhausted, this);
+  this.session.on('prepare-sound', this._onPrepareSound, this);
 
   this.session.on('all', function() {
     // propagate all events out to everybody else
@@ -132,6 +133,14 @@ var Player = function(token, secret, options) {
 
   this.setMuted(this.isMuted());
 };
+
+Player.prototype.initializeAudio = function() {
+  var player = this;
+
+  this.initializeSpeaker.then(function() {
+    player.speaker.initializeAudio();
+  });
+}
 
 Player.prototype.setPlacementId = function(placementId) {
   this.session.setPlacementId(placementId);
@@ -330,6 +339,11 @@ Player.prototype._onPlaysExhausted = function() {
   this.state.paused = false;
 };
 
+Player.prototype._onPrepareSound = function(url) {
+  log('preparing', url);
+  this.speaker.prepare(url);
+};
+
 Player.prototype.isPaused = function() {
   return this.session.isTuned() && this.state.paused;
 };
@@ -354,8 +368,6 @@ Player.prototype.play = function() {
   this.initializeSpeaker.then(function() {
 
     if (!player.session.isTuned()) {
-      player.speaker.initializeForMobile();
-
       // not currently playing music
       player.state.paused = false;
 
@@ -372,7 +384,6 @@ Player.prototype.play = function() {
 
     } else {
       // waiting for network request to complete
-      player.speaker.initializeForMobile();
       player.state.paused = false;
 
     }

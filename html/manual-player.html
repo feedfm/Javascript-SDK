@@ -23,8 +23,8 @@
 <script>
  var player = new Feed.Player(
   // production
-  'trimdemo', 
-  'trimdemo', 
+  'counting',   // or trimdemo
+  'counting', 
   { 
     debug: true, 
     swfBase: '../dist/latest' 
@@ -68,10 +68,12 @@ $('#delete').on('click', function() {
 });
 
 $('#tune').on('click', function() {
+  player.initializeAudio();
   player.tune();
 });
 
 $('#play').on('click', function() {
+  player.initializeAudio();
   player.play();
 });
 

@@ -694,6 +694,8 @@ Session.prototype._receiveNextPlay = function(ajax, response) {
     this.config.pendingRequest = null;
 
     if (response.success) {
+      this.trigger('prepare-sound', response.play.audio_file.url);
+
       if (this.config.current) {
         log('received play, but we\'re already playing, so queueing up', response.play);
 
