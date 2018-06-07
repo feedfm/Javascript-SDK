@@ -291,7 +291,19 @@ Speaker.prototype = {
       return;
     }
 
-    this.currentSound.trigger('elapse');
+    if (this.currentSound.endPosition && ((this.currentSound.endPosition / 1000) <= this.activeAudio.currentTime)) {
+      var sound = this.currentSound;
+
+      this.currentSound = null;
+
+      this.activeAudio.src = SILENCE;
+
+      sound.trigger('finish');
+
+    } else {
+
+      this.currentSound.trigger('elapse');
+    }
 
     if (this.prepareWhenReady) {
       this.prepare(this.prepareWhenReady);
