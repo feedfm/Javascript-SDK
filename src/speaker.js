@@ -103,10 +103,28 @@ var Sound = function(speaker, options, id, url) {
   obj.loaded = false;
 
   if (options) {
-    this.startPosition = options.startPosition;
-    this.endPosition = options.endPosition;
-    this.fadeInSeconds = options.fadeInSeconds;
-    this.fadeOutSeconds = options.fadeOutSeconds;
+    this.startPosition = +options.startPosition;
+    this.endPosition = +options.endPosition;
+
+    this.fadeInSeconds = +options.fadeInSeconds;
+    if (this.fadeInSeconds) {
+      this.fadeInStart = this.startPosition ? (this.startPosition / 1000) : 0;
+      this.fadeInEnd = this.fadeInStart + this.fadeInSeconds;
+    } else {
+      this.fadeInStart = 0;
+      this.fadeInEnd = 0;
+    }
+
+    this.fadeOutSeconds = +options.fadeOutSeconds;
+    if (this.fadeOutSeconds) {
+      if (this.endPosition) {
+        this.fadeOutStart = (this.endPosition / 1000) - this.fadeOutSeconds;
+        this.fadeOutEnd = this.endPosition / 1000;
+      } else {
+        this.fadeOutStart = 0;
+        this.fadeOutEnd = 0;
+      }
+    }
 
     _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
       if (ev in options) {
@@ -202,6 +220,7 @@ Speaker.prototype = {
   prepareWhenReady: null, // url to prepare when active player is fully loaded
 
   currentSound: null,  // currently playing sound. when a sound finishes, it is removed from this
+  fadingSound: null,   // currently fading out sound, if any
 
   initializeAudio: function() {
     // On mobile devices, we need to kick off playback of a sound in
@@ -228,10 +247,32 @@ Speaker.prototype = {
   },
 
   _addEventListeners: function(audio) {
+    audio.addEventListener('play', _.bind(this._onAudioPlayEvent, this));
     audio.addEventListener('pause', _.bind(this._onAudioPauseEvent, this));
     audio.addEventListener('ended', _.bind(this._onAudioEndedEvent, this));
     audio.addEventListener('timeupdate', _.bind(this._onAudioTimeUpdateEvent, this));
     //this._debugAudioObject(audio);
+  },
+
+  _onAudioPlayEvent: function(event) {
+    var audio = event.currentTarget;
+
+    if (audio.src === SILENCE) {
+      return;
+    }
+
+    if (audio !== this.activeAudio) {
+      return;
+    }
+
+    if (!this.currentSound || (this.currentSound.url !== audio.src)) {
+      return;
+    }
+
+    if (this.currentSound.fadeOutSeconds && (this.currentSound.fadeOutEnd === 0)) {
+      this.currentSound.fadeOutStart = this.activeAudio.duration - this.currentSound.fadeOutSeconds;
+      this.currentSound.fadeOutEnd = this.activeAudio.duration;
+    }
   },
 
   _onAudioPauseEvent: function(event) {
@@ -260,6 +301,12 @@ Speaker.prototype = {
       return;
     }
 
+    if (audio === this.fadingAudio) {
+      audio.src = SILENCE;
+      this.fadingSound = null;
+      return;
+    }
+
     if (audio !== this.activeAudio) {
       return;
     }
@@ -282,6 +329,18 @@ Speaker.prototype = {
       return;
     }
 
+    if ((audio === this.fadingAudio) && this.fadingSound) {
+      if (this.fadingSound.endPosition && (audio.currentTime >= (this.fadingSound.endPosition / 1000))) {
+        this.fadingSound = null;
+        this.fadingAudio.src = SILENCE;
+
+      } else {
+        this._setVolume(audio, this.fadingSound);
+      }
+
+      return;
+    }
+
     if (audio !== this.activeAudio) {
       return;
     }
@@ -291,7 +350,8 @@ Speaker.prototype = {
       return;
     }
 
-    if (this.currentSound.endPosition && ((this.currentSound.endPosition / 1000) <= this.activeAudio.currentTime)) {
+    if (this.currentSound.endPosition && ((this.currentSound.endPosition / 1000) <= audio.currentTime)) {
+      // song reached end of play
       var sound = this.currentSound;
 
       this.currentSound = null;
@@ -300,13 +360,51 @@ Speaker.prototype = {
 
       sound.trigger('finish');
 
+    } else if (this.currentSound.fadeOutEnd && (audio.currentTime >= this.currentSound.fadeOutStart)) {
+      // song hit start of fade out
+      this._setVolume(audio, this.currentSound);
+
+      // swap it into 'fading' spot
+      this.fadingSound = this.currentSound;
+      this.currentSound = null;
+
+      this.activeAudio = this.fadingAudio;
+      this.fadingAudio = audio;
+
+      // pretend the song finished
+      this.fadingSound.trigger('finish');
+
     } else {
+      this._setVolume(audio, this.currentSound);
 
       this.currentSound.trigger('elapse');
     }
 
     if (this.prepareWhenReady) {
       this.prepare(this.prepareWhenReady);
+    }
+  },
+
+  _setVolume: function(audio, sound) {
+    var currentTime = audio.currentTime;
+    var currentVolume = audio.volume;
+    var calculatedVolume = sound.gainAdjustedVolume(this.vol);
+
+    log('setting volume', { currentTime: currentTime, currentVolume: currentVolume, calculatedVolume: calculatedVolume, sound: sound });
+
+    if ((sound.fadeInStart != sound.fadeInEnd) && (currentTime >= sound.fadeInStart) && (currentTime <= sound.fadeInEnd)) {
+      // ramp up from 0 - 100%
+      calculatedVolume = (currentTime - sound.fadeInStart) / (sound.fadeInEnd - sound.fadeInStart) * calculatedVolume;
+
+    } else if ((sound.fadeOutStart != sound.fadeOutEnd) && (currentTime >= sound.fadeOutStart) && (currentTime <= sound.fadeOutEnd)) {
+      // ramp down from 100% to 0
+      calculatedVolume = (1 - (currentTime - sound.fadeOutStart) / (sound.fadeOutEnd - sound.fadeOutStart)) * calculatedVolume;
+
+    }
+
+    if (currentVolume != calculatedVolume) {
+      log('updating volume to ' + calculatedVolume);
+      audio.volume = calculatedVolume;
     }
   },
 
@@ -416,6 +514,20 @@ Speaker.prototype = {
             sound.trigger('finish');
           });
 
+        if (this.fadingSound) {
+          this.fadingAudio.play()
+            .then(function() {
+              log('resumed fading playback');
+          
+            })
+            .catch(function(error) { 
+              log('error resuming fading playback');
+              speaker.fadingSound = null;
+              speaker.fadingAudio.src = SILENCE;
+            });
+
+        }
+
       } else {
         log(sound.id + ' is already playing');
       }
@@ -430,7 +542,7 @@ Speaker.prototype = {
       this.activeAudio = this.preparingAudio;
       this.preparingAudio = oldActiveAudio;
 
-      this.activeAudio.volume = sound.gainAdjustedVolume(this.vol);
+      this._setVolume(this.activeAudio, sound);
       this.preparingAudio.src = SILENCE;
 
       var existingSound = this.currentSound;
@@ -438,7 +550,7 @@ Speaker.prototype = {
       if (existingSound) {
         existingSound.trigger('finish');
       }
-      
+
       log(sound.id + ' starting');
       this.activeAudio.play()
         .then(function() {
@@ -476,6 +588,10 @@ Speaker.prototype = {
     }
 
     this.activeAudio.pause();
+
+    if (this.fadingSound) {
+      this.fadingAudio.pause();
+    }
   },
 
   _position: function(sound) {

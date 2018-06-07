@@ -14,9 +14,9 @@
 <p>
   <ul>
     <li>
-      <label><input type="radio" name="url" value="http://s3.amazonaws.com/feedfm-audio/1408925951-71958.m4a" checked="checked">short audio</label>
+      <label><input type="radio" name="url" value="http://s3.amazonaws.com/feedfm-audio/1408925951-71958.m4a">short audio (13 seconds)</label>
     </li><li>
-      <label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3">good long audio</label><br/>
+      <label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3" checked=checked>good long audio (227 seconds)</label><br/>
     </li><li>
       <label><input type="radio" name="url" value="http://google.com/">google</label><br/>
     </li><li>
@@ -25,8 +25,10 @@
   </ul>
   </ul>
   gain: <input type="text" id="gain" value="0"><br/>
-  fadeIn: <input type="text" id="fadein" value="5"><br/>
-  fadeOut: <input type="text" id="fadeout" value="5"><br/>
+  fadeIn: <input type="text" id="fadein" value="3"><br/>
+  fadeOut: <input type="text" id="fadeout" value="3"><br/>
+  startPosition (ms): <input type="text" id="start" value="0"><br/>
+  endPosition (ms): <input type="text" id="end" value="30000"><br/>
 </p>
 
 <br/>
@@ -54,6 +56,7 @@ var speaker = getSpeaker({ }, function() {
 });
 
 $('#prepare').on('click', function() {
+  speaker.initializeAudio();
   var url = $('[name=url]:checked').val();
 
   speaker.prepare(url);
@@ -61,10 +64,14 @@ $('#prepare').on('click', function() {
 
 var sound;
 $('#play').on('click', function() {
+  speaker.initializeAudio();
+
   var url = $('[name=url]:checked').val();
   var gain = +$('#gain').val();
   var fadeIn = $('#fadein').val();
   var fadeOut = $('#fadeout').val();
+  var start = $('#start').val();
+  var end = $('#end').val();
 
   console.log('trying to play', url);
 
@@ -87,6 +94,8 @@ $('#play').on('click', function() {
 
     fadeInSeconds: fadeIn,
     fadeOutSeconds: fadeOut,
+    startPosition: start,
+    endPosition: end,
 
     gain: gain
   });
@@ -99,6 +108,7 @@ $('#pause').on('click', function() {
 });
 
 $('#resume').on('click', function() {
+  speaker.initializeAudio();
   sound.resume();
 });
 
