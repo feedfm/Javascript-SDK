@@ -16,9 +16,23 @@
 
 <button id="delete">delete client cookie</button>
 
-<script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../node_modules/underscore/underscore-min.js"></script>
-<script src="../dist/latest/feed.js" type="application/javascript"></script>
+<!--
+  <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+  <script src="../node_modules/underscore/underscore-min.js"></script>
+  <script src="../dist/latest/feed.js" type="application/javascript"></script>
+-->
+
+<!--
+  <script src="../node_modules/underscore/underscore-min.js"></script>
+  <script src="../dist/latest/feed-jquery.js" type="application/javascript"></script>
+-->
+
+<!--
+  <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+  <script src="../dist/latest/feed-underscore.js" type="application/javascript"></script>
+-->
+
+<script src="../dist/latest/feed-jquery-underscore.js" type="application/javascript"></script>
 
 <script>
  var player = new Feed.Player(
@@ -27,7 +41,9 @@
   'trimdemo', 
   { 
     debug: true, 
-    swfBase: '../dist/latest' 
+    trimming: true,
+    secondsOfCrossfade: 4,
+    crossfadeIn: true
   }
   /*
   // localhost dev

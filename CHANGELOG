@@ -1,4 +1,12 @@
 
+1.10.0-native
+  - pulled out SoundManager2 and went straight to Audio tag
+  - added song crossfades
+  - added initializeAudio() endpoint for mobile support
+  - tested on iOS
+  - added 'prepare' event so we can start loading songs in
+    the background
+
 1.9.0
   - added support for trim_start and trim_end
   - export version number on Feed.version

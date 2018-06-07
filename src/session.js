@@ -965,38 +965,17 @@ Session.prototype.unsuspend = function(saved) {
   }
 };
 
-function supports_html5_storage() {
-  try {
-    return 'localStorage' in window && window['localStorage'] !== null && (window.localStorage['feed-test'] = true);
-  } catch (e) {
-    log('browser does not support html5 localstorage', e.message);
-    return false;
-  }
-}
-
 var cookieName = 'cid';
 Session.prototype._getStoredCid = function() {
-  if (supports_html5_storage()) {
-    return localStorage[cookieName];
-  } else {
-    return Cookie.get(cookieName);
-  }
+  return Cookie.get(cookieName);
 };
 
 Session.prototype._setStoredCid = function(value) {
-  if (supports_html5_storage()) {
-    localStorage[cookieName] = value;
-  } else {
-    Cookie.set(cookieName, value, { expires: 3650, path: '/' });
-  }
+  Cookie.set(cookieName, value, { expires: 3650, path: '/' });
 };
 
 Session.prototype._deleteStoredCid = function() {
-  if (supports_html5_storage()) {
-    localStorage.removeItem(cookieName);
-  } else {
-    $.removeCookie(cookieName, { path: '/' });
-  }
+  $.removeCookie(cookieName, { path: '/' });
 };
 
 Session.prototype._sign = function(request) {

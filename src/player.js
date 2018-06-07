@@ -19,17 +19,25 @@
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
  *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions
  *
+ *  In response to a user-interaction event, and before you begin any
+ *  music playback, be sure to call:
+ *
+ *    player.initializeAudio();
+ *
+ *  That will ensure the library has permission from the browser to play
+ *  audio.
+ *
  *  Then control playback with:
  *
  *    tune() - load up information about the current placement, but
- *      don't actually start playing it.
+ *      don't actually start playing it. (can be called before initializeAudio())
  *    play() - start playing the current placement/station or resume the current song
  *    pause() - pause playback of the current song, if any
  *    like() - tell the server we like this song
  *    unlike() - tell the server to remove the 'like' for this song
  *    dislike() - tell the server we dislike this song, and skip to the next one
  *    skip() - request to skip the current song
- *    setStationId(xxx) - switch to a differen station 
+ *    setStationId(xxx) - switch to a different station 
  *
  *  player has a current state that can be queried with 'getCurrentState()':
  *    playing - if session.hasActivePlayStarted() and we're not paused
@@ -40,16 +48,14 @@
  *
  *  session events are proxied via the play object:
  *    not-in-us - user isn't located in the US and can't play music
- *    placement - information about the placement we just tuned to
- *    play-active - this play is queued up and ready for playback
- *    play-started - this play has begun playback
- *    play-completed  - this play has completed playback
- *    plays-exhausted - there are no more plays available from this placement/station combo
- *    skip-denied - the given song could not be skipped due to DMCA rules
  *    stations - this is passed with an array of station objects that have station
  *      names and ids
- *  
- *  and the play object adds some new events:
+ *    play-active - this play is queued up and ready for playback, but hasn't
+ *      yet started.
+ *    play-started - this play has begun playback.
+ *    play-completed  - this play has completed playback.
+ *    plays-exhausted - there are no more plays available from this placement/station combo
+ *    skip-denied - the given song could not be skipped due to DMCA rules
  *    play-paused - the currently playing song was paused
  *    play-resumed - the currently playing song was resumed
  *    play-liked - the currently playing song was liked

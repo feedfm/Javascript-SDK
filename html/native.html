@@ -61,6 +61,7 @@ pause
   <button id="initAndDelayedPrepare">initAndDelayedPrepare</button><br/>
   <button id="prepare">prepare</button><br/>
   <button id="initCreatePlay">initCreatePlay</button><br/>
+  <button id="initCreatePlayPause">initCreatePlayPause</button><br/>
   <button id="initCreatePlayDelayedPlay">initCreatePlayDelayedPlay</button><br/>
   <button id="createPlay">createPlay</button></br>
   <button id="createPlayAtOffset">createPlayAtOffset</button></br>
@@ -381,6 +382,11 @@ $('#create').on('click', function() {
 
 $('#initCreatePlay').on('click', function() {
   initCreatePlay();
+});
+
+$('#initCreatePlayPause').on('click', function() {
+  initCreatePlay();
+  active.pause();
 });
 
 $('#pause').on('click', function() {
