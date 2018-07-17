@@ -113,6 +113,7 @@ PlayerView.prototype._onStatusClick = function() {
 };
 
 PlayerView.prototype._onPlayButtonClick = function() {
+  this.player.initializeAudio();
   this.player.play();
 };
 
