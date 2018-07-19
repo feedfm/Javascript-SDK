@@ -514,6 +514,10 @@ Speaker.prototype = {
     } else {
       if (this.preparingAudio.src !== sound.url) {
         this._prepare(sound.url, sound.startPosition);
+
+      } else if (sound.startPosition && (this.preparingAudio.currentTime !== sound.startPosition)) {
+        log('advancing prepared audio to', sound.startPosition / 1000);
+        this.preparingAudio.currentTime = sound.startPosition / 1000;
       }
 
       // move prepared sound into active player
@@ -588,7 +592,7 @@ Speaker.prototype = {
         log('trying to get current song position, but it is not in the active audio player');
       }
       
-      return this.activeAudio.currentTime;
+      return Math.floor(this.activeAudio.currentTime * 1000);
 
     } else {
       return 0;
@@ -602,7 +606,7 @@ Speaker.prototype = {
         log('trying to get current song duration, but it is not in the active audio player');
       }
       var d = this.activeAudio.duration;
-      return isNaN(d) ? 0 : d;
+      return isNaN(d) ? 0 : Math.floor(d * 1000);
 
     } else {
       return 0;
@@ -616,7 +620,7 @@ Speaker.prototype = {
       this.vol = value;
 
       if (this.activeSound) {
-        this.activeAudio.volume = song.gainAdjustedVolume(value);
+        this.activeAudio.volume = this.activeSound.gainAdjustedVolume(value);
       }
 
       this.trigger('volume', value);

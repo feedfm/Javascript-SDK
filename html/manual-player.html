@@ -10,6 +10,9 @@
 <button id="skip">skip</button>
 <button id="popout">popout</button>
 
+<button id="volume10">volume 10</button>
+<button id="volume50">volume 50</button>
+<button id="volume100">volume 100</button>
 <br/>
 <br/>
 <br/>
@@ -99,6 +102,18 @@ $('#pause').on('click', function() {
 
 $('#skip').on('click', function() {
   player.skip();
+});
+
+$('#volume10').on('click', function() {
+  player.speaker.setVolume(10);
+});
+
+$('#volume50').on('click', function() {
+  player.speaker.setVolume(50);
+});
+
+$('#volume100').on('click', function() {
+  player.speaker.setVolume(100);
 });
 </script>
 

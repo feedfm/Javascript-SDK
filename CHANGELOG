@@ -1,4 +1,10 @@
 
+1.10.2-native
+  - trim_start wasn't being honored for first song
+
+1.10.1-native
+  - fix volume adjustment bug
+
 1.10.0-native
   - pulled out SoundManager2 and went straight to Audio tag
   - added song crossfades
