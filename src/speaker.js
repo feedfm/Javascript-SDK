@@ -620,7 +620,7 @@ Speaker.prototype = {
       this.vol = value;
 
       if (this.activeSound) {
-        this.activeAudio.volume = this.activeSound.gainAdjustedVolume(value);
+        this._setVolume(this.activeAudio, this.activeSound);
       }
 
       this.trigger('volume', value);
