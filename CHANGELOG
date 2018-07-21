@@ -1,4 +1,9 @@
 
+1.10.3-native
+  - update code to use Web Audio API for mobile Safari
+  - fix some fade in/out problems when audio was before or after
+    fade boundaries.
+
 1.10.2-native
   - trim_start wasn't being honored for first song
 

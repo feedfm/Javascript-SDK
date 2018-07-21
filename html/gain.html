@@ -1,0 +1,104 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width">
+
+    <title>createMediaElementSource example</title>
+
+    <link rel="stylesheet" href="">
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+    <h1>createMediaElementSource example</h1>
+    <pre></pre>
+
+    <button id="low">10%</button>
+    <button id="high">100%</button>
+
+    <button id='play'>play!</button>
+  </body>
+<script>
+
+function createAudioContext (desiredSampleRate) {
+  var AudioCtor = window.AudioContext || window.webkitAudioContext
+
+  desiredSampleRate = typeof desiredSampleRate === 'number'
+    ? desiredSampleRate
+    : 44100
+  var context = new AudioCtor()
+
+  // Check if hack is necessary. Only occurs in iOS6+ devices
+  // and only when you first boot the iPhone, or play a audio/video
+  // with a different sample rate
+  if (/(iPhone|iPad)/i.test(navigator.userAgent) &&
+      context.sampleRate !== desiredSampleRate) {
+    var buffer = context.createBuffer(1, 1, desiredSampleRate)
+    var dummy = context.createBufferSource()
+    dummy.buffer = buffer
+    dummy.connect(context.destination)
+    dummy.start(0)
+    dummy.disconnect()
+
+    context.close() // dispose old context
+    context = new AudioCtor()
+  }
+
+  return context
+}
+
+document.getElementById('play').addEventListener('click', function() {
+  var context = createAudioContext();
+  var pre = document.querySelector('pre');
+  var myScript = document.querySelector('script');
+  var low = document.getElementById('low');
+  var high = document.getElementById('high');
+  var gainNode;
+
+  var audio = new Audio();
+  audio.loop = false;
+  audio.autoplay = false;
+  audio.crossOrigin = "anonymous"
+
+  var source = context.createMediaElementSource(audio);
+
+  audio.addEventListener('canplay', function() {
+    try {
+      console.log('creating source!');
+
+      // Create a gain node
+      gainNode = context.createGain();
+      gainNode.gain.value = 0.5;
+
+      source.connect(gainNode);
+      gainNode.connect(context.destination);
+
+    } catch (e) {
+      console.log('error', e);
+    }
+  });
+
+  audio.addEventListener('error', function(e) {
+    console.log('error event', e.toString());
+  });
+
+  audio.src = 'tswift.aac';
+  audio.play();
+
+  low.addEventListener('click', function() {
+    gainNode.gain.value = 0.1;
+  });
+
+  high.addEventListener('click', function() {
+    gainNode.gain.value = 1.0;
+  });
+
+  pre.innerHTML = myScript.innerHTML;
+
+});
+
+  </script>
+</html>

@@ -29,6 +29,8 @@
   fadeOut: <input type="text" id="fadeout" value="3"><br/>
   startPosition (ms): <input type="text" id="start" value="0"><br/>
   endPosition (ms): <input type="text" id="end" value="30000"><br/>
+
+  <input id=volume type="range" min=0 max=100 val=100>
 </p>
 
 <br/>
@@ -53,6 +55,8 @@ var getSpeaker = Feed._getSpeaker;
 
 var speaker = getSpeaker({ }, function() {
   console.log('on ready!', arguments);
+
+  $('#volume').val(100);
 });
 
 $('#prepare').on('click', function() {
@@ -114,6 +118,13 @@ $('#resume').on('click', function() {
 
 $('#destroy').on('click', function() {
   sound.destroy();
+});
+
+$('#volume').on('input', function(e) {
+  var v = + $(e.currentTarget).val();
+  console.log('updating to', v);
+
+  speaker.setVolume(v);
 });
 
 </script>
