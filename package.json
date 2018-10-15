@@ -1,33 +1,70 @@
 {
-  "name": "feed-javascript-player",
-  "version": "0.3.1",
+  "name": "feed-media-audio-player",
+  "version": "2.0.0",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w",
+    "dev": "npm-run-all --parallel start watch",
+    "start": "serve html"
+  },
   "devDependencies": {
-    "browserify": "^14.5.0",
-    "gulp": "^3.9.1",
-    "gulp-header": "^1.8.9",
-    "gulp-sourcemaps": "^2.6.1",
-    "gulp-uglify": "^3.0.0",
-    "gulp-util": "^3.0.8",
-    "lodash.assign": "^4.2.0",
-    "tiny-cookie": "^2.1.1",
-    "watchify": "^3.9.0"
+    "@babel/cli": "^7.1.2",
+    "@babel/core": "^7.1.2",
+    "@babel/preset-env": "^7.1.0",
+    "babel-plugin-lodash": "^3.3.4",
+    "rollup-plugin-babel": "^4.0.3",
+    "rollup-plugin-commonjs": "^9.2.0",
+    "rollup-plugin-json": "^3.1.0",
+    "rollup-plugin-node-resolve": "^3.4.0",
+    "rollup-plugin-uglify": "^6.0.0",
+    "serve": "^10.0.2"
   },
   "dependencies": {
-    "browserify-shim": "^3.8.14",
-    "gulp-concat": "^2.6.1",
-    "http-server": "^0.11.1",
-    "jquery": "^3.2.1",
-    "js-base64": "^2.4.0",
-    "local-web-server": "^2.5.2",
-    "soundmanager2": "^2.97.20170602",
-    "underscore": "^1.8.3",
-    "vinyl-buffer": "^1.0.0",
-    "vinyl-fs": "^3.0.0",
-    "vinyl-source-stream": "^1.1.0",
-    "vinyl-transform": "^1.0.0"
+    "@babel/polyfill": "^7.0.0",
+    "js-base64": "^2.4.9",
+    "lodash": "^4.17.11",
+    "lodash.uniqueid": "^4.0.1",
+    "tiny-cookie": "^2.1.2",
+    "whatwg-fetch": "^3.0.0"
   },
-  "browserify-shim": {
-    "jquery": "global:jQuery",
-    "underscore": "global:_"
+  "eslintConfig": {
+    "env": {
+      "es6": true,
+      "browser": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+      "ecmaFeatures": {},
+      "ecmaVersion": 2018,
+      "sourceType": "module"
+    },
+    "plugins": [],
+    "rules": {
+      "indent": [
+        "error",
+        2
+      ],
+      "linebreak-style": [
+        "error",
+        "unix"
+      ],
+      "quotes": [
+        "error",
+        "single"
+      ],
+      "semi": [
+        "error",
+        "always"
+      ],
+      "no-console": [
+        "error",
+        {
+          "allow": [
+            "warn",
+            "error"
+          ]
+        }
+      ]
+    }
   }
 }
