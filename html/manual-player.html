@@ -1,121 +1,124 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 </head>
+
 <body>
 
-<button id="tune">tune</button>
-<button id="play">play</button>
-<button id="pause">pause</button>
-<button id="skip">skip</button>
-<button id="popout">popout</button>
+  <button id="tune">tune</button>
+  <button id="play">play</button>
+  <button id="pause">pause</button>
+  <button id="skip">skip</button>
+  <button id="popout">popout</button>
 
-<button id="volume10">volume 10</button>
-<button id="volume50">volume 50</button>
-<button id="volume100">volume 100</button>
-<br/>
-<br/>
-<br/>
+  <button id="volume10">volume 10</button>
+  <button id="volume50">volume 50</button>
+  <button id="volume100">volume 100</button>
+  <br />
+  <br />
+  <br />
 
-<button id="delete">delete client cookie</button>
+  <button id="delete">delete client cookie</button>
 
-<!--
   <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+  <!--
   <script src="../node_modules/underscore/underscore-min.js"></script>
   <script src="../dist/latest/feed.js" type="application/javascript"></script>
 -->
 
-<!--
+  <!--
   <script src="../node_modules/underscore/underscore-min.js"></script>
   <script src="../dist/latest/feed-jquery.js" type="application/javascript"></script>
 -->
 
-<!--
+  <!--
   <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
   <script src="../dist/latest/feed-underscore.js" type="application/javascript"></script>
 -->
 
-<script src="../dist/latest/feed-jquery-underscore.js" type="application/javascript"></script>
+  <script src="../build/feed.js" type="application/javascript"></script>
 
-<script>
- var player = new Feed.Player(
-  // production
-  'trimdemo',   // or trimdemo
-  'trimdemo', 
-  { 
-    debug: true, 
-    trimming: true,
-    secondsOfCrossfade: 4,
-    crossfadeIn: true
-  }
-  /*
-  // localhost dev
-  '7fcef228d85f96746d7c290eb9056d6ee5411d5e', 
-  '84bead07460f549894197b4cf60becde93121c11', 
-  { 
-    debug: true, 
-    swfBase: '../dist',
-    baseUrl: '//feed.localdomain:8000'
-  }
-  */
-);
+  <script>
+    var player = new Feed.Player(
+      // production
+      'trimdemo',   // or trimdemo
+      'trimdemo',
+      {
+        debug: true,
+        trimming: true,
+        secondsOfCrossfade: 4,
+        crossfadeIn: true
+      }
+      /*
+      // localhost dev
+      '7fcef228d85f96746d7c290eb9056d6ee5411d5e', 
+      '84bead07460f549894197b4cf60becde93121c11', 
+      { 
+        debug: true, 
+        swfBase: '../dist',
+        baseUrl: '//feed.localdomain:8000'
+      }
+      */
+    );
 
-player.on('all', function() {
-  console.log('event sprung!', arguments);
-});
+    player.on('all', function () {
+      console.log('event sprung!', arguments);
+    });
 
-var state = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)player\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
+    var state = decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)player\s*\=\s*([^;]*).*$)|^.*$/, "$1"));
 
-if (state) {
-  // unsuspend and nuke suspend cookie if it was set
-  player.unsuspend(JSON.parse(state), true);
-  document.cookie = 'player=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-}
+    if (state) {
+      // unsuspend and nuke suspend cookie if it was set
+      player.unsuspend(JSON.parse(state), true);
+      document.cookie = 'player=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    }
 
-$('#popout').on('click', function() {
-  var state = player.suspend();
+    $('#popout').on('click', function () {
+      var state = player.suspend();
 
-  // save the current state as a session cookie
-  document.cookie = 'player=' + encodeURIComponent(JSON.stringify(state));
+      // save the current state as a session cookie
+      document.cookie = 'player=' + encodeURIComponent(JSON.stringify(state));
 
-  window.open(window.location, '_blank');
-});
+      window.open(window.location, '_blank');
+    });
 
-$('#delete').on('click', function() {
-  // delete client identifier to get past skip limits
-  player.session._deleteStoredCid();
-});
+    $('#delete').on('click', function () {
+      // delete client identifier to get past skip limits
+      player.session._deleteStoredCid();
+    });
 
-$('#tune').on('click', function() {
-  player.initializeAudio();
-  player.tune();
-});
+    $('#tune').on('click', function () {
+      player.initializeAudio();
+      player.tune();
+    });
 
-$('#play').on('click', function() {
-  player.initializeAudio();
-  player.play();
-});
+    $('#play').on('click', function () {
+      player.initializeAudio();
+      player.play();
+    });
 
-$('#pause').on('click', function() {
-  player.pause();
-});
+    $('#pause').on('click', function () {
+      player.pause();
+    });
 
-$('#skip').on('click', function() {
-  player.skip();
-});
+    $('#skip').on('click', function () {
+      player.skip();
+    });
 
-$('#volume10').on('click', function() {
-  player.speaker.setVolume(10);
-});
+    $('#volume10').on('click', function () {
+      player.speaker.setVolume(10);
+    });
 
-$('#volume50').on('click', function() {
-  player.speaker.setVolume(50);
-});
+    $('#volume50').on('click', function () {
+      player.speaker.setVolume(50);
+    });
 
-$('#volume100').on('click', function() {
-  player.speaker.setVolume(100);
-});
-</script>
+    $('#volume100').on('click', function () {
+      player.speaker.setVolume(100);
+    });
+  </script>
 
 </body>
+
 </html>

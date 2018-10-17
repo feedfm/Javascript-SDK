@@ -1,5 +1,3 @@
-/*global module:false */
-
 /*
  *  Events mixin from Backbone 
  *
@@ -8,20 +6,20 @@
  *  (c) 2010-2013 Jeremy Ashkenas, DocumentCloud Inc.
  *  Backbone may be freely distributed under the MIT license.
  *  For all details and documentation:
- *  http:*backbonejs.org
+ *  http://backbonejs.org
  *
  *  A module that can be mixed in to *any object* in order to provide it with
  *  custom events. You may bind with `on` or remove with `off` callback functions
  *  to an event; trigger`-ing an event fires all callbacks in succession.
  *
  *  var object = {};
- *  _.extend(object, Backbone.Events);
+ *  Object.assicn(object, Backbone.Events);
  *  object.on('expand', function(){ alert('expanded'); });
  *  object.trigger('expand');
  */
 
-var _ = require('underscore');
-
+import { uniqueId, once as runOnce } from './util';
+  
 var slice = Array.prototype.slice;
 
 var Events = {
@@ -41,7 +39,7 @@ var Events = {
   once: function(name, callback, context) {
     if (!eventsApi(this, 'once', name, [callback, context]) || !callback) { return this; }
     var self = this;
-    var once = _.once(function() {
+    var once = runOnce(function() {
       self.off(name, once);
       callback.apply(this, arguments);
     });
@@ -61,10 +59,10 @@ var Events = {
       return this;
     }
 
-    names = name ? [name] : _.keys(this._events);
+    names = name ? [name] : Object.keys(this._events);
     for (i = 0, l = names.length; i < l; i++) {
       name = names[i];
-      if (events = this._events[name]) {
+      if (events = this._events[name]) { // eslint-disable-line no-cond-assign
         this._events[name] = retain = [];
         if (callback || context) {
           for (j = 0, k = events.length; j < k; j++) {
@@ -151,11 +149,11 @@ var eventsApi = function(obj, action, name, rest) {
 var triggerEvents = function(events, args) {
   var ev, i = -1, l = events.length, a1 = args[0], a2 = args[1], a3 = args[2];
   switch (args.length) {
-    case 0: while (++i < l) { (ev = events[i]).callback.call(ev.ctx); } return;
-    case 1: while (++i < l) { (ev = events[i]).callback.call(ev.ctx, a1); } return;
-    case 2: while (++i < l) { (ev = events[i]).callback.call(ev.ctx, a1, a2); } return;
-    case 3: while (++i < l) { (ev = events[i]).callback.call(ev.ctx, a1, a2, a3); } return;
-    default: while (++i < l) { (ev = events[i]).callback.apply(ev.ctx, args); }
+  case 0: while (++i < l) { (ev = events[i]).callback.call(ev.ctx); } return;
+  case 1: while (++i < l) { (ev = events[i]).callback.call(ev.ctx, a1); } return;
+  case 2: while (++i < l) { (ev = events[i]).callback.call(ev.ctx, a1, a2); } return;
+  case 3: while (++i < l) { (ev = events[i]).callback.call(ev.ctx, a1, a2, a3); } return;
+  default: while (++i < l) { (ev = events[i]).callback.apply(ev.ctx, args); }
   }
 };
 
@@ -164,15 +162,16 @@ var listenMethods = {listenTo: 'on', listenToOnce: 'once'};
 // Inversion-of-control versions of `on` and `once`. Tell *this* object to
 // listen to an event in another object ... keeping track of what it's
 // listening to.
-_.each(listenMethods, function(implementation, method) {
+for (let method of Object.keys(listenMethods)) {
+  let implementation = listenMethods[method];
   Events[method] = function(obj, name, callback) {
     var listeners = this._listeners || (this._listeners = {});
-    var id = obj._listenerId || (obj._listenerId = _.uniqueId('l'));
+    var id = obj._listenerId || (obj._listenerId = uniqueId('l'));
     listeners[id] = obj;
     if (typeof name === 'object') { callback = this; }
     obj[implementation](name, callback, this);
     return this;
   };
-});
+}
 
-module.exports = Events;
+export default Events;

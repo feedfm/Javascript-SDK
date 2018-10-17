@@ -1,6 +1,3 @@
-/*global module:false */
-/*jshint camelcase:false */
-
 /*
  *  Feed Media Player View
  *
@@ -64,16 +61,25 @@
  *
  */
 
-var _ = require('underscore');
-var $ = require('jquery');
+import log from './log';
 
-var PlayerView = function(id, player) {
+// make sure NodeList has forEach, since we use it below
+if (window.NodeList && !NodeList.prototype.forEach) {
+  NodeList.prototype.forEach = function (callback, thisArg) {
+    thisArg = thisArg || window;
+    for (var i = 0; i < this.length; i++) {
+      callback.call(thisArg, this[i], i, this);
+    }
+  };
+}
+
+var PlayerView = function (id, player) {
   this.id = id;
   this.alertId = null;
   this.durationId = null;
   this.startedPlayback = false;
 
-  this.$el = $('#' + id);
+  this.$el = document.getElementById(id);
   this.player = player;
 
   this.player.on('placement', this._onPlacement, this);
@@ -89,18 +95,36 @@ var PlayerView = function(id, player) {
   this.player.on('suspend', this._onSuspend, this);
 
   this._enableButtonsBasedOnState();
-  this.displayText = this.originalDisplayText = this.$('.status').html();
+  this.displayText = this.originalDisplayText = document.querySelector('.status').innerHTML;
   this.renderStatus();
 
-  this.$el.on('click', '.status', _.bind(this._onStatusClick, this));
-  this.$el.on('click', '.play-button, .start-button, .resume-button', _.bind(this._onPlayButtonClick, this));
-  this.$el.on('click', '.pause-button', _.bind(this._onPauseButtonClick, this));
-  this.$el.on('click', '.skip-button', _.bind(this._onSkipButtonClick, this));
-  this.$el.on('click', '.like-button', _.bind(this._onLikeButtonClick, this));
-  this.$el.on('click', '.dislike-button', _.bind(this._onDislikeButtonClick, this));
+  document.querySelectorAll('.status').forEach(status => {
+    status.addEventListener('click', this._onStatusClick.bind(this));
+  });
+
+  document.querySelectorAll('.play-button, .start-button, .resume-button').forEach(button => {
+    button.addEventListener('click', this._onPlayButtonClick.bind(this));
+  });
+
+  document.querySelectorAll('.pause-button').forEach(pause => {
+    pause.addEventListener('click', this._onPauseButtonClick.bind(this));
+  });
+
+  document.querySelectorAll('.skip-button').forEach(skip => {
+    skip.addEventListener('click', this._onSkipButtonClick.bind(this));
+  });
+
+  document.querySelectorAll('.like-button').forEach(like => {
+    like.addEventListener('click', this._onLikeButtonClick.bind(this));
+  });
+
+  document.querySelectorAll('.dislike-button').forEach(dislike => {
+    dislike.addEventListener('click', this._onDislikeButtonClick.bind(this));
+  });
+
 };
 
-PlayerView.prototype._onStatusClick = function() {
+PlayerView.prototype._onStatusClick = function () {
   var state = this.player.getCurrentState();
 
   if (state === 'playing') {
@@ -112,38 +136,38 @@ PlayerView.prototype._onStatusClick = function() {
   }
 };
 
-PlayerView.prototype._onPlayButtonClick = function() {
+PlayerView.prototype._onPlayButtonClick = function () {
   this.player.initializeAudio();
   this.player.play();
 };
 
-PlayerView.prototype._onPauseButtonClick = function() {
+PlayerView.prototype._onPauseButtonClick = function () {
   this.player.pause();
 };
 
-PlayerView.prototype._onSkipButtonClick = function() {
+PlayerView.prototype._onSkipButtonClick = function () {
   this.player.skip();
 };
 
-PlayerView.prototype._onLikeButtonClick = function(e) {
-  if ($(e.target).closest('.like-button').is('.liked')) {
-    this.player.unlike();
+PlayerView.prototype._onLikeButtonClick = function (event) {
+  log('like button clicked!', event.target, this);
 
+  if (event.target.classList.contains('liked')) {
+    this.player.unlike();
   } else {
     this.player.like();
-
   }
 };
 
-PlayerView.prototype._onDislikeButtonClick = function() {
+PlayerView.prototype._onDislikeButtonClick = function () {
   this.player.dislike();
 };
 
-PlayerView.prototype.$ = function(arg) {
+PlayerView.prototype.$ = function (arg) {
   return this.$el.find(arg);
 };
 
-PlayerView.prototype._onPlacement = function(placement) {
+PlayerView.prototype._onPlacement = function (placement) {
   if (!this.originalDisplayText) {
     this.originalDisplayText = this.formatPlacement(placement);
 
@@ -151,11 +175,11 @@ PlayerView.prototype._onPlacement = function(placement) {
   }
 };
 
-PlayerView.prototype.formatPlacement = function(placement) {
+PlayerView.prototype.formatPlacement = function (placement) {
   return 'Tune in to <em class=\'placement\'>' + placement.name + '</em>';
 };
 
-PlayerView.prototype._onPlayStarted = function(play) {
+PlayerView.prototype._onPlayStarted = function (play) {
   this.startedPlayback = true;
 
   this.renderStatus(this.formatPlay(play));
@@ -164,115 +188,144 @@ PlayerView.prototype._onPlayStarted = function(play) {
   this._enablePositionTracker();
 };
 
-PlayerView.prototype._enablePositionTracker = function() {
+PlayerView.prototype._enablePositionTracker = function () {
   var playerView = this;
 
   if (!this.durationId) {
-    this.durationId = window.setInterval(function() {
+    this.durationId = window.setInterval(function () {
       playerView.renderPosition(playerView.player.getPosition(), playerView.player.getDuration());
     }, 500);
   }
 };
 
-PlayerView.prototype._setLikeStatus = function(liked) {
+PlayerView.prototype._setLikeStatus = function (liked) {
+  const likes = document.querySelectorAll('.like-button');
+  const dislikes = document.querySelectorAll('.dislike-button');
+
   if (liked === true) {
     // highlight the like button
-    this.$('.like-button').addClass('liked');
-    this.$('.dislike-button').removeClass('disliked');
+    likes.forEach(element => {
+      element.classList.add('liked');
+    });
+    dislikes.forEach(element => {
+      element.classList.remove('disliked');
+    });
 
   } else if (liked === false) {
     // highlight the dislike button
-    this.$('.like-button').removeClass('liked');
-    this.$('.dislike-button').addClass('disliked');
-
+    likes.forEach(element => {
+      element.classList.remove('liked');
+    });
+    dislikes.forEach(element => {
+      element.classList.add('disliked');
+    });
+    
   } else {
     // nobody gets highlighted
-    this.$('.like-button').removeClass('liked');
-    this.$('.dislike-button').removeClass('disliked');
+    likes.forEach(element => {
+      element.classList.remove('liked');
+    });
+    dislikes.forEach(element => {
+      element.classList.remove('disliked');
+    });
 
   }
 };
 
-PlayerView.prototype._disablePositionTracker = function() {
+PlayerView.prototype._disablePositionTracker = function () {
   if (this.durationId) {
     window.clearInterval(this.durationId);
     this.durationId = null;
   }
 };
 
-PlayerView.prototype._onPlayResumed = function() {
+PlayerView.prototype._onPlayResumed = function () {
   this._enablePositionTracker();
-  
+
   this._enableButtonsBasedOnState();
 };
 
-PlayerView.prototype._onPlayPaused = function() {
+PlayerView.prototype._onPlayPaused = function () {
   this._disablePositionTracker();
 
   this._enableButtonsBasedOnState();
 };
 
-PlayerView.prototype._onPlayCompleted = function() {
+PlayerView.prototype._onPlayCompleted = function () {
   this.renderPosition(0, 0);
   this._enableButtonsBasedOnState();
 };
 
-PlayerView.prototype._onPlaysExhausted = function() {
+PlayerView.prototype._onPlaysExhausted = function () {
   this.renderStatus(this.originalDisplayText);
   this.renderAlert('There is no more music to play in this station!');
 
   this._enableButtonsBasedOnState();
 };
 
-PlayerView.prototype._onPlayLiked = function() {
+PlayerView.prototype._onPlayLiked = function () {
   this._setLikeStatus(true);
 };
 
-PlayerView.prototype._onPlayDisliked = function() {
+PlayerView.prototype._onPlayDisliked = function () {
   this._setLikeStatus(false);
 };
 
-PlayerView.prototype._onPlayUnliked = function() {
+PlayerView.prototype._onPlayUnliked = function () {
   this._setLikeStatus();
 };
 
-PlayerView.prototype._onSkipDenied = function() {
+PlayerView.prototype._onSkipDenied = function () {
   this.renderAlert('Sorry you\'ve temporarily run out of skips!');
 };
 
-PlayerView.prototype.formatPlay = function(play) {
+PlayerView.prototype.formatPlay = function (play) {
   return '<span class=\'track\'>' + play.audio_file.track.title +
-     '</span> by <span class=\'artist\'>' + play.audio_file.artist.name +
-     '</span> on <span class=\'release\'>' + play.audio_file.release.title + '</span>';
+    '</span> by <span class=\'artist\'>' + play.audio_file.artist.name +
+    '</span> on <span class=\'release\'>' + play.audio_file.release.title + '</span>';
 };
 
-PlayerView.prototype.renderStatus = function(displayText) {
+PlayerView.prototype.renderStatus = function (displayText) {
   if (displayText !== undefined) {
     this.displayText = displayText;
   }
 
   if (!this.alertId) {
-    this.$('.status').html(this.displayText).removeClass('alert');
+    document.querySelectorAll('.status').forEach(status => {
+      status.innerHTML = this.displayText;
+      status.classList.remove('alert');
+    });
   }
 };
 
-PlayerView.prototype.renderPosition = function(position, duration) {
-  this.$('.elapsed').html(formatTime(position));
-  this.$('.duration').html(formatTime(duration));
+PlayerView.prototype.renderPosition = function (position, duration) {
+
+  document.querySelectorAll('.elapsed').forEach(elapsed => {
+    elapsed.innerHTML = formatTime(position);
+  });
+  document.querySelectorAll('.duration').forEach(duration => {
+    duration.innerHTML = formatTime(duration);
+  });
 
   if (duration === 0) {
-    this.$('.progress').css('width', '0');
+    document.querySelectorAll('.progress').forEach(progress => {
+      progress.style.width = '0';
+    });
+
   } else {
     var elapsed = Math.round((position + 1000) / duration * 100);
     elapsed = (elapsed > 100) ? 100 : elapsed;
-    this.$('.progress').css('width', elapsed + '%');
+
+    document.querySelectorAll('.progress').forEach(progress => {
+      progress.style.width = elapsed + '%';
+    });
   }
 };
 
 function formatTime(millis) {
   var asSeconds = Math.floor(millis / 1000),
-      secondsPart = (asSeconds % 60),
-      minutesPart = Math.floor(asSeconds / 60);
+    secondsPart = (asSeconds % 60),
+    minutesPart = Math.floor(asSeconds / 60);
 
   if (secondsPart < 10) {
     secondsPart = '0' + secondsPart;
@@ -281,84 +334,93 @@ function formatTime(millis) {
   return minutesPart + ':' + secondsPart;
 }
 
-PlayerView.prototype.renderAlert = function(alertText) {
+PlayerView.prototype.renderAlert = function (alertText) {
   if (this.alertId) {
     window.clearTimeout(this.alertId);
   }
 
-  this.$('.status').html(alertText).addClass('alert');
+  document.querySelectorAll('.status').forEach(status => {
+    status.innerHTML = alertText;
+    status.classList.add('alert');
+  });
 
   var playerView = this;
-  this.alertId = window.setTimeout(function() {
+  this.alertId = window.setTimeout(function () {
     playerView.alertId = null;
     playerView.renderStatus();
   }, 3000);
 };
 
-PlayerView.prototype._onSuspend = function() {
+PlayerView.prototype._onSuspend = function () {
   this._enableButtonsBasedOnState();
 };
 
-PlayerView.prototype._enableButtonsBasedOnState = function() {
+PlayerView.prototype._enableButtonsBasedOnState = function () {
   var state = this.player.getCurrentState(),
-      toEnable,
-      toDisable;
+    toEnable,
+    toDisable;
 
   switch (state) {
-    case 'playing':
-      toEnable = '.pause-button, .like-button, .dislike-button';
-      toDisable = '.play-button, .start-button, .resume-button';
+  case 'playing':
+    toEnable = ['.pause-button', '.like-button', '.dislike-button'];
+    toDisable = ['.play-button', '.start-button', '.resume-button'];
 
-      if (this.player.maybeCanSkip()) {
-        toEnable += ', .skip-button';
-      } else {
-        toDisable += ', .skip-button';
-      }
-      break;
+    if (this.player.maybeCanSkip()) {
+      toEnable.push('.skip-button');
+    } else {
+      toDisable.push('.skip-button');
+    }
+    break;
 
-    case 'paused':
-      toEnable = '.play-button, .resume-button, .like-button, .dislike-button';
-      toDisable = '.pause-button, .start-button';
+  case 'paused':
+    toEnable = ['.play-button', '.resume-button', '.like-button', '.dislike-button'];
+    toDisable = ['.pause-button', '.start-button'];
 
-      if (this.player.maybeCanSkip()) {
-        toEnable += ', .skip-button';
-      } else {
-        toDisable += ', .skip-button';
-      }
-      break;
+    if (this.player.maybeCanSkip()) {
+      toEnable.push('.skip-button');
+    } else {
+      toDisable.push('.skip-button');
+    }
+    break;
 
-    case 'suspended':
-      toEnable = '';
-      toDisable = '.play-button, .resume-button, .like-button, .dislike-button, .pause-button, .start-button, .skip-button';
+  case 'suspended':
+    toEnable = [];
+    toDisable = ['.play-button', '.resume-button', '.like-button', '.dislike-button', '.pause-button', '.start-button', '.skip-button'];
 
-      break;
+    break;
 
 
-    /* case 'idle': */
-    default:
-      toEnable = '.play-button, .start-button';
-      toDisable = '.resume-button, .pause-button, .like-button, .dislike-button, .skip-button';
-      break;
+  /* case 'idle': */
+  default:
+    toEnable = ['.play-button', '.start-button'];
+    toDisable = ['.resume-button', '.pause-button', '.like-button', '.dislike-button', '.skip-button'];
+    break;
   }
 
-  this.$(toDisable)
-    .removeClass('button-enabled')
-    .addClass('button-disabled')
-    .attr('disabled', 'true');
-
-  if (toEnable) {
-    this.$(toEnable)
-      .removeClass('button-disabled')
-      .addClass('button-enabled')
-      .removeAttr('disabled');
+  for (let item of toDisable) {
+    document.querySelectorAll(item).forEach(element => {
+      element.classList.remove('button-enabled');
+      element.classList.add('button-disabled');
+      element.disabled = true;
+    });
   }
 
-  this.$el
-    .removeClass('state-playing state-paused state-idle state-suspended')
-    .addClass('state-' + state);
+  for (let item of toEnable) {
+    document.querySelectorAll(item).forEach(element => {
+      element.classList.remove('button-disabled');
+      element.classList.add('button-enabled');
+      element.disabled = false;
+    });
+  }
 
+  const classes = this.$el.classList;
+  classes.remove('state-playing');
+  classes.remove('state-paused');
+  classes.remove('state-idle');
+  classes.remove('state-suspended');
+  classes.add('state-' + state);
 };
 
-module.exports = PlayerView;
+export default PlayerView;
 
 

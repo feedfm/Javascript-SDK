@@ -31,6 +31,14 @@
   display: none;
 }
 
+#player-view .like-button.liked {
+  color: green;
+}
+
+#player-view .dislike-button.disliked {
+  color: red;
+}
+
 </style>
 </head>
 <body>
@@ -44,6 +52,8 @@
 <button class="play-button">play</button>
 <button class="pause-button">pause</button>
 <button class="skip-button">skip</button>
+<button class="like-button">like</button>
+<button class="dislike-button">dislike</button>
 </div>
 
 <button id='delete'>delete client id</button>
@@ -51,10 +61,10 @@
 
 <!-- dependencies -->
 <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../dist/latest/feed-underscore.js" type="application/javascript"></script>
+<script src="../build/feed.js" type="application/javascript"></script>
 
 <script>
-  var player = new Feed.Player('demo', 'demo', { debug: true, swfBase: '../dist' });
+  var player = new Feed.Player('demo', 'demo', { debug: false });
 
   player.on('stations', function(stations) {
     console.log('got the stations:', stations);

@@ -1,6 +1,3 @@
-/*global module:false */
-/*jshint camelcase:false */
-
 /*
  *  Feed Media Player
  *
@@ -14,6 +11,7 @@
  *    player = new Feed.Player(token, secret[, options])
  *
  *  options can be:
+ *    debug: false,         // when true, display console logging statements
  *    trimming: false,      // when true, song start/end trims will be honored
  *    crossfadeIn: false,   // when true, songs do not fade in - they start at full volume
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
@@ -75,12 +73,11 @@
  *
  */
 
-var _ = require('underscore');
-var $ = require('jquery');
-var log = require('./nolog');
-var getSpeaker = require('./speaker');
-var Events = require('./events');
-var Session = require('./session');
+import { intersection } from './util';
+import Speaker from './speaker';
+import log from './log';
+import Events from './events';
+import Session from './session';
 
 function supports_html5_storage() {
   try {
@@ -90,7 +87,7 @@ function supports_html5_storage() {
   }
 }
 
-var Player = function(token, secret, options) {
+var Player = function (token, secret, options) {
   this.state = {
     paused: true,
     suspended: false
@@ -99,12 +96,16 @@ var Player = function(token, secret, options) {
 
   options = options || {};
 
+  if (options.debug) {
+    log.enable();
+  }
+  
   this.trimming = options.trimming || false;
   this.normalizeVolume = options.normalizeVolume || true;
   this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
   this.crossfadeIn = options.crossfadeIn || false;
 
-  _.extend(this, Events);
+  Object.assign(this, Events);
 
   var session = this.session = new Session(token, secret, options);
   this.session.on('play-active', this._onPlayActive, this);
@@ -113,64 +114,58 @@ var Player = function(token, secret, options) {
   this.session.on('plays-exhausted', this._onPlaysExhausted, this);
   this.session.on('prepare-sound', this._onPrepareSound, this);
 
-  this.session.on('all', function() {
+  this.session.on('all', function () {
     // propagate all events out to everybody else
     this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
   }, this);
 
-  // create 'speakerInitialized' promise so we can delay things until
-  // the audio subsystem is set up.
-  var initializeSpeaker = this.initializeSpeaker = $.Deferred();
+  // TODO: update to create speaker object & use getSupportedFormats()
+  const speaker = this.speaker = new Speaker();
+  if (options.formats) {
+    var reqFormatList = options.formats.split(','),
+      suppFormatList = speaker.getSupportedFormats().split(','),
+      reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
+      reqAndSuppFormats = reqAndSuppFormatList.join(',');
 
-  this.speaker = getSpeaker(options, function(supportedFormats) {
-    if (options.formats) {
-      var reqFormatList = options.formats.split(','),
-          suppFormatList = supportedFormats.split(','),
-          reqAndSuppFormatList = _.intersection(reqFormatList, suppFormatList),
-          reqAndSuppFormats = reqAndSuppFormatList.join(',');
+    log('input lists are', reqFormatList, suppFormatList);
+    log('final support list is', reqAndSuppFormats);
 
-      if (reqAndSuppFormatList.length === 0) {
-        reqAndSuppFormats = supportedFormats;
-      }
-
-      session.setFormats(reqAndSuppFormats);
-
-    } else {
-      session.setFormats(supportedFormats);
+    if (reqAndSuppFormatList.length === 0) {
+      reqAndSuppFormats = speaker.getSupportedFormats();
     }
-    initializeSpeaker.resolve();
-  });
+
+    session.setFormats(reqAndSuppFormats);
+
+  } else {
+    session.setFormats(speaker.getSupportedFormats());
+  }
 
   this.setMuted(this.isMuted());
 };
 
-Player.prototype.initializeAudio = function() {
-  var player = this;
+Player.prototype.initializeAudio = function () {
+  this.speaker.initializeAudio();
+};
 
-  this.initializeSpeaker.then(function() {
-    player.speaker.initializeAudio();
-  });
-}
-
-Player.prototype.setPlacementId = function(placementId) {
+Player.prototype.setPlacementId = function (placementId) {
   this.session.setPlacementId(placementId);
 };
 
-Player.prototype.setStationId = function(stationId) {
+Player.prototype.setStationId = function (stationId) {
   this.session.setStationId(stationId);
 };
 
-Player.prototype.setBaseUrl = function(baseUrl) {
+Player.prototype.setBaseUrl = function (baseUrl) {
   this.session.setBaseUrl(baseUrl);
 };
 
-Player.prototype._onPlayActive = function(play) {
+Player.prototype._onPlayActive = function (play) {
   // create a new sound object
   var options = {
-    play: _.bind(this._onSoundPlay, this, play.id),
-    pause: _.bind(this._onSoundPause, this, play.id),
-    finish:  _.bind(this._onSoundFinish, this, play.id),
-    elapse: _.bind(this._onSoundElapse, this, play.id),
+    play: this._onSoundPlay.bind(this, play.id),
+    pause: this._onSoundPause.bind(this, play.id),
+    finish: this._onSoundFinish.bind(this, play.id),
+    elapse: this._onSoundElapse.bind(this, play.id)
   };
 
   if (this.normalizeVolume) {
@@ -182,7 +177,7 @@ Player.prototype._onPlayActive = function(play) {
   }
 
   if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_end &&
-      play.audio_file.duration_in_seconds) {
+    play.audio_file.duration_in_seconds) {
     options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
   }
 
@@ -213,13 +208,13 @@ Player.prototype._onPlayActive = function(play) {
   }
 };
 
-Player.prototype._onSoundPlay = function(playId) {
+Player.prototype._onSoundPlay = function (playId) {
   // sound started playing
   if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
     log('received sound play, but active play does not match', this.state.activePlay, playId);
     return;
   }
-  
+
   this.state.paused = false;
   this.state.activePlay.playStarted = true;
 
@@ -232,31 +227,31 @@ Player.prototype._onSoundPlay = function(playId) {
   this.trigger('play-resumed', this.session.getActivePlay());
 };
 
-Player.prototype.getActivePlay = function() {
+Player.prototype.getActivePlay = function () {
   return this.session.getActivePlay();
 };
 
-Player.prototype.hasActivePlayStarted = function() {
+Player.prototype.hasActivePlayStarted = function () {
   return this.session.hasActivePlayStarted();
 };
 
-Player.prototype.getActivePlacement = function() {
+Player.prototype.getActivePlacement = function () {
   return this.session.getActivePlacement();
 };
 
-Player.prototype._onSoundPause = function(playId) {
+Player.prototype._onSoundPause = function (playId) {
   // sound paused playback
   if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
     log('received sound pause, but active play does not match', this.state.activePlay, playId);
     return;
   }
-  
+
   this.state.paused = true;
 
   this.trigger('play-paused', this.session.getActivePlay());
 };
 
-Player.prototype._onSoundFinish = function(playId, withError) {
+Player.prototype._onSoundFinish = function (playId, withError) {
   if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
     log('received sound finish, but active play does not match', this.state.activePlay, playId);
     return;
@@ -291,17 +286,17 @@ Player.prototype._onSoundFinish = function(playId, withError) {
   }
 };
 
-Player.prototype._onSoundElapse = function(playId) {
+Player.prototype._onSoundElapse = function (playId) {
   if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
     log('received sound elapse, but active play does not match', this.state.activePlay, playId);
     return;
   }
 
   var sound = this.state.activePlay.sound,
-      position = sound.position(),
-      interval = 30 * 1000,  // ping server every 30 seconds
-      previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
-      currentCount = Math.floor(position / interval);
+    position = sound.position(),
+    interval = 30 * 1000,  // ping server every 30 seconds
+    previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
+    currentCount = Math.floor(position / interval);
 
   this.state.activePlay.previousPosition = position;
 
@@ -310,7 +305,7 @@ Player.prototype._onSoundElapse = function(playId) {
   }
 };
 
-Player.prototype._onPlayStarted = function(play) {
+Player.prototype._onPlayStarted = function (play) {
   var session = this.session;
 
   if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
@@ -331,19 +326,16 @@ Player.prototype._onPlayStarted = function(play) {
     // before a 'play-completed' gets triggered
 
     if (this.state.activePlay.soundCompletedWithError) {
-      _.defer(function() {
-        session.requestInvalidate();
-      });
+      setTimeout(() => session.requestInvalidate(), 1);
 
     } else {
-      _.defer(function() {
-        session.reportPlayCompleted();
-      });
+      setTimeout(() => session.reportPlayCompleted(), 1);
+
     }
   }
 };
 
-Player.prototype._onPlayCompleted = function(play) {
+Player.prototype._onPlayCompleted = function (play) {
   if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
     log('received play completed, but it does not match active play', play, this.state.activePlay);
     return;
@@ -356,65 +348,59 @@ Player.prototype._onPlayCompleted = function(play) {
   //this.state.paused = false;
 };
 
-Player.prototype._onPlaysExhausted = function() {
+Player.prototype._onPlaysExhausted = function () {
   this.state.paused = false;
 };
 
-Player.prototype._onPrepareSound = function(url) {
+Player.prototype._onPrepareSound = function (url) {
   log('preparing', url);
   this.speaker.prepare(url);
 };
 
-Player.prototype.isPaused = function() {
+Player.prototype.isPaused = function () {
   return this.session.isTuned() && this.state.paused;
 };
 
-Player.prototype.getStationInformation = function(stationInformationCallback) {
+Player.prototype.getStationInformation = function (stationInformationCallback) {
   return this.session.getStationInformation(stationInformationCallback);
 };
 
-Player.prototype.tune = function() {
-  var player = this;
-
-  this.initializeSpeaker.then(function() {
-    if (!player.session.isTuned()) {
-      player.session.tune();
-    }
-  });
+Player.prototype.tune = function () {
+  if (!this.session.isTuned()) {
+    this.session.tune();
+  }
 };
 
-Player.prototype.play = function() {
-  var player = this;
+Player.prototype.play = function () {
+  const session = this.session;
+  const state = this.state;
 
-  this.initializeSpeaker.then(function() {
+  if (!session.isTuned()) {
+    // not currently playing music
+    state.paused = false;
 
-    if (!player.session.isTuned()) {
-      // not currently playing music
-      player.state.paused = false;
+    return session.tune();
 
-      return player.session.tune();
-
-    } else if (player.session.getActivePlay() && player.state.activePlay && player.state.paused) {
-      // resume playback of song
-      if (player.state.activePlay.playStarted) {
-        player.state.activePlay.sound.resume();
-
-      } else {
-        player.state.activePlay.sound.play();
-      }
+  } else if (session.getActivePlay() && state.activePlay && state.paused) {
+    // resume playback of song
+    if (state.activePlay.playStarted) {
+      state.activePlay.sound.resume();
 
     } else {
-      // waiting for network request to complete
-      player.state.paused = false;
-
+      state.activePlay.sound.play();
     }
-  });
+
+  } else {
+    // waiting for network request to complete
+    state.paused = false;
+
+  }
 };
 
-Player.prototype.pause = function() {
-  if (!this.session.hasActivePlayStarted() || 
-      !this.state.activePlay ||
-      this.state.paused) {
+Player.prototype.pause = function () {
+  if (!this.session.hasActivePlayStarted() ||
+    !this.state.activePlay ||
+    this.state.paused) {
     return;
   }
 
@@ -422,7 +408,7 @@ Player.prototype.pause = function() {
   this.state.activePlay.sound.pause();
 };
 
-Player.prototype.like = function() {
+Player.prototype.like = function () {
   if (!this.session.hasActivePlayStarted()) {
     return;
   }
@@ -432,7 +418,7 @@ Player.prototype.like = function() {
   this.trigger('play-liked');
 };
 
-Player.prototype.unlike = function() {
+Player.prototype.unlike = function () {
   if (!this.session.hasActivePlayStarted()) {
     return;
   }
@@ -442,7 +428,7 @@ Player.prototype.unlike = function() {
   this.trigger('play-unliked');
 };
 
-Player.prototype.dislike = function() {
+Player.prototype.dislike = function () {
   if (!this.session.hasActivePlayStarted()) {
     return;
   }
@@ -456,7 +442,7 @@ Player.prototype.dislike = function() {
   this.skip();
 };
 
-Player.prototype.skip = function() {
+Player.prototype.skip = function () {
   if (!this.session.hasActivePlayStarted()) {
     // can't skip non-playing song
     return;
@@ -467,7 +453,7 @@ Player.prototype.skip = function() {
   this.session.requestSkip();
 };
 
-Player.prototype.destroy = function() {
+Player.prototype.destroy = function () {
   this.session = null;
 
   if (this.state.activePlay && this.state.activePlay.sound) {
@@ -475,7 +461,7 @@ Player.prototype.destroy = function() {
   }
 };
 
-Player.prototype.getCurrentState = function() {
+Player.prototype.getCurrentState = function () {
   if (this.state.suspended) {
     return 'suspended';
 
@@ -493,7 +479,7 @@ Player.prototype.getCurrentState = function() {
   }
 };
 
-Player.prototype.getPosition = function() {
+Player.prototype.getPosition = function () {
   if (this.state.activePlay && this.state.activePlay.sound) {
     return this.state.activePlay.sound.position();
 
@@ -502,7 +488,7 @@ Player.prototype.getPosition = function() {
   }
 };
 
-Player.prototype.getDuration = function() {
+Player.prototype.getDuration = function () {
   if (this.state.activePlay && this.state.activePlay.sound) {
     return this.state.activePlay.sound.duration();
 
@@ -511,12 +497,12 @@ Player.prototype.getDuration = function() {
   }
 };
 
-Player.prototype.maybeCanSkip = function() {
+Player.prototype.maybeCanSkip = function () {
   return this.session.maybeCanSkip();
 };
 
 var mutedKey = 'muted';
-Player.prototype.isMuted = function() {
+Player.prototype.isMuted = function () {
   if (supports_html5_storage()) {
     if (mutedKey in localStorage) {
       return localStorage[mutedKey] === 'true';
@@ -526,10 +512,10 @@ Player.prototype.isMuted = function() {
   return false;
 };
 
-Player.prototype.setMuted = function(isMuted) {
+Player.prototype.setMuted = function (isMuted) {
   if (isMuted) {
     this.speaker.setVolume(0);
-    
+
     if (supports_html5_storage()) {
       localStorage[mutedKey] = true;
     }
@@ -547,9 +533,9 @@ Player.prototype.setMuted = function(isMuted) {
   }
 };
 
-Player.prototype.suspend = function() {
+Player.prototype.suspend = function () {
   var playing = (this.state.activePlay && this.state.activePlay.sound),
-      state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
+    state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
 
   this.pause();
 
@@ -559,7 +545,7 @@ Player.prototype.suspend = function() {
   return state;
 };
 
-Player.prototype.unsuspend = function(state, startPlayback) {
+Player.prototype.unsuspend = function (state, startPlayback) {
   this.session.unsuspend(state);
 
   if (startPlayback) {
@@ -567,6 +553,4 @@ Player.prototype.unsuspend = function(state, startPlayback) {
   }
 };
 
-module.exports = Player;
-
-
+export default Player;

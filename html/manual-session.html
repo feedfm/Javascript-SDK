@@ -1,48 +1,51 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 </head>
+
 <body>
 
-<button id="tune">tune</button>
-<button id="start">start</button>
-<button id="skip">skip</button>
-<button id="invalid">invalid</button>
-<button id="complete">complete</button>
+  <button id="tune">tune</button>
+  <button id="start">start</button>
+  <button id="skip">skip</button>
+  <button id="invalid">invalid</button>
+  <button id="complete">complete</button>
 
-<script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../dist/feed.js" type="application/javascript"></script>
+  <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+  <script src="../build/feed.js" type="application/javascript"></script>
 
-<script>
-var session = new Feed.Session();
+  <script>
+    var session = new Feed.Session();
 
-session.setCredentials('demo', 'demo');
+    session.setCredentials('demo', 'demo');
 
-session.on('all', function() {
-  console.log('event sprung!', arguments);
-});
+    session.on('all', function () {
+      console.log('event sprung!', arguments);
+    });
 
-$('#tune').on('click', function() {
-  session.tune();
-});
+    $('#tune').on('click', function () {
+      session.tune();
+    });
 
-$('#start').on('click', function() {
-  session.reportPlayStarted();
-});
+    $('#start').on('click', function () {
+      session.reportPlayStarted();
+    });
 
-$('#skip').on('click', function() {
-  session.requestSkip();
-});
+    $('#skip').on('click', function () {
+      session.requestSkip();
+    });
 
-$('#invalid').on('click', function() {
-  session.requestInvalidate();
-});
+    $('#invalid').on('click', function () {
+      session.requestInvalidate();
+    });
 
-$('#complete').on('click', function() {
-  session.reportPlayCompleted();
-});
+    $('#complete').on('click', function () {
+      session.reportPlayCompleted();
+    });
 
-</script>
+  </script>
 
 </body>
+
 </html>

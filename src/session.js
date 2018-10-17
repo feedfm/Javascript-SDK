@@ -1,6 +1,3 @@
-/*global module:false */
-/*jshint camelcase:false, latedef:false */
-
 /*
  *  Feed Media Session API
  *
@@ -104,17 +101,14 @@
  *       to '//feed.fm'. Really only used with local testing.
  */
 
-var _ = require('underscore');
-var $ = require('jquery');
-var log = require('./nolog');
-var Events = require('./events');
-var util = require('./util');
-var Base64 = require('js-base64').Base64;
-var Cookie = require('tiny-cookie');
-var version = require('./version');
+import log from './log';
+import Events from './events';
+import { addProtocol } from './util';
+import { getCookie, setCookie, removeCookie } from 'tiny-cookie';
+import { version as FEED_VERSION } from '../package.json';
 
-var Session = function(token, secret, options) {
-  options = options || { };
+var Session = function (token, secret, options) {
+  options = options || {};
 
   this.config = {
     // token
@@ -124,7 +118,7 @@ var Session = function(token, secret, options) {
     // stationId
     // stations
     // clientId
-    baseUrl: util.addProtocol(options.baseUrl || '//feed.fm', true),
+    baseUrl: addProtocol(options.baseUrl || '//feed.fm', true),
     formats: 'mp3,aac',
     maxBitrate: 128,
     timeOffset: 0,
@@ -142,42 +136,43 @@ var Session = function(token, secret, options) {
     // Details of any 'POST /play' request we're awaiting a response for. If this
     // is null, then we're not waiting for the server to give us a play
     pendingRequest: null, /* {
+                               url:        url being posted to
                                ajax:       form data we sent to request a play, copied
                                            here so we can retry it if it fails
                                retryCount: number of times we've retried 
                              }, */
-    
+
     // Once a play has been created and then started, the server will let us
     // create a new play. This holds a reference to the next play that will
     // be active on completion of the current play
     pendingPlay: null // play object we'll start upon completion of current
-                      //   sound 
+    //   sound 
   };
 
-  _.extend(this, Events);
+  Object.assign(this, Events);
 
   if (token && secret) {
     this.setCredentials(token, secret);
   }
 };
 
-Session.prototype.setBaseUrl = function(baseUrl) {
-  this.config.baseUrl = util.addProtocol(baseUrl);
+Session.prototype.setBaseUrl = function (baseUrl) {
+  this.config.baseUrl = addProtocol(baseUrl);
 };
 
-Session.prototype.setCredentials = function(token, secret) {
+Session.prototype.setCredentials = function (token, secret) {
   this.config.token = token;
   this.config.secret = secret;
 };
 
-Session.prototype.setPlacementId = function(placementId) {
+Session.prototype.setPlacementId = function (placementId) {
   this.config.placementId = placementId;
   this.trigger('placement-changed', placementId);
 
   this._retune();
 };
 
-Session.prototype.setStationId = function(stationId) {
+Session.prototype.setStationId = function (stationId) {
   if (this.config.stationId != stationId) {
     this.config.stationId = stationId;
     this.trigger('station-changed', stationId);
@@ -186,18 +181,18 @@ Session.prototype.setStationId = function(stationId) {
   }
 };
 
-Session.prototype.setFormats = function(formats) {
+Session.prototype.setFormats = function (formats) {
   this.config.formats = formats;
 
   this._retune();
 };
 
-Session.prototype.setMaxBitrate = function(maxBitrate) {
+Session.prototype.setMaxBitrate = function (maxBitrate) {
   this.config.maxBitrate = maxBitrate;
 };
 
 // tune
-Session.prototype.tune = function() {
+Session.prototype.tune = function () {
   if (!this.config.token) {
     throw new Error('no token set with setCredentials()');
   }
@@ -220,7 +215,7 @@ Session.prototype.tune = function() {
 };
 
 // _getDefaultPlacementInformation
-Session.prototype._getDefaultPlacementInformation = function(delay) {
+Session.prototype._getDefaultPlacementInformation = function (delay) {
   var self = this;
 
   if (this.config.placementId && this.config.placement && (this.config.placement.id === this.config.placementId)) {
@@ -229,24 +224,17 @@ Session.prototype._getDefaultPlacementInformation = function(delay) {
     return;
   }
 
-  var ajax = { 
-    url: self.config.baseUrl + '/api/v2/placement',
-    type: 'GET',
-    data: {
-      client_id: self.config.clientId
-    },
-    dataType: 'json',
-    timeout: 6000
-  };
-
-  // request placement info from server
-  log('requesting default placement information from server');
-  self._signedAjax(ajax)
-    .done(_.bind(self._receiveDefaultPlacementInformation, self))
-    .fail(_.bind(self._failedDefaultPlacementInformation, self, delay));
+  this._getClientId().then((clientId) => {
+    // request placement info from server
+    log('requesting default placement information from server');
+    self._signedAjax(this.config.baseUrl + '/api/v2/placement?client_id=' + clientId)
+      .then((response) => response.json())
+      .then(self._receiveDefaultPlacementInformation.bind(self))
+      .catch(self._failedDefaultPlacementInformation.bind(self, delay));
+  });
 };
 
-Session.prototype._receiveDefaultPlacementInformation = function(placementInformation) {
+Session.prototype._receiveDefaultPlacementInformation = function (placementInformation) {
   if (placementInformation && placementInformation.success && placementInformation.placement) {
     this.config.placement = placementInformation.placement;
     this.config.stations = placementInformation.stations;
@@ -268,10 +256,10 @@ Session.prototype._receiveDefaultPlacementInformation = function(placementInform
   }
 };
 
-Session.prototype._failedDefaultPlacementInformation = function(delay, response) {
+Session.prototype._failedDefaultPlacementInformation = function (delay, response) {
   if (response.status === 401) {
     try {
-      var fullResponse = $.parseJSON(response.responseText);
+      var fullResponse = JSON.parse(response.responseText);
       if (fullResponse.error && fullResponse.error.code === 5) {
         this.trigger('invalid-credentials');
         return;
@@ -279,14 +267,18 @@ Session.prototype._failedDefaultPlacementInformation = function(delay, response)
     } catch (e) {
       // ignore
     }
+  } else {
+    console.warn('error from placement request', response);
   }
 
   // otherwise, try again in a bit
   delay = delay ? (delay * 2) : 500;
-  _.delay(_.bind(this._getDefaultPlacementInformation, this, delay), delay);
+  setTimeout(() => {
+    this._getDefaultPlacementInformation(delay);
+  }, delay);
 };
 
-Session.prototype.getActivePlacement = function() {
+Session.prototype.getActivePlacement = function () {
   if (this.config.placement) {
     return this.config.placement;
   } else {
@@ -294,7 +286,7 @@ Session.prototype.getActivePlacement = function() {
   }
 };
 
-Session.prototype.getActivePlay = function() { 
+Session.prototype.getActivePlay = function () {
   if (this.config.current) {
     return this.config.current.play;
   } else {
@@ -302,16 +294,16 @@ Session.prototype.getActivePlay = function() {
   }
 };
 
-Session.prototype.isTuned = function() {
+Session.prototype.isTuned = function () {
   return this.config.current || this.config.pendingRequest;
 };
 
-Session.prototype.hasActivePlayStarted = function() {
+Session.prototype.hasActivePlayStarted = function () {
   return this.config.current && this.config.current.started;
 };
 
 // re-tune
-Session.prototype._retune = function() {
+Session.prototype._retune = function () {
   // if we're not actively playing anything, nothing needs to be sent
   if (!this.isTuned()) {
     return;
@@ -320,7 +312,7 @@ Session.prototype._retune = function() {
   this.tune();
 };
 
-Session.prototype.reportPlayStarted = function() {
+Session.prototype.reportPlayStarted = function () {
   if (!this.config.current) {
     throw new Error('attempt to report a play started, but there is no active play');
   }
@@ -328,29 +320,27 @@ Session.prototype.reportPlayStarted = function() {
   this._startPlay(this.config.current.play);
 };
 
-Session.prototype.reportPlayElapsed = function(seconds) {
+Session.prototype.reportPlayElapsed = function (seconds) {
   if (!this.config.current) {
     throw new Error('attempt to report elapsed play time, but the play hasn\'t started');
   }
 
-  this._signedAjax({
-    url: this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/elapse', 
-    type: 'POST',
-    data: {
-      seconds: seconds
+  this._signedAjax(this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/elapse', {
+    method: 'POST',
+    body: JSON.stringify({ seconds: seconds }),
+    headers: {
+      'Content-Type': 'application/json'
     }
   });
 };
 
-Session.prototype.reportPlayCompleted = function() {
+Session.prototype.reportPlayCompleted = function () {
   var self = this;
 
   if (this.config.current && (this.config.current.started)) {
-    this._signedAjax({
-      url: this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/complete',
-      type: 'POST'
-
-    }).always(_.bind(self._receivePlayCompleted, self));
+    this._signedAjax(this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/complete', {
+      method: 'POST'
+    }).finally(self._receivePlayCompleted.bind(self));
 
   } else {
     log('finish on non-active or playing song');
@@ -358,7 +348,7 @@ Session.prototype.reportPlayCompleted = function() {
   }
 };
 
-Session.prototype._receivePlayCompleted = function() {
+Session.prototype._receivePlayCompleted = function () {
   if (!this.config.pendingRequest) {
     log('song finished, and no outstanding request, so playing pendingPlay');
     // if we're not waiting for an incoming request, then we must
@@ -377,7 +367,7 @@ Session.prototype._receivePlayCompleted = function() {
   }
 };
 
-Session.prototype.requestSkip = function() {
+Session.prototype.requestSkip = function () {
   if (!this.config.current) {
     throw new Error('No song being played');
   }
@@ -391,15 +381,15 @@ Session.prototype.requestSkip = function() {
     return;
   }
 
-  this._signedAjax({
-    url: this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/skip',
-    type: 'POST'
+  this._signedAjax(this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/skip', {
+    method: 'POST'
   })
-    .done(_.bind(this._receiveSkip, this, this.config.current.play))
-    .fail(_.bind(this._failSkip, this, this.config.current.play));
+    .then((response) => response.json())
+    .then(this._receiveSkip.bind(this, this.config.current.play))
+    .catch(this._failSkip.bind(this, this.config.current.play));
 };
 
-Session.prototype.requestInvalidate = function() {
+Session.prototype.requestInvalidate = function () {
   if (!this.config.current) {
     throw new Error('No active song to invalidate!');
   }
@@ -407,22 +397,22 @@ Session.prototype.requestInvalidate = function() {
   this._sendInvalidate(this.config.current.play);
 };
 
-Session.prototype._sendInvalidate = function(play, delay) {
-  this._signedAjax({
-    url: this.config.baseUrl + '/api/v2/play/' + play.id + '/invalidate',
-    type: 'POST'
+Session.prototype._sendInvalidate = function (play, delay) {
+  this._signedAjax(this.config.baseUrl + '/api/v2/play/' + play.id + '/invalidate', {
+    method: 'POST'
   })
-    .done(_.bind(this._receiveInvalidate, this, play))
-    .fail(_.bind(this._failInvalidate, this, delay, play));
+    .then((response) => response.json())
+    .then(this._receiveInvalidate.bind(this, play))
+    .catch(this._failInvalidate.bind(this, delay, play));
 };
 
-Session.prototype._failInvalidate = function(delay, play, response) {
+Session.prototype._failInvalidate = function (delay, play, response) {
   var self = this;
 
   delay = (delay ? delay * 2 : 200);
 
   if (delay < 3000) {
-    _.delay(function() {
+    setTimeout(() => {
       self._sendInvalidate(play);
     }, delay);
 
@@ -432,7 +422,7 @@ Session.prototype._failInvalidate = function(delay, play, response) {
   }
 };
 
-Session.prototype._receiveInvalidate = function(play, response) {
+Session.prototype._receiveInvalidate = function (play, response) {
   if (!this.config.current || (this.config.current.play !== play)) {
     // not holding this song any more - just ignore it
     return;
@@ -453,7 +443,7 @@ Session.prototype._receiveInvalidate = function(play, response) {
   } else {
     log('invalidating current song');
     this._assignCurrentPlay(null, true);
-  
+
     if (!this.config.pendingRequest) {
       log('queueing up new song');
       this._requestNextPlay();
@@ -462,7 +452,7 @@ Session.prototype._receiveInvalidate = function(play, response) {
   }
 };
 
-Session.prototype._failSkip = function(play) {
+Session.prototype._failSkip = function (play) {
   if (!this.config.current || (this.config.current.play !== play)) {
     // not playing this song any more - just ignore it
     return;
@@ -472,7 +462,7 @@ Session.prototype._failSkip = function(play) {
   this.trigger('skip-denied');
 };
 
-Session.prototype._receiveSkip = function(play, response) {
+Session.prototype._receiveSkip = function (play, response) {
   if (!this.config.current || (this.config.current.play !== play)) {
     // not playing this song any more - just ignore it
     return;
@@ -504,7 +494,7 @@ Session.prototype._receiveSkip = function(play, response) {
   }
 };
 
-Session.prototype._startPlay = function(play) {
+Session.prototype._startPlay = function (play) {
   if (this.config.current.retryCount > 2) {
     // fuck it - let the user hear the song
     this._receiveStartPlay(play, { success: true, can_skip: true });
@@ -513,18 +503,17 @@ Session.prototype._startPlay = function(play) {
     log('telling server we\'re starting the play', play);
 
     // tell the server that we're going to start this song
-    this._signedAjax({
-      url: this.config.baseUrl + '/api/v2/play/' + play.id + '/start',
-      type: 'POST',
-      dataType: 'json',
-      timeout: 3000
+    this._signedAjax(this.config.baseUrl + '/api/v2/play/' + play.id + '/start', {
+      method: 'POST'
+      // TODO: add timeout!
     })
-      .done(_.bind(this._receiveStartPlay, this, play))
-      .fail(_.bind(this._failStartPlay, this, play));
+      .then((response) => response.json())
+      .then(this._receiveStartPlay.bind(this, play))
+      .catch(this._failStartPlay.bind(this, play));
   }
 };
 
-Session.prototype._receiveStartPlay = function(play, response) {
+Session.prototype._receiveStartPlay = function (play, response) {
   if (response.success) {
 
     if (this.config.current && (this.config.current.play === play)) {
@@ -546,13 +535,13 @@ Session.prototype._receiveStartPlay = function(play, response) {
   }
 };
 
-Session.prototype._failStartPlay = function(play, response) {
+Session.prototype._failStartPlay = function (play, response) {
   // only process if we're still actually waiting for this
   if (this.config.current && (this.config.current.play === play)) {
 
     if (response.status === 403) {
       try {
-        var fullResponse = $.parseJSON(response.responseText);
+        var fullResponse = JSON.parse(response.responseText);
 
         if (fullResponse.error && fullResponse.error.code === 20) {
           // we seem to have missed the response to the original start, so
@@ -570,7 +559,9 @@ Session.prototype._failStartPlay = function(play, response) {
     this.config.current.retryCount++;
 
     // wait a second and try again
-    _.delay(_.bind(this._startPlay, this, play), 1000);
+    setTimeout(() => {
+      this._startPlay(play);
+    });
 
   } else {
     log('startPlay failed, but we don\'t care any more');
@@ -578,7 +569,7 @@ Session.prototype._failStartPlay = function(play, response) {
 };
 
 // start playing the given song
-Session.prototype._assignCurrentPlay = function(play, waitingIfEmpty) {
+Session.prototype._assignCurrentPlay = function (play, waitingIfEmpty) {
   // remove any existing play
   if (this.config.current) {
     this.trigger('play-completed', this.config.current.play);
@@ -614,10 +605,10 @@ Session.prototype._assignCurrentPlay = function(play, waitingIfEmpty) {
   }
 };
 
-Session.prototype._requestNextPlay = function(delay) {
+Session.prototype._requestNextPlay = function (delay) {
   var self = this;
 
-  this._getClientId().then(function() {
+  this._getClientId().then(function () {
     if (self.config.pendingRequest) {
       if (!delay) {
         log('already waiting for a request to finish');
@@ -642,52 +633,57 @@ Session.prototype._requestNextPlay = function(delay) {
         // retry the request
         self.config.pendingRequest.retryCount++;
 
-        self._signedAjax(self.config.pendingRequest.ajax)
-          .done(_.bind(self._receiveNextPlay, self, self.config.pendingRequest.ajax))
-          .fail(_.bind(self._failedNextPlay, self, delay, self.config.pendingRequest.ajax));
+        self._signedAjax(self.config.pendingRequest.url, self.config.pendingRequest.ajax)
+          .then((response) => response.json())
+          .then(self._receiveNextPlay.bind(self, self.config.pendingRequest.ajax))
+          .then(self._failedNextPlay.bind(self, delay, self.config.pendingRequest.ajax));
         return;
       }
-      
+
     } else {
       // create a new request
 
-      var ajax = { 
-        url: self.config.baseUrl + '/api/v2/play',
-        type: 'POST',
-        dataType: 'json',
-        timeout: 6000,
-        data: {
-          formats: self.config.formats,
-          client_id: self.config.clientId,
-          max_bitrate: self.config.maxBitrate,
-          secure: true
-        }
+      let data = {
+        formats: self.config.formats,
+        client_id: self.config.clientId,
+        max_bitrate: self.config.maxBitrate,
+        secure: true
       };
 
       if (self.config.placementId) {
-        ajax.data.placement_id = self.config.placementId;
+        data.placement_id = self.config.placementId;
       }
 
       if (self.config.stationId) {
-        ajax.data.station_id = self.config.stationId;
+        data.station_id = self.config.stationId;
       }
 
+      var ajax = {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      };
+
       self.config.pendingRequest = {
+        url: self.config.baseUrl + '/api/v2/play',
         ajax: ajax,
         retryCount: 0
       };
 
       // request new play from server
       log('requesting new play from server', ajax);
-      self._signedAjax(ajax)
-        .done(_.bind(self._receiveNextPlay, self, ajax))
-        .fail(_.bind(self._failedNextPlay, self, delay, ajax));
+      self._signedAjax(self.config.baseUrl + '/api/v2/play', ajax)
+        .then((response) => response.json())
+        .then(self._receiveNextPlay.bind(self, ajax))
+        .catch(self._failedNextPlay.bind(self, delay, ajax));
     }
   });
 };
 
 // we received a song to play from the server
-Session.prototype._receiveNextPlay = function(ajax, response) {
+Session.prototype._receiveNextPlay = function (ajax, response) {
   // only process if we're still actually waiting for this
   if (this.config.pendingRequest && (this.config.pendingRequest.ajax === ajax)) {
     // this isn't pending any more
@@ -732,13 +728,13 @@ Session.prototype._receiveNextPlay = function(ajax, response) {
 };
 
 // server returned an error when we requested the next song
-Session.prototype._failedNextPlay = function(delay, ajax, response) {
+Session.prototype._failedNextPlay = function (delay, ajax, response) {
   // only process if we're still actually waiting for this
   if (this.config.pendingRequest && (this.config.pendingRequest.ajax === ajax)) {
 
     if (response.status === 403) {
       try {
-        var fullResponse = $.parseJSON(response.responseText);
+        var fullResponse = JSON.parse(response.responseText);
 
         if (fullResponse.error && fullResponse.error.code === 19) {
           // user isn't in the US any more, so let the call fail
@@ -754,36 +750,34 @@ Session.prototype._failedNextPlay = function(delay, ajax, response) {
     log('request failed - trying again', response.status);
 
     delay = delay ? (delay * 2) : 500;
-    _.delay(_.bind(this._requestNextPlay, this, delay), delay);
+    setTimeout(() => {
+      this._requestNextPlay(delay);
+    }, delay);
 
   } else {
     log('nextPlay failed, but we don\'t care');
   }
 };
 
-Session.prototype._getClientId = function() {
-  if (this.clientPromise) {
-    return this.clientPromise;
+Session.prototype._getClientId = function () {
+  if (!this.clientPromise) {
+    this.clientPromise = new Promise((resolve) => {
+      this._requestClientId((clientId) => {
+        // once we've got a clientId, stick it in the config
+        this.config.clientId = clientId;
+
+        this._setStoredCid(this.config.clientId);
+
+        resolve(clientId);
+      });
+    });
   }
-  var clientDeferred = new $.Deferred();
-  this.clientPromise = clientDeferred.promise();
-
-  var self = this;
-
-  this._requestClientId(function(clientId) {
-    // once we've got a clientId, stick it in the config
-    self.config.clientId = clientId;
-
-    self._setStoredCid(self.config.clientId);
-
-    clientDeferred.resolve(clientId);
-  });
 
   return this.clientPromise;
 };
 
 // hit the server up for a client id and return it via the passed in deferred
-Session.prototype._requestClientId = function(saveClientId, delay) {
+Session.prototype._requestClientId = function (saveClientId, delay) {
   // see if we've got a cookie
   var clientId = this._getStoredCid();
 
@@ -793,45 +787,44 @@ Session.prototype._requestClientId = function(saveClientId, delay) {
   } else {
     var self = this;
 
-    this._signedAjax({
-      url: self.config.baseUrl + '/api/v2/client',
-      type: 'POST'
+    this._signedAjax(self.config.baseUrl + '/api/v2/client', {
+      method: 'POST'
+    }).then((response) => response.json())
+      .then(function (response) {
+        if (response.success) {
+          saveClientId(response.client_id);
 
-    }).done(function(response) {
-      if (response.success) {
-        saveClientId(response.client_id);
+        } else {
+          repeatAfter(delay, 2000, function (newDelay) {
+            // retry until the end of time
+            self._requestClientId(saveClientId, newDelay);
+          });
+        }
 
-      } else {
-        repeatAfter(delay, 2000, function(newDelay) { 
+      }).catch(function (response) {
+        if (response.status === 403) {
+          try {
+            var fullResponse = JSON.parse(response.responseText);
+
+            if (fullResponse.error && fullResponse.error.code === 19) {
+              // user isn't in the US any more, so let the call fail
+              self.trigger('not-in-us', fullResponse.error.message);
+              return;
+            }
+          } catch (e) {
+            // some other response - fall through and try again
+            log('unknown response for client id request', e.message);
+          }
+
+        } else {
+          log('unknown client id response status', response.status);
+        }
+
+        repeatAfter(delay, 2000, function (newDelay) {
           // retry until the end of time
           self._requestClientId(saveClientId, newDelay);
         });
-      }
-
-    }).fail(function(response) {
-      if (response.status === 403) {
-        try {
-          var fullResponse = $.parseJSON(response.responseText);
-
-          if (fullResponse.error && fullResponse.error.code === 19) {
-            // user isn't in the US any more, so let the call fail
-            self.trigger('not-in-us', fullResponse.error.message);
-            return;
-          }
-        } catch (e) {
-          // some other response - fall through and try again
-          log('unknown response for client id request', e.message);
-        }
-
-      } else {
-        log('unknown client id response status', response.status);
-      }
-
-      repeatAfter(delay, 2000, function(newDelay) { 
-        // retry until the end of time
-        self._requestClientId(saveClientId, newDelay);
       });
-    });
   }
 };
 
@@ -842,20 +835,19 @@ function repeatAfter(delay, max, cb) {
     delay = max;
   }
 
-  setTimeout(function() {
+  setTimeout(function () {
     cb(delay);
   }, delay);
 
 }
 
-Session.prototype.maybeCanSkip = function() {
+Session.prototype.maybeCanSkip = function () {
   return this.config.current && this.config.current.started && this.config.current.canSkip;
 };
 
-Session.prototype.likePlay = function(playId) {
-  this._signedAjax({
-    url: this.config.baseUrl + '/api/v2/play/' + playId + '/like',
-    type: 'POST'
+Session.prototype.likePlay = function (playId) {
+  this._signedAjax(this.config.baseUrl + '/api/v2/play/' + playId + '/like', {
+    method: 'POST'
   });
 
   if (this.config.current && (this.config.current.play.id === playId)) {
@@ -863,10 +855,9 @@ Session.prototype.likePlay = function(playId) {
   }
 };
 
-Session.prototype.unlikePlay = function(playId) {
-  this._signedAjax({
-    url: this.config.baseUrl + '/api/v2/play/' + playId + '/like',
-    type: 'DELETE'
+Session.prototype.unlikePlay = function (playId) {
+  this._signedAjax(this.config.baseUrl + '/api/v2/play/' + playId + '/like', {
+    method: 'DELETE'
   });
 
   if (this.config.current && (this.config.current.play.id === playId)) {
@@ -874,10 +865,9 @@ Session.prototype.unlikePlay = function(playId) {
   }
 };
 
-Session.prototype.dislikePlay = function(playId) {
-  this._signedAjax({
-    url: this.config.baseUrl + '/api/v2/play/' + playId + '/dislike',
-    type: 'POST'
+Session.prototype.dislikePlay = function (playId) {
+  this._signedAjax(this.config.baseUrl + '/api/v2/play/' + playId + '/dislike', {
+    method: 'POST'
   });
 
   if (this.config.current && (this.config.current.play.id === playId)) {
@@ -893,8 +883,8 @@ Session.prototype.dislikePlay = function(playId) {
  * in milliseconds.
  */
 
-Session.prototype.suspend = function(startPosition) {
-  var saved = { };
+Session.prototype.suspend = function (startPosition) {
+  var saved = {};
 
   if (this.config.placementId) {
     saved.placementId = this.config.placementId;
@@ -910,7 +900,7 @@ Session.prototype.suspend = function(startPosition) {
     // will return the same data)
     saved.placement = this.config.placement;
     saved.stations = this.config.stations;
-    saved.play = _.clone(this.config.current.play);
+    saved.play = { ...this.config.current.play };
     saved.play.startPosition = startPosition;
     saved.canSkip = this.config.current.canSkip;
   }
@@ -926,7 +916,7 @@ Session.prototype.suspend = function(startPosition) {
  * 'session.tune()' call was made.
  */
 
-Session.prototype.unsuspend = function(saved) {
+Session.prototype.unsuspend = function (saved) {
   if (this.getActivePlay()) {
     throw new Error('You cannot unsuspend after running tune()');
   }
@@ -966,42 +956,51 @@ Session.prototype.unsuspend = function(saved) {
 };
 
 var cookieName = 'cid';
-Session.prototype._getStoredCid = function() {
-  return Cookie.get(cookieName);
+Session.prototype._getStoredCid = function () {
+  return getCookie(cookieName);
 };
 
-Session.prototype._setStoredCid = function(value) {
-  Cookie.set(cookieName, value, { expires: 3650, path: '/' });
+Session.prototype._setStoredCid = function (value) {
+  setCookie(cookieName, value, { expires: 3650, path: '/' });
 };
 
-Session.prototype._deleteStoredCid = function() {
-  $.removeCookie(cookieName, { path: '/' });
+Session.prototype._deleteStoredCid = function () {
+  removeCookie(cookieName);
 };
 
-Session.prototype._sign = function(request) {
+Session.prototype._sign = function (request) {
   var authorization;
 
+  if (!request) {
+    request = {};
+  }
+
   // use Basic auth for HTTPS
-  authorization = 'Basic ' + Base64.encode(this.config.token + ':' + this.config.secret);
+  authorization = 'Basic ' + btoa(this.config.token + ':' + this.config.secret);
 
-  request.headers = {
-    Authorization: authorization
-  };
+  if (request.headers) {
+    request.headers['Authorization'] = authorization;
 
-  request.headers["X-Feed-SDK"] = version;
+  } else {
+    request.headers = {
+      Authorization: authorization
+    };
+  }
+
+  request.headers['X-Feed-SDK'] = FEED_VERSION;
 
   return request;
 };
 
-Session.prototype._signedAjax = function(request) {
+Session.prototype._signedAjax = function (url, request) {
   var self = this;
 
-  return self._ajax(self._sign(request));
+  return self._ajax(url, self._sign(request));
 };
 
-Session.prototype._ajax = function(request) {
-  return $.ajax(request);
+Session.prototype._ajax = function (url, request) {
+  return fetch(url, request);
 };
 
-module.exports = Session;
+export default Session;
 

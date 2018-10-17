@@ -1,5 +1,3 @@
-/*global module:false */
-
 /*
  * The speaker object encapsulates the SoundManager2 code and boils it down
  * to the following api:
@@ -64,11 +62,6 @@
  *
  *   debug: if true, emit debug information to the console
  *
- * 'onReady' is also optional, and is a callback that will be called as
- * soon as the sond system is initialized (or immediately if it was already
- * initialized) and it will be given a string that lists supported
- * audio formats, suitable for passing to Feed.Session.setFormats().
- *
  * The first function call to 'speaker()' is what configures and defines the
  * speaker - and subsequent calls just return the already-created instance.
  * I think this is a poor interface, but I don't have a better one at the
@@ -76,28 +69,18 @@
  *
  */
 
-var _ = require('underscore');
-var $ = require('jquery');
-var log = require('./nolog');
-var Events = require('./events');
-var util = require('./util');
-var version = require('./version');
+import log from './log';
+import Events from './events';
+import { uniqueId } from './util';
 
-var iOSp = /(iPhone|iPad)/i.test(navigator.userAgent);
+const iOSp = /(iPhone|iPad)/i.test(navigator.userAgent);
 
-var SILENCE = iOSp ? 'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
-                     'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+const SILENCE = iOSp ?
+  'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
+  'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
-// fake console to redirect soundmanager2 to the feed logger
-var feedConsole = {
-  log: log,
-  info: log,
-  warn: log,
-  error: log
-};
-
-var Sound = function(speaker, options, id, url) { 
-  var obj = _.extend(this, Events);
+var Sound = function (speaker, options, id, url) {
+  var obj = Object.assign(this, Events);
 
   obj.id = id;
 
@@ -131,11 +114,11 @@ var Sound = function(speaker, options, id, url) {
       }
     }
 
-    _.each(['play', 'pause', 'finish', 'elapse'], function(ev) {
+    for (let ev of ['play', 'pause', 'finish', 'elapse']) {
       if (ev in options) {
         obj.on(ev, options[ev]);
       }
-    });
+    }
 
     this.gain = options.gain || 0;
 
@@ -152,43 +135,43 @@ function d(audio) {
 }
 
 Sound.prototype = {
-  play: function() {
+  play: function () {
     log(this.id + ' sound play');
     return this.speaker._playSound(this);
   },
 
   // pause playback of the current sound clip
-  pause: function() {
+  pause: function () {
     log(this.id + ' sound pause');
     return this.speaker._pauseSound(this);
   },
 
   // resume playback of the current sound clip
-  resume: function() {
+  resume: function () {
     log(this.id + ' sound resume');
     return this.speaker._playSound(this);
   },
 
   // elapsed number of milliseconds played
-  position: function() {
+  position: function () {
     //log(this.id + ' sound position');
     return this.speaker._position(this);
   },
 
   // duration in milliseconds of the song
   // (this may change until the song is full loaded)
-  duration: function() {
+  duration: function () {
     //log(this.id + ' sound duration');
     return this.speaker._duration(this);
   },
 
   // stop playing the given sound clip, unload it, and disable events
-  destroy: function() {
+  destroy: function () {
     log(this.id + ' being called to destroy');
     this.speaker._destroySound(this);
   },
 
-  gainAdjustedVolume: function(volume) {
+  gainAdjustedVolume: function (volume) {
     if (!this.gain) {
       log('no volume adjustment');
       return volume / 100;
@@ -203,36 +186,29 @@ Sound.prototype = {
 
 };
 
-var Speaker = function(options) {
-  var speaker = this;
+var Speaker = function () {
 
-  var aTest = document.createElement('audio');
-  if (document.createElement('audio').canPlayType('audio/aac')) {
-    this.preferred = 'aac,mp3';
-  } else {
-    this.preferred = 'mp3';
-  }
 };
 
 function createAudioContext() {
-  var AudioCtor = window.AudioContext || window.webkitAudioContext
+  var AudioCtor = window.AudioContext || window.webkitAudioContext;
 
-  desiredSampleRate = 44100;
-  var context = new AudioCtor()
+  let desiredSampleRate = 44100;
+  var context = new AudioCtor();
 
   // Check if hack is necessary. Only occurs in iOS6+ devices
   // and only when you first boot the iPhone, or play a audio/video
   // with a different sample rate
   if (context.sampleRate !== desiredSampleRate) {
-    var buffer = context.createBuffer(1, 1, desiredSampleRate)
-    var dummy = context.createBufferSource()
-    dummy.buffer = buffer
-    dummy.connect(context.destination)
-    dummy.start(0)
-    dummy.disconnect()
+    var buffer = context.createBuffer(1, 1, desiredSampleRate);
+    var dummy = context.createBufferSource();
+    dummy.buffer = buffer;
+    dummy.connect(context.destination);
+    dummy.start(0);
+    dummy.disconnect();
 
-    context.close() // dispose old context
-    context = new AudioCtor()
+    context.close(); // dispose old context
+    context = new AudioCtor();
   }
 
   return context;
@@ -240,7 +216,7 @@ function createAudioContext() {
 
 Speaker.prototype = {
   vol: 100,  // 0..100
-  outstandingPlays: { },
+  outstandingPlays: {},
 
   audioContext: null, // for mobile safari
 
@@ -250,7 +226,7 @@ Speaker.prototype = {
 
   prepareWhenReady: null, // url to prepare when active player is fully loaded
 
-  initializeAudio: function() {
+  initializeAudio: function () {
     // On mobile devices, we need to kick off playback of a sound in
     // response to a user event. This does that.
     if (this.active === null) {
@@ -269,12 +245,15 @@ Speaker.prototype = {
     }
   },
 
-  _createAudioGainNode: function(audio) {
-    // only for iOS
-    //  if (!/(iPhone|iPad)/i.test(navigator.userAgent)) {
-    //    return null;
-    //  }
+  getSupportedFormats: function () {
+    if (document.createElement('audio').canPlayType('audio/aac')) {
+      return 'aac,mp3';
+    } else {
+      return 'mp3';
+    }
+  },
 
+  _createAudioGainNode: function (audio) {
     var source = this.audioContext.createMediaElementSource(audio);
     var gainNode = this.audioContext.createGain();
     gainNode.gain.value = 1.0;
@@ -285,7 +264,7 @@ Speaker.prototype = {
     return gainNode.gain;
   },
 
-  _createAudio: function(url) {
+  _createAudio: function (url) {
     var DEFAULT_VOLUME = 1.0;
 
     var audio = new Audio(url);
@@ -316,14 +295,14 @@ Speaker.prototype = {
     };
   },
 
-  _addEventListeners: function(audio) {
-    audio.addEventListener('pause', _.bind(this._onAudioPauseEvent, this));
-    audio.addEventListener('ended', _.bind(this._onAudioEndedEvent, this));
-    audio.addEventListener('timeupdate', _.bind(this._onAudioTimeUpdateEvent, this));
+  _addEventListeners: function (audio) {
+    audio.addEventListener('pause', this._onAudioPauseEvent.bind(this));
+    audio.addEventListener('ended', this._onAudioEndedEvent.bind(this));
+    audio.addEventListener('timeupdate', this._onAudioTimeUpdateEvent.bind(this));
     //this._debugAudioObject(audio);
   },
 
-  _onAudioPauseEvent: function(event) {
+  _onAudioPauseEvent: function (event) {
     var audio = event.currentTarget;
 
     if (audio.src === SILENCE) {
@@ -342,7 +321,7 @@ Speaker.prototype = {
     this.active.sound.trigger('pause');
   },
 
-  _onAudioEndedEvent: function(event) {
+  _onAudioEndedEvent: function (event) {
     var audio = event.currentTarget;
 
     if (audio.src === SILENCE) {
@@ -370,7 +349,7 @@ Speaker.prototype = {
     sound.trigger('finish');
   },
 
-  _onAudioTimeUpdateEvent: function(event) {
+  _onAudioTimeUpdateEvent: function (event) {
     var audio = event.currentTarget;
 
     if (audio.src === SILENCE) {
@@ -423,7 +402,7 @@ Speaker.prototype = {
       this.fading.sound.trigger('finish');
 
     } else {
-    log('elapse volume');
+      log('elapse volume');
       this._setVolume(this.active);
 
       this.active.sound.trigger('elapse');
@@ -434,7 +413,7 @@ Speaker.prototype = {
     }
   },
 
-  _setVolume: function(audioGroup, sound) {
+  _setVolume: function (audioGroup, sound) {
     if (!sound) { sound = audioGroup.sound; }
 
     var currentTime = audioGroup.audio.currentTime;
@@ -478,16 +457,16 @@ Speaker.prototype = {
     }
   },
 
-  _debugAudioObject: function(object) {
-    var events = [ 'abort', 'load', 'loadend', 'loadstart', 'loadeddata', 'loadedmetadata', 'canplay', 'canplaythrough', 'seeked', 'seeking', 'stalled', 'timeupdate', 'volumechange', 'waiting', 'durationchange', 'progress', 'emptied', 'ended', 'play', 'pause'  ];
+  _debugAudioObject: function (object) {
+    var events = ['abort', 'load', 'loadend', 'loadstart', 'loadeddata', 'loadedmetadata', 'canplay', 'canplaythrough', 'seeked', 'seeking', 'stalled', 'timeupdate', 'volumechange', 'waiting', 'durationchange', 'progress', 'emptied', 'ended', 'play', 'pause'];
     var speaker = this;
 
     for (var i = 0; i < events.length; i++) {
-      object.addEventListener(events[i], function(event) {
+      object.addEventListener(events[i], function (event) {
         var audio = event.currentTarget;
-        var name = (audio === speaker.active.audio) ?    'active' :
-                   (audio === speaker.preparing.audio) ? 'preparing' :
-                                           'fading';
+        var name = (audio === speaker.active.audio) ? 'active' :
+          (audio === speaker.preparing.audio) ? 'preparing' :
+            'fading';
 
         log(name + ': ' + event.type);
         log('    active: ' + d(speaker.active.audio));
@@ -503,8 +482,8 @@ Speaker.prototype = {
 
   // Create and return new sound object. This throws the song into
   // the preparing audio instance.
-  create: function(url, optionsAndCallbacks) {
-    var id = _.uniqueId('feed-play-');
+  create: function (url, optionsAndCallbacks) {
+    var id = uniqueId('feed-play-');
     var sound = new Sound(this, optionsAndCallbacks, id, url);
 
     log('created play ' + id + ' (' + url + ')', optionsAndCallbacks);
@@ -520,10 +499,8 @@ Speaker.prototype = {
 
     return sound;
   },
-  
-  prepare: function(url) {
-    //url = url.replace('u9e9h7z5.map2.ssl.hwcdn.net', 's3.amazonaws.com');
 
+  prepare: function (url) {
     if (!this.active.audio) {
       this.prepareWhenReady = url;
       return;
@@ -542,7 +519,7 @@ Speaker.prototype = {
     this.prepareWhenReady = url;
   },
 
-  _prepare: function(url, startPosition) {
+  _prepare: function (url, startPosition) {
     // empty out any pending request
     this.prepareWhenReady = null;
 
@@ -560,12 +537,12 @@ Speaker.prototype = {
   /*
    * Kick off playback of the requested sound.
    */
-  
-  _playSound: function(sound) {
+
+  _playSound: function (sound) {
     var speaker = this;
 
     if (!this.active.audio) {
-      console.log('**** player.initializeAudio() *** not called');
+      console.error('**** player.initializeAudio() *** not called');
       return;
     }
 
@@ -575,13 +552,13 @@ Speaker.prototype = {
 
         // resume playback
         this.active.audio.play()
-          .then(function() {
+          .then(function () {
             log('resumed playback');
             sound.trigger('play');
 
-        
+
           })
-          .catch(function(error) { 
+          .catch(function () {
             log('error resuming playback');
             speaker.active.sound = null;
             sound.trigger('finish');
@@ -589,11 +566,11 @@ Speaker.prototype = {
 
         if (this.fading.sound) {
           this.fading.audio.play()
-            .then(function() {
+            .then(function () {
               log('resumed fading playback');
-          
+
             })
-            .catch(function(error) { 
+            .catch(function () {
               log('error resuming fading playback');
               speaker.fading.sound = null;
               speaker.fading.audio.src = SILENCE;
@@ -609,11 +586,11 @@ Speaker.prototype = {
       if (this.preparing.audio.src !== sound.url) {
         this._prepare(sound.url, sound.startPosition);
 
-/*
-      } else if (sound.startPosition && (this.preparing.audio.currentTime !== sound.startPosition)) {
-        log('advancing prepared audio to', sound.startPosition / 1000);
-        this.preparing.audio.currentTime = sound.startPosition / 1000;
-        */
+        /*
+              } else if (sound.startPosition && (this.preparing.audio.currentTime !== sound.startPosition)) {
+                log('advancing prepared audio to', sound.startPosition / 1000);
+                this.preparing.audio.currentTime = sound.startPosition / 1000;
+                */
       }
 
       // swap prepared -> active
@@ -637,7 +614,7 @@ Speaker.prototype = {
 
       log(sound.id + ' starting');
       this.active.audio.play()
-        .then(function() {
+        .then(function () {
           log('success starting playback');
           speaker.active.sound = sound;
 
@@ -662,14 +639,14 @@ Speaker.prototype = {
           }
 
         })
-        .catch(function(error) {
+        .catch(function (error) {
           log('error starting playback', error);
           sound.trigger('finish', error);
-        })
+        });
     }
   },
 
-  _destroySound: function(sound) {
+  _destroySound: function (sound) {
     log('want to destroy, and current is', sound, this.active.sound);
     sound.off();
 
@@ -678,10 +655,10 @@ Speaker.prototype = {
       this.active.audio.pause();
     }
 
-    delete speaker.outstandingPlays[this.id];
+    delete this.outstandingPlays[this.id];
   },
 
-  _pauseSound: function(sound) {
+  _pauseSound: function (sound) {
     if ((sound != null) && (sound !== this.active.sound)) {
       return;
     }
@@ -693,12 +670,12 @@ Speaker.prototype = {
     }
   },
 
-  _position: function(sound) {
+  _position: function (sound) {
     if (sound === this.active.sound) {
       if (sound.url !== this.active.audio.src) {
         log('trying to get current song position, but it is not in the active audio player');
       }
-      
+
       return Math.floor(this.active.audio.currentTime * 1000);
 
     } else {
@@ -707,7 +684,7 @@ Speaker.prototype = {
     }
   },
 
-  _duration: function(sound) {
+  _duration: function (sound) {
     if (sound === this.active.sound) {
       if (sound.url !== this.active.audio.src) {
         log('trying to get current song duration, but it is not in the active audio player');
@@ -722,7 +699,7 @@ Speaker.prototype = {
   },
 
   // set the volume (0-100)
-  setVolume: function(value) {
+  setVolume: function (value) {
     if (typeof value !== 'undefined') {
       this.vol = value;
 
@@ -739,18 +716,6 @@ Speaker.prototype = {
 };
 
 // add events to speaker class
-_.extend(Speaker.prototype, Events);
+Object.assign(Speaker.prototype, Events);
 
-var speaker = null;
-
-// only export a single speaker
-module.exports = function(options, onReady) {
-  if (speaker === null) {
-    speaker = new Speaker(options);
-  }
-
-  onReady(speaker.preferred);
-
-  return speaker;
-};
-
+export default Speaker;

@@ -1,133 +1,129 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 </head>
+
 <body>
 
-<p>
-<button id="prepare">prepare</button><br/>
-<button id="play">play</button><br/>
-<button id="pause">pause</button><br/>
-<button id="resume">resume</button><br/>
-<button id="destroy">destroy</button><br/>
-</p>
-<p>
-  <ul>
-    <li>
-      <label><input type="radio" name="url" value="http://s3.amazonaws.com/feedfm-audio/1408925951-71958.m4a">short audio (13 seconds)</label>
-    </li><li>
-      <label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3" checked=checked>good long audio (227 seconds)</label><br/>
-    </li><li>
-      <label><input type="radio" name="url" value="http://google.com/">google</label><br/>
-    </li><li>
-      <label><input type="radio" name="url" value="http://s3.amazonaws.com/feedfm-audio/1408842300-22034.m4a">bad audio</label><br/>
-    </li>
-  </ul>
-  </ul>
-  gain: <input type="text" id="gain" value="0"><br/>
-  fadeIn: <input type="text" id="fadein" value="3"><br/>
-  fadeOut: <input type="text" id="fadeout" value="3"><br/>
-  startPosition (ms): <input type="text" id="start" value="0"><br/>
-  endPosition (ms): <input type="text" id="end" value="30000"><br/>
+  <p>
+    <button id="prepare">prepare</button><br />
+    <button id="play">play</button><br />
+    <button id="pause">pause</button><br />
+    <button id="resume">resume</button><br />
+    <button id="destroy">destroy</button><br />
+  </p>
+  <p>
+    <ul>
+      <li>
+        <label><input type="radio" name="url" value="http://s3.amazonaws.com/feedfm-audio/1408925951-71958.m4a">short
+          audio (13 seconds)</label>
+      </li>
+      <li>
+        <label><input type="radio" name="url" value="https://dgase5ckewowv.cloudfront.net/feedfm-audio/1512685614-59837.mp3"
+            checked=checked>good long audio (227 seconds)</label><br />
+      </li>
+      <li>
+        <label><input type="radio" name="url" value="http://google.com/">google</label><br />
+      </li>
+      <li>
+        <label><input type="radio" name="url" value="http://s3.amazonaws.com/feedfm-audio/1408842300-22034.m4a">bad
+          audio</label><br />
+      </li>
+    </ul>
+    </ul>
+    gain: <input type="text" id="gain" value="0"><br />
+    fadeIn: <input type="text" id="fadein" value="3"><br />
+    fadeOut: <input type="text" id="fadeout" value="3"><br />
+    startPosition (ms): <input type="text" id="start" value="0"><br />
+    endPosition (ms): <input type="text" id="end" value="30000"><br />
 
-  <input id=volume type="range" min=0 max=100 val=100>
-</p>
+    <input id=volume type="range" min=0 max=100 val=100>
+  </p>
 
-<br/>
-<br/>
-<br/>
+  <br />
+  <br />
+  <br />
 
-<script>
-/*
-  window.feedLogger = function(arguments) {
-    console.log.apply(console, arguments.slice(0));
-  };
-  */
-</script>
+  <script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
+  <script src="../build/test-build.js" type="application/javascript"></script>
 
-<script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
-<script src="../node_modules/underscore/underscore-min.js"></script>
-<script src="../dist/latest/feed.js" type="application/javascript"></script>
+  <script>
 
-<script>
+    var speaker = new Feed.Speaker();
 
-var getSpeaker = Feed._getSpeaker;
+    $('#volume').val(100);
 
-var speaker = getSpeaker({ }, function() {
-  console.log('on ready!', arguments);
+    $('#prepare').on('click', function () {
+      speaker.initializeAudio();
+      var url = $('[name=url]:checked').val();
 
-  $('#volume').val(100);
-});
+      speaker.prepare(url);
+    });
 
-$('#prepare').on('click', function() {
-  speaker.initializeAudio();
-  var url = $('[name=url]:checked').val();
+    var sound;
+    $('#play').on('click', function () {
+      speaker.initializeAudio();
 
-  speaker.prepare(url);
-});
+      var url = $('[name=url]:checked').val();
+      var gain = +$('#gain').val();
+      var fadeIn = $('#fadein').val();
+      var fadeOut = $('#fadeout').val();
+      var start = $('#start').val();
+      var end = $('#end').val();
 
-var sound;
-$('#play').on('click', function() {
-  speaker.initializeAudio();
+      console.log('trying to play', url);
 
-  var url = $('[name=url]:checked').val();
-  var gain = +$('#gain').val();
-  var fadeIn = $('#fadein').val();
-  var fadeOut = $('#fadeout').val();
-  var start = $('#start').val();
-  var end = $('#end').val();
+      sound = speaker.create(url, {
+        play: function () {
+          console.log('*** play ', url);
+        },
 
-  console.log('trying to play', url);
+        pause: function () {
+          console.log('*** pause ', url);
+        },
 
-  sound = speaker.create(url, {
-    play: function() {
-      console.log('*** play ', url);
-    },
+        finish: function (err) {
+          console.log('*** finish ', url, err);
+        },
 
-    pause: function() {
-      console.log('*** pause ', url);
-    },
+        elapse: function () {
+          console.log('*** elapse', url);
+        },
 
-    finish: function(err) {
-      console.log('*** finish ', url, err);
-    },
+        fadeInSeconds: fadeIn,
+        fadeOutSeconds: fadeOut,
+        startPosition: start,
+        endPosition: end,
 
-    elapse: function() {
-      console.log('*** elapse', url);
-    },
+        gain: gain
+      });
 
-    fadeInSeconds: fadeIn,
-    fadeOutSeconds: fadeOut,
-    startPosition: start,
-    endPosition: end,
+      sound.play();
+    });
 
-    gain: gain
-  });
+    $('#pause').on('click', function () {
+      sound.pause();
+    });
 
-  sound.play();
-});
+    $('#resume').on('click', function () {
+      speaker.initializeAudio();
+      sound.resume();
+    });
 
-$('#pause').on('click', function() {
-  sound.pause();
-});
+    $('#destroy').on('click', function () {
+      sound.destroy();
+    });
 
-$('#resume').on('click', function() {
-  speaker.initializeAudio();
-  sound.resume();
-});
+    $('#volume').on('input', function (e) {
+      var v = + $(e.currentTarget).val();
+      console.log('updating to', v);
 
-$('#destroy').on('click', function() {
-  sound.destroy();
-});
+      speaker.setVolume(v);
+    });
 
-$('#volume').on('input', function(e) {
-  var v = + $(e.currentTarget).val();
-  console.log('updating to', v);
-
-  speaker.setVolume(v);
-});
-
-</script>
+  </script>
 
 </body>
+
 </html>
