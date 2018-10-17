@@ -1,9 +1,10 @@
 
-2.0.0-SNAPSHOT
+1.99.0
   - update to ES modules
   - update to ES2015 syntax
   - use rollup/babel to compile
   - release via NPM
+  - remove old tests in anticipation of updated tests
 
 1.10.3-native
   - update code to use Web Audio API for mobile Safari
