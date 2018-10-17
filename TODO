@@ -1,7 +1,0 @@
-
-prefix javascript with a banner
-make sure jshint goes over everything
-pull out console log messages in production version
-consolidate tests
-
-
