@@ -636,7 +636,7 @@ Session.prototype._requestNextPlay = function (delay) {
         self._signedAjax(self.config.pendingRequest.url, self.config.pendingRequest.ajax)
           .then((response) => response.json())
           .then(self._receiveNextPlay.bind(self, self.config.pendingRequest.ajax))
-          .then(self._failedNextPlay.bind(self, delay, self.config.pendingRequest.ajax));
+          .catch(self._failedNextPlay.bind(self, delay, self.config.pendingRequest.ajax));
         return;
       }
 

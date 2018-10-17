@@ -27,6 +27,14 @@
     "tiny-cookie": "^2.1.2",
     "whatwg-fetch": "^3.0.0"
   },
+  "main": "lib/index.js",
+  "files":  [
+    "LICENSE.md",
+    "README.md",
+    "lib",
+    "dist"
+  ],
+  "license": "SEE LICENSE IN LICENSE.md",
   "eslintConfig": {
     "env": {
       "es6": true,

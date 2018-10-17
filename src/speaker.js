@@ -402,7 +402,6 @@ Speaker.prototype = {
       this.fading.sound.trigger('finish');
 
     } else {
-      log('elapse volume');
       this._setVolume(this.active);
 
       this.active.sound.trigger('elapse');
