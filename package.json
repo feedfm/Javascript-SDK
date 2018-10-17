@@ -1,6 +1,6 @@
 {
   "name": "feed-media-audio-player",
-  "version": "2.0.0",
+  "version": "1.99.0",
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
@@ -28,7 +28,7 @@
     "whatwg-fetch": "^3.0.0"
   },
   "main": "lib/index.js",
-  "files":  [
+  "files": [
     "CHANGELOG.md",
     "LICENSE.md",
     "README.md",
