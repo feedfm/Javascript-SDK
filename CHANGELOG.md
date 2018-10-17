@@ -1,4 +1,10 @@
 
+2.0.0-SNAPSHOT
+  - update to ES modules
+  - update to ES2015 syntax
+  - use rollup/babel to compile
+  - release via NPM
+
 1.10.3-native
   - update code to use Web Audio API for mobile Safari
   - fix some fade in/out problems when audio was before or after

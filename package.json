@@ -29,6 +29,7 @@
   },
   "main": "lib/index.js",
   "files":  [
+    "CHANGELOG.md",
     "LICENSE.md",
     "README.md",
     "lib",
