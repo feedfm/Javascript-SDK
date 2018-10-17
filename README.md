@@ -24,7 +24,13 @@ to your javascript. The file has no external dependencies.
 
 ### Via npm
 
-In your javascript code, add:
+Install via npm:
+
+```shell
+npm install feed-media-audio-player
+```
+
+Then, in your javascript code, add:
 
 ```javascript
 var Feed = require('feed-media-audio-player');
