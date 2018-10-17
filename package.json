@@ -1,5 +1,11 @@
 {
   "name": "feed-media-audio-player",
+  "description": "Streaming audio client library for use in conjunction with Feed.fm",
+  "homepage": "https://feed.fm/",
+  "author": {
+    "name": "Eric Lambrecht",
+    "email": "eric@feed.fm"
+  },
   "version": "1.99.0",
   "scripts": {
     "build": "rollup -c",
@@ -27,7 +33,7 @@
     "tiny-cookie": "^2.1.2",
     "whatwg-fetch": "^3.0.0"
   },
-  "main": "lib/index.js",
+  "browser": "lib/index.js",
   "files": [
     "CHANGELOG.md",
     "LICENSE.md",
