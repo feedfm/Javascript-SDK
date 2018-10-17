@@ -12,7 +12,7 @@ export default [
   {
     input: 'src/index.js',
     output: {
-      file: 'dist/feed-' + pkg.version + '.js',
+      file: 'dist/feed-media-audio-player.min.js',
       format: 'iife',
       name: 'Feed'
     },
@@ -28,7 +28,11 @@ export default [
       babel({
         exclude: 'node_modules/**'
       }),
-      uglify(),
+      uglify({
+        output: {
+          ascii_only: true
+        }
+      }),
       bundleSize()      
     ]
   },
@@ -63,7 +67,11 @@ export default [
       babel({
         exclude: 'node_modules/**'
       }),
-      uglify(),
+      uglify({
+        output: {
+          ascii_only: true
+        }
+      }),
       bundleSize()
     ]
   },
