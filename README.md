@@ -16,12 +16,6 @@ need to get a set of production credentials from your contact at Feed.fm.
 
 ## Installation
 
-### Via <script> tag
-
-The `dist/feed-media-audio-player.min.js` file in this package is suitable for including
-directly in an HTML page. This is a self-executing function that exposes a `Feed` variable
-to your javascript. The file has no external dependencies.
-
 ### Via npm
 
 Install via npm:
@@ -30,7 +24,15 @@ Install via npm:
 npm install feed-media-audio-player
 ```
 
-Then, in your javascript code, add:
+### Use <script> tag
+
+The `dist/feed-media-audio-player.min.js` file in this package is suitable for including
+directly in an HTML page. This is a self-executing function that exposes a `Feed` variable
+to your javascript. The file has no external dependencies.
+
+### CJS or Modules
+
+Alternatively, if you're using a bundler, add the following to your code:
 
 ```javascript
 var Feed = require('feed-media-audio-player');
@@ -42,7 +44,7 @@ or
 import Feed from 'feed-media-audio-player';
 ```
 
-Your javascript bundler will automatically pull in dependant libraries.
+Bundler will automatically pull in dependent libraries.
 
 ## Basic music player with UI
 
@@ -92,7 +94,7 @@ The class requires a token and secret in order to create an instance of the play
 ```
 
 The final argument is optional and lets you specify some extra parameters
-to for the player (fully documented [here](https://github.com/fuzz-radio/Javascript-SDK/blob/master/src/player.js)).
+to for the player (fully documented [here](https://github.com/feedfm/Javascript-SDK/blob/master/src/player.js)).
 
 Construction of the `Player` instance kicks off communication with the feed.fm servers
 to determine what music is available to the client. The player should not be
