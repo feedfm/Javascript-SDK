@@ -442,8 +442,6 @@ Speaker.prototype = {
 
       log('ramping ▼ volume', { currentTime: currentTime, currentVolume: currentVolume, calculatedVolume: calculatedVolume, sound: sound });
 
-    } else {
-      log('updating volume', { currentTime: currentTime, currentVolume: currentVolume, calculatedVolume: calculatedVolume, sound: sound });
     }
 
     if (currentVolume != calculatedVolume) {
