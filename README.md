@@ -24,7 +24,7 @@ Install via npm:
 npm install feed-media-audio-player
 ```
 
-### Use <script> tag
+### Use &lt;script&gt; tag
 
 The `dist/feed-media-audio-player.min.js` file in this package is suitable for including
 directly in an HTML page. This is a self-executing function that exposes a `Feed` variable
