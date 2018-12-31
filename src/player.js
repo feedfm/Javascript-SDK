@@ -27,8 +27,6 @@
  *
  *  Then control playback with:
  *
- *    tune() - load up information about the current placement, but
- *      don't actually start playing it. (can be called before initializeAudio())
  *    play() - start playing the current placement/station or resume the current song
  *    pause() - pause playback of the current song, if any
  *    like() - tell the server we like this song
@@ -38,38 +36,21 @@
  *    setStationId(xxx) - switch to a different station 
  *
  *  player has a current state that can be queried with 'getCurrentState()':
+ *    uninitialized - player is still trying to initialize
+ *    unavailable - no music is available
+ *    ready - ready for playback
  *    playing - if session.hasActivePlayStarted() and we're not paused
  *    paused -  if session.hasActivePlayStarted() and we're paused
- *    idle - if !session.hasActivePlayStarted()
- *    suspended - if player.suspend() has been called (ie - the player has
- *      been popped out into a new window)
- *
- *  session events are proxied via the play object:
+ * 
+ *  events emitted by the player:
  *    not-in-us - user isn't located in the US and can't play music
- *    stations - this is passed with an array of station objects that have station
- *      names and ids
- *    play-active - this play is queued up and ready for playback, but hasn't
- *      yet started.
  *    play-started - this play has begun playback.
- *    play-completed  - this play has completed playback.
- *    plays-exhausted - there are no more plays available from this placement/station combo
  *    skip-denied - the given song could not be skipped due to DMCA rules
- *    play-paused - the currently playing song was paused
- *    play-resumed - the currently playing song was resumed
- *    play-liked - the currently playing song was liked
- *    play-unliked - the currently playing song had it's 'like' status removed
- *    play-disliked - the currently playing song was disliked
- *    suspend - player.suspend() was called, and the player should stop playback
+ *    skip-failed
  *
  *  Some misc methods:
  *
  *    setMuted(muted)
- *    suspend - this returns the state of the player a an object that can be passed
- *      to the unsuspend() call.
- *    unsuspend(state, [startPlay]) - this call takes the state of a previously suspended player
- *      instance and makes this player match that one. These calls allow you to suspend
- *      the player, open up a new window, create a new player instance, and resume playback
- *      where you left off. This call should be made in place of a tune() or play() call.
  *
  */
 
@@ -90,7 +71,6 @@ function supports_html5_storage() {
 var Player = function (token, secret, options) {
   this.state = {
     paused: true,
-    suspended: false
     // activePlay
   };
 
@@ -530,26 +510,6 @@ Player.prototype.setMuted = function (isMuted) {
     }
 
     this.trigger('unmuted');
-  }
-};
-
-Player.prototype.suspend = function () {
-  var playing = (this.state.activePlay && this.state.activePlay.sound),
-    state = this.session.suspend(playing ? this.state.activePlay.sound.position() : 0);
-
-  this.pause();
-
-  this.state.suspended = true;
-  this.trigger('suspend');
-
-  return state;
-};
-
-Player.prototype.unsuspend = function (state, startPlayback) {
-  this.session.unsuspend(state);
-
-  if (startPlayback) {
-    this.play();
   }
 };
 
