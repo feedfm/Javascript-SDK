@@ -104,6 +104,21 @@ export default [
     ]
   },
   {
+    input: 'test/mocha.js',
+    output: {
+      file: 'build/mocha.js',
+      format: 'iife',
+      sourcemap: true
+    },
+    plugins: [
+      resolve(),
+      commonjs(),
+      babel({
+        exclude: 'node_modules/**'
+      })
+    ]
+  },
+  {
     input: 'src/test.js',
     output: {
       file: 'build/test.js',

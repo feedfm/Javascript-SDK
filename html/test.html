@@ -1,0 +1,26 @@
+<html>
+  <head>
+      <link rel="stylesheet" type="text/css" href="css/mocha.css">
+  </head>
+  <body>
+    <script src="mocha.js"></script>
+    <script src="chai.js"></script>
+    <script src="sinon.js"></script>
+    <div id="mocha"></div>
+
+    <script>
+      mocha.setup('bdd');
+      mocha.globals([
+        'navigator',
+        'top'
+      ]);
+    </script>
+
+    <script src="../build/mocha.js"></script>
+    <script>
+      mocha.run();
+    </script>
+
+
+  </body>
+</html>
