@@ -303,8 +303,8 @@ PlayerView.prototype.renderPosition = function (position, duration) {
   document.querySelectorAll('.elapsed').forEach(elapsed => {
     elapsed.innerHTML = formatTime(position);
   });
-  document.querySelectorAll('.duration').forEach(duration => {
-    duration.innerHTML = formatTime(duration);
+  document.querySelectorAll('.duration').forEach(dur => {
+    dur.innerHTML = formatTime(duration);
   });
 
   if (duration === 0) {
