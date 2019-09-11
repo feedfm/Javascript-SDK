@@ -105,8 +105,9 @@ can be tuned to.
 The basic methods for use on the object are `play()`, `pause()`, and
 `skip()`, which do what you might expect.
 
-Due to auto-play restrictions on browsers, a call must be made to `initializeAudio()`
-on the player object in response to a user-intiated `click` event. This call may be
+Due to auto-play restrictions on browsers, and especially Mobile Safari,
+a call must be made to `initializeAudio()` on the player object in response to
+a user-intiated `click` event. This call may be
 made any number of times, but must be done before ever calling `play()`, or the
 browser may not play any audio.
 
