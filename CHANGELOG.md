@@ -1,4 +1,7 @@
 
+1.99.6
+  - fix rending of '.duration' in PlayerView
+
 1.99.0
   - update to ES modules
   - update to ES2015 syntax
