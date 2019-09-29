@@ -1,4 +1,8 @@
 
+1.99.8
+  - fix null dereferences
+  - add remove logging of start/create/invalidate commands
+
 1.99.6
   - fix rending of '.duration' in PlayerView
 
