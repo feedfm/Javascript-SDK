@@ -423,6 +423,14 @@ Session.prototype._failInvalidate = function (delay, play, response) {
 };
 
 Session.prototype._receiveInvalidate = function (play, response) {
+  log('invalidate response');
+  var self = this;
+  this._submitLogHistory();
+  setTimeout(function() {
+    log('5 second follow up after invalidate');
+    self._submitLogHistory();
+  }, 5000);
+
   if (!this.config.current || (this.config.current.play !== play)) {
     // not holding this song any more - just ignore it
     return;
@@ -450,6 +458,7 @@ Session.prototype._receiveInvalidate = function (play, response) {
 
     }
   }
+
 };
 
 Session.prototype._failSkip = function (play) {
@@ -536,6 +545,15 @@ Session.prototype._receiveStartPlay = function (play, response) {
 };
 
 Session.prototype._failStartPlay = function (play, response) {
+  var self = this;
+
+  log('start failed', response);
+  this._submitLogHistory();
+  setTimeout(function() {
+    log('5 second follow up after start failure');
+    self._submitLogHistory();
+  }, 5000);
+
   // only process if we're still actually waiting for this
   if (this.config.current && (this.config.current.play === play)) {
 
@@ -554,7 +572,7 @@ Session.prototype._failStartPlay = function (play, response) {
       }
     }
 
-    log('request failed - trying again in 1 second', response.status);
+    log('request failed - trying again in 1 second', response);
 
     this.config.current.retryCount++;
 
@@ -699,7 +717,7 @@ Session.prototype._receiveNextPlay = function (ajax, response) {
         this.config.pendingPlay = response.play;
 
       } else {
-        log('received play and no current song, so playing now', response.play);
+        log('received play and no current song, making active now', response.play);
 
         // start playing this right now, since nothing else is playing
         this._assignCurrentPlay(response.play);
@@ -729,6 +747,13 @@ Session.prototype._receiveNextPlay = function (ajax, response) {
 
 // server returned an error when we requested the next song
 Session.prototype._failedNextPlay = function (delay, ajax, response) {
+  log('next play failed', response);
+  this._submitLogHistory();
+  setTimeout(function() {
+    log('5 second follow up after next play failure');
+    self._submitLogHistory();
+  }, 5000);
+
   // only process if we're still actually waiting for this
   if (this.config.pendingRequest && (this.config.pendingRequest.ajax === ajax)) {
 
@@ -989,6 +1014,14 @@ Session.prototype._sign = function (request) {
 
   request.headers['X-Feed-SDK'] = FEED_VERSION;
 
+  if (this.extraHeaders) {
+    for (var header in this.extraHeaders) {
+      if (this.extraHeaders.hasOwnProperty(header)) {
+        request.headers[header] = this.extraHeaders[header];
+      }
+    }
+  }
+
   return request;
 };
 
@@ -1000,6 +1033,22 @@ Session.prototype._signedAjax = function (url, request) {
 
 Session.prototype._ajax = function (url, request) {
   return fetch(url, request);
+};
+
+Session.prototype._submitLogHistory = function() {
+  let history = log.history;
+  log.history = [];
+
+  return this._signedAjax('https://feed.fm/api/v2/session/event', {
+    method: 'POST',
+    body: JSON.stringify({
+      event: 'playerHistory',
+      parameters: history
+    }),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
 };
 
 export default Session;

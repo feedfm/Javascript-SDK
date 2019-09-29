@@ -488,7 +488,7 @@ Speaker.prototype = {
     this.outstandingPlays[sound.id] = sound;
 
     // start loading sound, if we can
-    if (!this.active.audio) {
+    if (!this.active || !this.active.audio) {
       this.prepareWhenReady = sound.url;
     } else {
       this._prepare(sound.url, sound.startPosition);
@@ -498,7 +498,7 @@ Speaker.prototype = {
   },
 
   prepare: function (url) {
-    if (!this.active.audio) {
+    if (!this.active || !this.active.audio) {
       this.prepareWhenReady = url;
       return;
     }
