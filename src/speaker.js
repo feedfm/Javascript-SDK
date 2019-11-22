@@ -73,11 +73,16 @@ import log from './log';
 import Events from './events';
 import { uniqueId } from './util';
 
+const DEFAULT_VOLUME = 1.0;
+
 const iOSp = /(iPhone|iPad)/i.test(navigator.userAgent);
+const brokenWebkit = iOSp && /OS 13_[01]_/i.test(navigator.userAgent);
 
 const SILENCE = iOSp ?
   'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
   'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
+//const SILENCE = 'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1573592316-88123.m4a';
 
 var Sound = function (speaker, options, id, url) {
   var obj = Object.assign(this, Events);
@@ -256,7 +261,7 @@ Speaker.prototype = {
   _createAudioGainNode: function (audio) {
     var source = this.audioContext.createMediaElementSource(audio);
     var gainNode = this.audioContext.createGain();
-    gainNode.gain.value = 1.0;
+    gainNode.gain.value = DEFAULT_VOLUME;
 
     source.connect(gainNode);
     gainNode.connect(this.audioContext.destination);
@@ -276,15 +281,8 @@ Speaker.prototype = {
 
     // iOS volume adjustment
     var gain = null;
-    if (iOSp) {
-      var source = this.audioContext.createMediaElementSource(audio);
-      var gainNode = this.audioContext.createGain();
-      gainNode.gain.value = DEFAULT_VOLUME;
-
-      source.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-
-      gain = gainNode.gain;
+    if (iOSp && !brokenWebkit) {
+      gain = this._createAudioGainNode(audio);
     }
 
     return {
@@ -446,7 +444,9 @@ Speaker.prototype = {
 
     if (currentVolume != calculatedVolume) {
       if (iOSp) {
-        audioGroup.gain.value = calculatedVolume;
+        if (!brokenWebkit) {
+          audioGroup.gain.value = calculatedVolume;
+        }
       } else {
         audioGroup.audio.volume = calculatedVolume;
       }
