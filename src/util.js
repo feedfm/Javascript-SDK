@@ -60,11 +60,11 @@ function uniq(array, isSorted, iterator, context) {
   return results;
 }
 
-export function intersection(array, ...rest) {
-  return uniq(array).filter(function (item) {
-    return rest.every(function (other) {
-      return other.indexOf(item) >= 0;
-    });
+export function intersection(alpha, tests) {
+  retests = tests.map((test) => new RegExp(test));
+
+  return uniq(alpha).filter(function (item) {
+    return retests.find((other) => other.test(item));
   });
 }
 
