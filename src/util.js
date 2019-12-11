@@ -61,7 +61,7 @@ function uniq(array, isSorted, iterator, context) {
 }
 
 export function intersection(alpha, tests) {
-  retests = tests.map((test) => new RegExp(test));
+  let retests = tests.map((test) => new RegExp(test));
 
   return uniq(alpha).filter(function (item) {
     return retests.find((other) => other.test(item));
