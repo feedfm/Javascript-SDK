@@ -1,0 +1,349 @@
+<html>
+<head>
+  <title>Player Minimal - Feed.fm</title>
+  <link rel="stylesheet" href="./assets/css/all.min.css">
+  <style>
+    /* reset */
+    html, body {
+      padding: 0;
+      margin: 0;
+    }
+    body {
+      background-color: #666;
+      font-family: 'Helvetica Neue';
+    }
+
+    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-size: .8rem;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* player */
+    #player-view {
+      width: 330px;
+      margin: 0em auto;
+      display: flex;
+      flex-direction: column;
+      background-color: #D8D8D8;
+      border-radius: 8px;
+      box-shadow: 0 0 4px rgba(0,0,0,.5);
+      padding: 20px;
+    }
+
+    #player-view button {
+      border: none;
+      background-color: transparent;
+      padding: 0;
+      outline: none;
+      cursor: pointer;
+      color: #000;
+      font-size: 1.1rem;
+    }
+
+    #player-view button:hover:enabled {
+      cursor: pointer;
+    }
+
+    #player-view .button-disabled {
+      opacity: .4;
+    }
+
+    #player-view .button-disabled:hover {
+      cursor: default;
+    }
+
+    #player-view .status-wrap {
+      overflow: hidden;
+      padding-bottom: 10px;
+    }
+
+    #player-view .status {
+      white-space: nowrap;
+    }
+
+    #player-view .playback-status {
+      display: flex;
+    }
+
+    #player-view .elapsed {
+      padding-right: 10px;
+    }
+
+    #player-view .duration {
+      padding-left: 10px;
+    }
+
+    #player-view .elapsed,
+    #player-view .duration {
+      font-size: .5rem;
+      line-height: .5rem;
+    }
+
+    #player-view .position {
+      width: 100%;
+      height: 7px;
+      background-color: #959595;
+    }
+
+    #player-view .progress {
+      height: 7px;
+      width: 0;
+      background-color: #000;
+    }
+
+    #player-view .playback-controls {
+      padding-top: 10px;
+      display: flex;
+    }
+
+    #player-view .play-button,
+    #player-view .pause-button {
+      flex: 1;
+    }
+
+    #player-view .play-button {
+      display: flex;
+    }
+
+    #player-view .pause-button,
+    #player-view.state-playing .play-button  {
+      display: none;
+    }
+
+    #player-view.state-playing .pause-button {
+      display: flex;
+    }
+
+    #player-view .skip-button {
+      flex: 1;
+      text-align: left;
+    }
+
+    #player-view .volume-control {
+      display: flex;
+      flex: 3;
+    }
+
+    #player-view .mute-button {
+      width: 1.5rem; /* fixes sizing issue toggling muted */
+      text-align: left;
+    }
+
+    #player-view.state-playing .play-button {
+      display: none;
+    }
+
+    #player-view .state-playing .pause-button {
+      display: block;
+    }
+
+    #player-view .likeable .control-button {
+      margin: 0;
+    }
+
+    #player-view .likeable {
+      display: flex;
+    }
+
+    #player-view .likeable button {
+      margin: 0;
+      font-size: 1.3rem;
+      color: #000;
+    }
+
+    #player-view .likeable .like-button {
+      margin-right: 10px;
+    }
+
+    #player-view .like-button:hover {
+      cursor: pointer;
+    }
+
+    #player-view .like-button .fas,
+    #player-view .like-button:hover .far,
+    #player-view .like-button.liked .far,
+    #player-view .dislike-button .fas,
+    #player-view .dislike-button:hover .far {
+      display: none;
+    }
+
+    #player-view .like-button:hover .fas,
+    #player-view .like-button.liked .fas,
+    #player-view .dislike-button:hover .fas {
+      display: block;
+    }
+
+    #player-view .fa-volume-mute {
+      display: none;
+    }
+
+    #player-view.player-muted .fa-volume-mute {
+      display: block;
+    }
+
+    #player-view.player-muted .fa-volume-up {
+      display: none;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div id="player-view">
+
+      <div class="status-wrap">
+        <div class="status">&nbsp;</div>
+      </div>
+
+      <div class="playback-status">
+        <div class="elapsed">0:00</div>
+        <div class="position"><div class="progress"></div></div>
+        <div class="duration">0:00</div>
+      </div>
+
+      <div class="playback-controls">
+        <button class="play-button control-button">
+          <i class="fas fa-play"></i>
+        </button>
+
+        <button class="pause-button control-button">
+          <i class="fas fa-pause"></i>
+        </button>
+
+        <button class="skip-button control-button button-disabled">
+          <i class="fas fa-step-forward"></i>
+        </button>
+
+        <div class="volume-control">
+
+          <button class="mute-button control-button">
+            <i class="fas fa-volume-up"></i>
+            <i class="fas fa-volume-mute"></i>
+          </button>
+
+          <div class="audio-range-wrap">
+            <span id="volume-level-bar"></span>
+            <input class="audio-range volume-slider" type="range" min=1 max=100 step=1 value=100>
+          </div>
+
+        </div>
+        <div class="likeable">
+
+          <button class="like-button">
+            <i class="far fa-thumbs-up"></i>
+            <i class="fas fa-thumbs-up"></i>
+          </button>
+
+          <button class="dislike-button">
+            <i class="far fa-thumbs-down"></i>
+            <i class="fas fa-thumbs-down"></i>
+          </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Feed.fm SDK -->
+  <script src="./assets/js/feed-media-audio-player.min.js"></script>
+  <script>
+
+    (function(doc, sdk) {
+      var TOKEN = '861f54beeac637df7a6556cc2bfcb806a9f827a9';
+      var SECRET = 'f199cde5f6589fd8197fa588448beab62f5d35e7';
+      var IMG_PLACEHOLDER = './assets/images/tmp-image.jpg';
+
+      // Init SDK Player and View
+      var player = new sdk.Player(TOKEN, SECRET);
+      var playerView = new sdk.PlayerView('player-view', player);
+
+      // Element selectors
+      var volumeSlider = get('.volume-slider');
+      var muteButton = get('.mute-button');
+      var muted = false;
+
+      // Wire events
+      player.on('prepare-sound', handlePrepareSound);
+      // Debug
+      player.on('all', eventLogger);
+
+      muteButton.addEventListener('click', handleMuteToggle);
+      volumeSlider.addEventListener('change', handleVolumeChange);
+
+      player.tune();
+
+      // Handlers
+      function handlePrepareSound() {
+        // Make sure the player is not muted to start
+        // if player previously muted, cached state will persist
+        player.setMuted(false);
+        // Set the slider value from player speaker volume
+        volumeSlider.value = player.speaker.vol || 100;
+      }
+
+      function handleMuteToggle() {
+        muted ? unmute() : mute();
+      }
+
+      function handleStationsResponse(stationsList) {
+        // Set sections so we can access them later
+        stations.push.apply(stations, stationsList);
+      }
+
+      function eventLogger(event) {
+        // Display all the events the player triggers
+        console.log('player triggered event \'%s\' with arguments:', event, Array.prototype.splice.call(arguments, 1));
+      }
+
+      function handleVolumeChange() {
+        if(muted) {
+          unmute();
+        }
+        player.speaker.setVolume(this.value);
+      }
+
+      function mute() {
+        toggleMuted(true);
+        addClass(playerView.$el, 'player-muted');
+      }
+
+      function unmute() {
+        toggleMuted(false);
+        removeClass(playerView.$el, 'player-muted');
+      }
+
+      function toggleMuted(mute) {
+        player.setMuted(mute);
+        muted = mute;
+      }
+
+      // Utils
+      function get(selector) {
+        return doc.querySelector(selector);
+      }
+
+      function addClass(element, name) {
+        // check if the class exists
+        if(!element.classList.contains(name)) {
+          element.classList.add(name);
+        }
+      }
+
+      function removeClass(element, name) {
+        element.classList.remove(name);
+      }
+
+      function setHtml(element, content) {
+        element.innerHTML = content;
+      }
+
+    })(document, Feed);
+
+  </script>
+</body>
+</html>
