@@ -1,0 +1,396 @@
+<html>
+<head>
+  <title>Player Widget - Feed.fm</title>
+  <!-- fontawesome -->
+  <link rel="stylesheet" href="./assets/css/all.min.css">
+  <style>
+    /* reset */
+    html, body {
+      padding: 0;
+      margin: 0;
+    }
+    body {
+      background-color: #666;
+      font-family: 'Helvetica Neue';
+    }
+    h1, h3, h4 {
+      margin: 0;
+    }
+    h1 {
+      font-size: 1rem;
+    }
+    h3 {
+      font-weight: 600;
+      font-size: .9rem;
+    }
+    h4 {
+      font-size: .9rem;
+      font-weight: normal;
+    }
+    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-size: .8rem;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* player */
+    #player-view {
+      width: 315px;
+      height: 490px;
+      margin: 0em auto;
+      display: flex;
+      flex-direction: column;
+      background-color: #000;
+      border-bottom-right-radius: 8px;
+      border-bottom-left-radius: 8px;
+      box-shadow: 0 0 4px rgba(0,0,0,.5);
+      overflow: hidden;
+      color: #000;
+    }
+
+    #player-view button {
+      border: none;
+      background-color: transparent;
+      padding: 0;
+      outline: none;
+      cursor: pointer;
+      color: #000;
+    }
+
+    #player-view button:hover:enabled {
+      cursor: pointer;
+    }
+
+    #player-view .button-disabled {
+      opacity: .4;
+    }
+
+    #player-view .button-disabled:hover {
+      cursor: default;
+    }
+
+    #player-view .station-header {
+      padding: 10px;
+      color: #fff;
+      height: 210px;
+      text-align: center;
+      text-transform: uppercase;
+      background-position: center;
+      background-size: cover;
+    }
+
+    /* element necessary for player view operation, hide it */
+    #player-view .status {
+      display: none;
+    }
+
+
+    #player-view .track-info {
+      flex: 1;
+      padding-top: 20px;
+      background-color: #D8D8D8;
+      text-align: center;
+    }
+
+    #player-view .track-title {
+      margin-bottom: 5px;
+    }
+
+    #player-view .track-artist {
+      margin-bottom: 20px;
+    }
+
+    #player-view .playback-status {
+      display: flex;
+      align-items: center;
+      flex-direction: row;
+      padding: 0 15px;
+      margin-bottom: 30px;
+    }
+
+    #player-view .position {
+      width: 100%;
+      height: 7px;
+      margin: 0 5px;
+      background-color: #959595;
+    }
+
+    #player-view .progress {
+      height: 7px;
+      width: 0;
+      background-color: #000;
+    }
+
+    #player-view .playback-controls {
+      padding: 0 30px;
+      margin-bottom: 40px;
+      display: flex;
+      flex-direction: row;
+    }
+
+    #player-view .playback-controls button {
+      font-size: 1.3rem;
+    }
+
+    .#player-view track-timer {
+      display: flex;
+      font-size: .5rem;
+      line-height: .5rem;
+      justify-content: center;
+      align-items: center;
+      flex: 3;
+    }
+
+    #player-view .control-button.button-disabled {
+      cursor: default;
+    }
+
+    #player-view .pause-button {
+      display: none;
+    }
+
+    #player-view .skip-button {
+      flex: 1;
+    }
+
+    #player-view .volume-control {
+      display: flex;
+      padding: 0 15px;
+    }
+
+    #player-view .mute-button {
+      width: 24px; /* fixes sizing issue toggling muted */
+      text-align: left;
+      font-size: 1.3rem;
+      margin-left: 5px;
+    }
+
+    #player-view .audio-range-wrap {
+      display: flex;
+      flex: 1;
+    }
+
+    #player-view .audio-range {
+      width: 100%;
+    }
+
+    #player-view .like-button {
+      color: #000;
+      margin: 0;
+      font-size: 2rem;
+      margin: 0 10px;
+    }
+
+    #player-view .like-button:hover {
+      cursor: pointer;
+    }
+
+    #player-view .like-button .fas,
+    #player-view .dislike-button .fas,
+    #player-view .like-button.liked .far,
+    #player-view .like-button:hover .far,
+    #player-view .dislike-button:hover .far {
+      display: none;
+    }
+
+    #player-view .like-button.liked .fas,
+    #player-view .like-button:hover .fas,
+    #player-view .dislike-button:hover .fas {
+      display: block;
+    }
+
+    #player-view .fa-volume-mute {
+      display: none;
+    }
+
+    #player-view.player-muted .fa-volume-mute {
+      display: block;
+    }
+
+    #player-view.player-muted .fa-volume-up {
+      display: none;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div id="player-view">
+
+      <div class="station-header">
+        <h1 class="station-title">Loading...</h1>
+      </div>
+
+      <div class="track-info">
+        <h3 class="track-title">&nbsp;</h3>
+        <h4 class="track-artist">&nbsp;</h4>
+        <div class="status"></div>
+
+        <div class="playback-status">
+          <div class="elapsed">0:00</div>
+          <div class="position"><div class="progress"></div></div>
+          <div class="duration">0:00</div>
+        </div>
+
+        <div class="playback-controls">
+          <button class="play-button">
+            <i class="fas fa-play"></i>
+          </button>
+
+          <button class="pause-button">
+            <i class="fas fa-pause"></i>
+          </button>
+
+          <button class="skip-button">
+            <i class="fas fa-step-forward"></i>
+          </button>
+
+          <button class="like-button">
+            <i class="far fa-heart"></i>
+            <i class="fas fa-heart"></i>
+          </button>
+
+        </div>
+
+        <div class="volume-control">
+
+          <div class="audio-range-wrap">
+            <span id="volume-level-bar"></span>
+            <input class="audio-range volume-slider" type="range" min=1 max=100 step=1 value=100>
+          </div>
+
+          <button class="mute-button">
+            <i class="fas fa-volume-up"></i>
+            <i class="fas fa-volume-mute"></i>
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Feed.fm SDK -->
+  <script src="./assets/js/feed-media-audio-player.min.js"></script>
+  <script>
+
+    (function(doc, sdk) {
+      var TOKEN = '861f54beeac637df7a6556cc2bfcb806a9f827a9';
+      var SECRET = 'f199cde5f6589fd8197fa588448beab62f5d35e7';
+      var IMG_PLACEHOLDER = './assets/images/tmp-image.jpg';
+
+      // Init SDK Player and View
+      var player = new sdk.Player(TOKEN, SECRET);
+      var playerView = new sdk.PlayerView('player-view', player);
+
+      // Element selectors
+      var volumeSlider = get('.volume-slider');
+      var muteButton = get('.mute-button');
+      var stationHeader = get('.station-header');
+      var stationTitle = get('.station-title');
+      var trackTitle = get('.track-title');
+      var trackArtist = get('.track-artist');
+      var muted = false;
+      var stations = [];
+
+      // Wire events
+      player.on('stations', handleStationsResponse);
+      player.on('prepare-sound', handlePrepareSound);
+      player.on('play-active', handleActivePlay);
+      // Debug
+      player.on('all', eventLogger);
+
+      muteButton.addEventListener('click', handleMuteToggle);
+      volumeSlider.addEventListener('change', handleVolumeChange);
+
+      player.tune();
+
+      // Handlers
+      function handleActivePlay(audio) {
+        setHtml(stationTitle, audio.station.name);
+        setHtml(trackTitle, audio.audio_file.track.title);
+        setHtml(trackArtist, audio.audio_file.artist.name);
+
+        var activeStation = stations.find(function(station) {
+          return station.id == audio.station.id;
+        });
+
+        var playerImage = activeStation.options.background_image_url || IMG_PLACEHOLDER;
+
+        stationHeader.setAttribute('style', 'background-image: url(' + playerImage + ')');
+      }
+
+      function handlePrepareSound() {
+        // Make sure the player is not muted to start
+        // if player previously muted, cached state will persist
+        player.setMuted(false);
+        // Set the slider value from player speaker volume
+        volumeSlider.value = player.speaker.vol || 100;
+      }
+
+      function handleMuteToggle() {
+        muted ? unmute() : mute();
+      }
+
+      function handleStationsResponse(stationsList) {
+        // Set sections so we can access them later
+        stations.push.apply(stations, stationsList);
+      }
+
+      function eventLogger(event) {
+        // Display all the events the player triggers
+        console.log('player triggered event \'%s\' with arguments:', event, Array.prototype.splice.call(arguments, 1));
+      }
+
+      function handleVolumeChange() {
+        if(muted) {
+          unmute();
+        }
+        player.speaker.setVolume(this.value);
+      }
+
+      function mute() {
+        toggleMuted(true);
+        addClass(playerView.$el, 'player-muted');
+      }
+
+      function unmute() {
+        toggleMuted(false);
+        removeClass(playerView.$el, 'player-muted');
+      }
+
+      function toggleMuted(mute) {
+        player.setMuted(mute);
+        muted = mute;
+      }
+
+      // Utils
+      function get(selector) {
+        return doc.querySelector(selector);
+      }
+
+      function addClass(element, name) {
+        // check if the class exists
+        if(!element.classList.contains(name)) {
+          element.classList.add(name);
+        }
+      }
+
+      function removeClass(element, name) {
+        element.classList.remove(name);
+      }
+
+      function setHtml(element, content) {
+        element.innerHTML = content;
+      }
+
+    })(document, Feed);
+
+  </script>
+</body>
+</html>
