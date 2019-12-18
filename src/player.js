@@ -99,20 +99,35 @@ var Player = function (token, secret, options) {
     this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
   }, this);
 
-  // TODO: update to create speaker object & use getSupportedFormats()
   const speaker = this.speaker = new Speaker();
-  if (options.formats) {
-    var reqFormatList = options.formats.split(','),
+
+  if (options.brokenWebkitFormats && Speaker.brokenWebkit) {
+    let reqFormatList = options.brokenWebkitFormats.split(','),
       suppFormatList = speaker.getSupportedFormats().split(','),
       reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
       reqAndSuppFormats = reqAndSuppFormatList.join(',');
 
-    log('input lists are', reqFormatList, suppFormatList);
+    log('input format list is', reqFormatList, suppFormatList);
     log('final support list is', reqAndSuppFormats);
 
     if (reqAndSuppFormatList.length === 0) {
       reqAndSuppFormats = speaker.getSupportedFormats();
     }
+
+    session.setFormats(reqAndSuppFormats);
+
+  } else if (options.formats) {
+    let reqFormatList = options.formats.split(','),
+      suppFormatList = speaker.getSupportedFormats().split(','),
+      reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
+      reqAndSuppFormats = reqAndSuppFormatList.join(',');
+
+    if (reqAndSuppFormatList.length === 0) {
+      reqAndSuppFormats = speaker.getSupportedFormats();
+    }
+
+    log('input format list is', reqFormatList, suppFormatList);
+    log('final support list is', reqAndSuppFormats);
 
     session.setFormats(reqAndSuppFormats);
 

@@ -191,9 +191,13 @@ Sound.prototype = {
 
 };
 
-var Speaker = function () {
+let Speaker = function () {
 
 };
+
+// exports with this version of Javacript isn't working, so...
+Speaker.iOSp = iOSp;
+Speaker.brokenWebkit = brokenWebkit;
 
 function createAudioContext() {
   var AudioCtor = window.AudioContext || window.webkitAudioContext;
