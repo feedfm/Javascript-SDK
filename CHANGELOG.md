@@ -1,3 +1,6 @@
+1.99.10
+  - add brokenWebkitFormats option to select lower volume transcodes
+    on broken iOS clients
 
 1.99.8
   - fix null dereferences
