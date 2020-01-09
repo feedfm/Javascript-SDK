@@ -1,3 +1,6 @@
+1.99.11
+  - update regex to detect broken webkit
+
 1.99.10
   - add brokenWebkitFormats option to select lower volume transcodes
     on broken iOS clients
