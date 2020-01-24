@@ -648,10 +648,10 @@ Speaker.prototype = {
   },
 
   _destroySound: function (sound) {
-    log('want to destroy, and current is', sound, this.active.sound);
+    log('want to destroy, and current is', sound, this.active);
     sound.off();
 
-    if (this.active.sound === sound) {
+    if (this.active && (this.active.sound === sound)) {
       log('destroy triggered for current sound', sound.id);
       this.active.audio.pause();
     }
