@@ -102,7 +102,7 @@ used until either a 'not-in-us' event or a 'stations' event is triggered, to
 indicate that no music is available to the user or to indicate which music stations
 can be tuned to.
 
-The basic methods for use on the object are `play()`, `pause()`, and
+The basic methods for use on the object are `play()`, `pause()`, `stop()` and
 `skip()`, which do what you might expect.
 
 Due to auto-play restrictions on browsers, and especially Mobile Safari,
@@ -181,6 +181,7 @@ The player emits the following events:
 * play-paused - This is sent when playback of the current song is paused.
 * play-resumed - This is sent when playback of the current song is resumed after
   pausing.
+* play-stopped - This is sent when the 'stop()' method is called in Player
 * play-completed - This is sent when playback of the current song is complete or
   is aborted (due to a skip, for instance).
 * plays-exhausted - If there are no more songs that a user can listen to, this

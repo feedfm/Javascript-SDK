@@ -38,13 +38,14 @@
  *  player has a current state that can be queried with 'getCurrentState()':
  *    uninitialized - player is still trying to initialize
  *    unavailable - no music is available
- *    ready - ready for playback
+ *    idle - ready for playback, not playing anything
  *    playing - if session.hasActivePlayStarted() and we're not paused
  *    paused -  if session.hasActivePlayStarted() and we're paused
  * 
  *  events emitted by the player:
  *    not-in-us - user isn't located in the US and can't play music
  *    play-started - this play has begun playback.
+ *    play-stopped - player.stop() has been called
  *    skip-denied - the given song could not be skipped due to DMCA rules
  *    skip-failed
  *
@@ -443,9 +444,29 @@ Player.prototype.skip = function () {
     return;
   }
 
-  // start playback if we're paused
   this.state.paused = false;
+
   this.session.requestSkip();
+};
+
+Player.prototype.stop = function () {
+  if (!this.state.paused) {
+    this.state.paused = true;
+
+    var activePlay = this.state.activePlay;
+    if (activePlay && activePlay.sound) {
+      // report where we played to
+      var position = activePlay.sound.position();
+      this.session.reportPlayElapsed(Math.floor(position / 1000));
+
+      // stop any playback
+      activePlay.sound.destroy();
+    }
+  }
+
+  this.trigger('play-stopped');
+
+  this.session.tune();
 };
 
 Player.prototype.destroy = function () {

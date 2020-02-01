@@ -1,3 +1,10 @@
+
+1.99.13
+  - new 'stop()' call for Player class
+
+1.99.12
+  - fix NPE when trying to delete sound when no sound is active
+
 1.99.11
   - update regex to detect broken webkit
 

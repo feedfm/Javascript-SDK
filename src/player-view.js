@@ -87,6 +87,7 @@ var PlayerView = function (id, player) {
   this.player.on('play-paused', this._onPlayPaused, this);
   this.player.on('play-resumed', this._onPlayResumed, this);
   this.player.on('play-completed', this._onPlayCompleted, this);
+  this.player.on('play-stopped', this._onPlayStopped, this);
   this.player.on('play-liked', this._onPlayLiked, this);
   this.player.on('play-unliked', this._onPlayUnliked, this);
   this.player.on('play-disliked', this._onPlayDisliked, this);
@@ -252,6 +253,12 @@ PlayerView.prototype._onPlayPaused = function () {
 };
 
 PlayerView.prototype._onPlayCompleted = function () {
+  this.renderPosition(0, 0);
+  this._enableButtonsBasedOnState();
+};
+
+PlayerView.prototype._onPlayStopped = function () {
+  this.renderStatus(this.originalDisplayText);
   this.renderPosition(0, 0);
   this._enableButtonsBasedOnState();
 };

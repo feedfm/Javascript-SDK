@@ -672,7 +672,7 @@ Speaker.prototype = {
   },
 
   _position: function (sound) {
-    if (sound === this.active.sound) {
+    if (this.active && (sound === this.active.sound)) {
       if (sound.url !== this.active.audio.src) {
         log('trying to get current song position, but it is not in the active audio player');
       }
