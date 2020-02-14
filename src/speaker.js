@@ -208,6 +208,10 @@ function createAudioContext() {
     context = new AudioCtor();
   }
 
+  if (context.state !== 'running') {
+    throw new Error('Initial playback was not started in response to a user interaction!');
+  }
+
   return context;
 }
 
