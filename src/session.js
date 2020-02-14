@@ -573,11 +573,13 @@ Session.prototype._failStartPlay = function (play, response) {
   var self = this;
 
   log('start failed', response);
+  /*
   this._submitLogHistory();
   setTimeout(function() {
     log('5 second follow up after start failure');
     self._submitLogHistory();
   }, 5000);
+  */
 
   // only process if we're still actually waiting for this
   if (this.config.current && (this.config.current.play === play)) {
@@ -775,11 +777,14 @@ Session.prototype._receiveNextPlay = function (ajax, response) {
 // server returned an error when we requested the next song
 Session.prototype._failedNextPlay = function (delay, ajax, response) {
   log('next play failed', response);
+  
+  /*
   this._submitLogHistory();
-  setTimeout(function() {
+  setTimeout(()  {
     log('5 second follow up after next play failure');
-    self._submitLogHistory();
+    this._submitLogHistory();
   }, 5000);
+  */
 
   // only process if we're still actually waiting for this
   if (this.config.pendingRequest && (this.config.pendingRequest.ajax === ajax)) {
