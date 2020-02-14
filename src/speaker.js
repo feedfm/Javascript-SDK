@@ -1,15 +1,15 @@
 /*
- * The speaker object encapsulates the SoundManager2 code and boils it down
+ * The speaker object uses native web audio, and the interface boils it down
  * to the following api:
  *
- *    speaker().initializeAudio(): many clients can only start using
- *      speaker when handling an 'onClick' event. This call should be made 
+ *    speaker.initializeAudio(): many clients can only start using
+ *      audio when handling an 'onClick' event. This call should be made 
  *      at that time to get audio initialized while waiting for details
  *      of what to play from the server. 
  *
- *    speaker().setVolume(value): set the volume from 0 (mute) - 100 (full volume)
+ *    speaker.setVolume(value): set the volume from 0 (mute) - 100 (full volume)
  *
- *    var sound = speaker().create(url, optionsAndEvents): create a new sound from the
+ *    var sound = speaker.create(url, optionsAndEvents): create a new sound from the
  *       given url and return a 'song' object that can be used to pause/play/
  *       destroy the song and receive trigger events as the song plays/stops. 
  *
@@ -48,25 +48,11 @@
  *         resume: resume playback
  *         destroy: stop playback, prevent any future playback, and free up memory
  *
- * This module returns a function that returns a speaker singleton so everybody
- * is using the same instance.
- *
- * Proper usage looks like this:
- *
- *   require([ 'feed/speaker' ], function(speaker) {
- *     var mySpeaker = speaker(options, onReady);
- *   });
- *
- * That will make sure that all code uses the same speaker instance. 'options'
- * is optional, and is an object with any of the following keys:
- *
- *   debug: if true, emit debug information to the console
- *
- * The first function call to 'speaker()' is what configures and defines the
- * speaker - and subsequent calls just return the already-created instance.
- * I think this is a poor interface, but I don't have a better one at the
- * moment.
- *
+ *   The speaker assumes that you'll be playing only one sound at a time. When 
+ *   you kick off playback of a sound, it stops playback of any existing sound.
+ *   Fade-outs are handled by reporting the audio as complete when the fade-out
+ *   begins, but the sound continues playback until it has fully faded out. New
+ *   audio can be started while the fadeout is happening.
  */
 
 import log from './log';
@@ -76,7 +62,7 @@ import { uniqueId } from './util';
 const DEFAULT_VOLUME = 1.0;
 
 const iOSp = /(iPhone|iPad)/i.test(navigator.userAgent);
-const brokenWebkit = iOSp && /OS 13_[0123]/i.test(navigator.userAgent);
+const brokenWebkit = iOSp && /OS 13_/i.test(navigator.userAgent);
 
 const SILENCE = iOSp ?
   'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
@@ -171,6 +157,8 @@ Sound.prototype = {
   },
 
   // stop playing the given sound clip, unload it, and disable events
+  // note that no further events will be sent from this sound
+  // (so no 'finish' event, in particular)
   destroy: function () {
     log(this.id + ' being called to destroy');
     this.speaker._destroySound(this);
@@ -375,7 +363,7 @@ Speaker.prototype = {
     }
 
     if (!this.active.sound || (this.active.sound.url !== audio.src)) {
-      log('active audio elapsed, but it no matching sound');
+      log('active audio elapsed, but it no matching sound', this.active.sound);
       return;
     }
 
@@ -493,8 +481,10 @@ Speaker.prototype = {
 
     // start loading sound, if we can
     if (!this.active || !this.active.audio) {
+      log('no audio prepared yet, so preparing when ready')
       this.prepareWhenReady = sound.url;
     } else {
+      log('preparing sound now');
       this._prepare(sound.url, sound.startPosition);
     }
 
@@ -542,8 +532,8 @@ Speaker.prototype = {
   _playSound: function (sound) {
     var speaker = this;
 
-    if (!this.active.audio) {
-      console.error('**** player.initializeAudio() *** not called');
+    if (!this.active || !this.active.audio) {
+      console.error('**** player.initializeAudio() *** not called before playback!');
       return;
     }
 
@@ -635,7 +625,10 @@ Speaker.prototype = {
 
           sound.trigger('play');
 
-          if (paused) {
+          if (speaker.active.pauseAfterPlay) {
+            speaker.active.audio.pause();
+
+          } else if (paused) {
             sound.trigger('pause');
           }
 
@@ -660,13 +653,18 @@ Speaker.prototype = {
   },
 
   _pauseSound: function (sound) {
-    if ((sound != null) && (sound !== this.active.sound)) {
-      return;
+    if (this.active && (sound.url === this.active.audio.src)) {
+      if (this.active.sound === sound) {
+        this.active.audio.pause();
+      } else {
+        // if active.sound isn't assigned, then the song is still being loaded.
+        // if we try to pause() right now, it will cause the play() to throw an
+        // exception... so just throw up a flag for this
+        this.active.pauseAfterPlay = true;
+      }
     }
 
-    this.active.audio.pause();
-
-    if (this.fading.sound) {
+    if (this.fading && this.fading.audio) {
       this.fading.audio.pause();
     }
   },
