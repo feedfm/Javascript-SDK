@@ -804,9 +804,10 @@ Session.prototype._failedNextPlay = function (delay, ajax, response) {
       }
     }
 
-    log('request failed - trying again', response.status);
+    delay = Math.min(delay ? (delay * 2) : 500, 2000);
 
-    delay = delay ? (delay * 2) : 500;
+    log('request failed - trying again after ' + delay + 'ms');
+
     setTimeout(() => {
       this._requestNextPlay(delay);
     }, delay);
