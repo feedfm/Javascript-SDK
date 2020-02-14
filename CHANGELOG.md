@@ -1,4 +1,12 @@
 
+1.99.14
+  - hide 'play-active' and 'prepare-sound' events from player clients
+  - fix error due to calling 'pause' before play() call returned its promise
+  - automatically initialize audio when calling play
+  - throw error if attempting to play with out a valid audio context
+  - logic fixes to 'stop()' to ensure music stops playback
+  - update tests
+
 1.99.13
   - new 'stop()' call for Player class
 
