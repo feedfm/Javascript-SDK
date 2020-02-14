@@ -449,7 +449,7 @@ describe('Feed.Player integration tests', function () {
   });
 
   it('will retry play requests multiple times', async function () {
-    this.timeout(8000);
+    this.timeout(10000);
 
     server.autoRespondAfter = 1;
     server.autoRespond = true;
@@ -496,7 +496,7 @@ describe('Feed.Player integration tests', function () {
     player.on('all', (event) => console.log('player event:', event));
 
     await new Promise((resolve) => {
-      player.once('play-started', () => { setTimeout(resolve, 2000) });
+      player.once('play-started', () => { setTimeout(resolve, 1000) });
     });
 
     player.stop();
@@ -505,7 +505,7 @@ describe('Feed.Player integration tests', function () {
   });
 
   it('will retry preparing play requests multiple times', async function () {
-    this.timeout(8000);
+    this.timeout(10000);
 
     server.autoRespondAfter = 1;
     server.autoRespond = true;
@@ -565,7 +565,7 @@ describe('Feed.Player integration tests', function () {
 
 
   it('will silently invalidate plays that do not play, and will retry and start the next play', async function () {
-    this.timeout(5000);
+    this.timeout(8000);
 
     server.autoRespondAfter = 1;
     server.autoRespond = true;
@@ -618,7 +618,7 @@ describe('Feed.Player integration tests', function () {
 
 
   it('will retry the play start event if it fails', async function () {
-    this.timeout(5000);
+    this.timeout(8000);
 
     server.autoRespondAfter = 1;
     server.autoRespond = true;
@@ -676,8 +676,8 @@ function newSessionWithClientAndCredentials() {
 }
 
 const urls = [
-  'http://s3.amazonaws.com/feedfm-audio/1409079709-81815.mp3',
-  'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1412033146-28533.mp3'
+  'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1543381635-50459.mp3',
+  'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1563964895-88514.mp3'
 ];
 
 var counter = 0
