@@ -348,9 +348,14 @@ Player.prototype._onPlayCompleted = function (play) {
   }
 
   this.state.activePlay.sound.destroy();
+
+  let started = this.state.activePlay.playStarted;
+
   delete this.state.activePlay;
 
-  this.trigger('play-completed', play);
+  if (started) {
+    this.trigger('play-completed', play);
+  }
 
   // skip to complete the current song.
   //this.state.paused = false;
