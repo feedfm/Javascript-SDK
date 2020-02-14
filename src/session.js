@@ -56,6 +56,8 @@
  *    be either the first event after a 'tune' call, or after a
  *    play-completed event). The client must make another call to
  *    tune() to begin pulling in more music.
+ *  prepare-sound: this holds a URL of a sound that might be played
+ *    next. Clients can start loading the sound in preparation.
  *
  *  Clients that use the session object should tell the session about
  *  the status of the current play as it progresses:

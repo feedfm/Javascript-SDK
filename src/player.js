@@ -95,10 +95,18 @@ var Player = function (token, secret, options) {
   this.session.on('plays-exhausted', this._onPlaysExhausted, this);
   this.session.on('prepare-sound', this._onPrepareSound, this);
 
-  this.session.on('all', function () {
-    // propagate all events out to everybody else
-    this.trigger.apply(this, Array.prototype.slice.call(arguments, 0));
-  }, this);
+  let player = this;
+  for (let event of ['not-in-us', 'invalid-credentials', 'placement', 'stations', 'placement-changed', 'station-changed']) {
+    this.session.on(event, function() {
+      player.trigger.apply(player, [ event ].concat(Array.prototype.slice.call(arguments, 0)));
+    })
+  }
+
+  if (options.debug) {
+    this.session.on('play-active', function () {
+      player.trigger.apply(player, [ 'play-active' ].concat(Array.prototype.slice.call(arguments, 0)));
+    })
+  }
 
   const speaker = this.speaker = new Speaker();
 
@@ -329,6 +337,8 @@ Player.prototype._onPlayStarted = function (play) {
 
     }
   }
+
+  this.trigger('play-started', play);
 };
 
 Player.prototype._onPlayCompleted = function (play) {
@@ -340,12 +350,16 @@ Player.prototype._onPlayCompleted = function (play) {
   this.state.activePlay.sound.destroy();
   delete this.state.activePlay;
 
+  this.trigger('play-completed', play);
+
   // skip to complete the current song.
   //this.state.paused = false;
 };
 
 Player.prototype._onPlaysExhausted = function () {
   this.state.paused = false;
+
+  this.trigger('plays-exhausted');
 };
 
 Player.prototype._onPrepareSound = function (url) {
@@ -466,6 +480,7 @@ Player.prototype.stop = function () {
       }
 
       // stop any playback
+      activePlay.sound.pause();
       activePlay.sound.destroy();
 
     } else {
