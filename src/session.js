@@ -367,6 +367,29 @@ Session.prototype._receivePlayCompleted = function () {
   }
 };
 
+
+Session.prototype.reportPlayStopped = function (seconds) {
+  var self = this;
+
+  if (this.config.current && (this.config.current.started)) {
+    this._signedAjax(this.config.baseUrl + '/api/v2/play/' + this.config.current.play.id + '/elapse', {
+      method: 'POST',
+      body: JSON.stringify({ seconds: seconds }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+
+  // dump any future plays queued up
+  this.config.pendingRequest = null;
+  this.config.pendingPlay = null;
+  
+  // we're not playing anything now, baby!
+  this._assignCurrentPlay(null, true);
+};
+
+
 Session.prototype.requestSkip = function () {
   if (!this.config.current) {
     throw new Error('No song being played');

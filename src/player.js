@@ -371,6 +371,8 @@ Player.prototype.play = function () {
   const session = this.session;
   const state = this.state;
 
+  this.speaker.initializeAudio();
+
   if (!session.isTuned()) {
     // not currently playing music
     state.paused = false;
@@ -455,18 +457,25 @@ Player.prototype.stop = function () {
 
     var activePlay = this.state.activePlay;
     if (activePlay && activePlay.sound) {
-      // report where we played to
-      var position = activePlay.sound.position();
-      this.session.reportPlayElapsed(Math.floor(position / 1000));
+      log('stopping active play', activePlay);
+
+      if (activePlay.startReportedToServer) {
+        // report where we played to
+        var position = activePlay.sound.position();
+        this.session.reportPlayStopped(Math.floor(position / 1000));
+      }
 
       // stop any playback
       activePlay.sound.destroy();
+
+    } else {
+      log('no active play');
     }
   }
 
   this.trigger('play-stopped');
 
-  this.session.tune();
+  delete this.state.activePlay;
 };
 
 Player.prototype.destroy = function () {
