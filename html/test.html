@@ -3,24 +3,40 @@
       <link rel="stylesheet" type="text/css" href="css/mocha.css">
   </head>
   <body>
-    <script src="mocha.js"></script>
+    <script src="unfetch.js"></script>
+    <script src="mocha-7.0.1.js"></script>
     <script src="chai.js"></script>
-    <script src="sinon.js"></script>
+    <script src="sinon-8.1.1.js"></script>
+    <script src="../build/feed.js"></script>
+    
+    <button id="go">go!</button>
     <div id="mocha"></div>
 
     <script>
       mocha.setup('bdd');
       mocha.globals([
         'navigator',
-        'top'
+        'top',
+        'player',
+        'Feed'
       ]);
     </script>
 
-    <script src="../build/mocha.js"></script>
+    <script src="../build/player.js"></script>
     <script>
-      mocha.run();
-    </script>
+      if (window.interactiveStart) {
+        var goButton = document.getElementById('go');
+        goButton.addEventListener('click', function (ev) {
+          window.interactiveStart();
+  
+          console.log('starting tests');
 
+          mocha.run();
+        });
+      } else {
+        mocha.run();
+      }
+    </script>
 
   </body>
 </html>
