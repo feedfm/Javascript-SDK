@@ -674,10 +674,12 @@ Session.prototype._requestNextPlay = function (delay) {
         // retry the request
         self.config.pendingRequest.retryCount++;
 
-        self._signedAjax(self.config.pendingRequest.url, self.config.pendingRequest.ajax)
+        let ajax = self.config.pendingRequest.ajax;
+
+        self._signedAjax(self.config.pendingRequest.url, ajax)
           .then((response) => response.json())
-          .then(self._receiveNextPlay.bind(self, self.config.pendingRequest.ajax))
-          .catch(self._failedNextPlay.bind(self, delay, self.config.pendingRequest.ajax));
+          .then(self._receiveNextPlay.bind(self, ajax))
+          .catch(self._failedNextPlay.bind(self, delay, ajax));
         return;
       }
 
