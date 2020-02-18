@@ -6,7 +6,7 @@
     "name": "Eric Lambrecht",
     "email": "eric@feed.fm"
   },
-  "version": "1.99.14",
+  "version": "1.99.15-beta",
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
