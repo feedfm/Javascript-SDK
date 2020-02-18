@@ -208,9 +208,10 @@ function createAudioContext() {
     context = new AudioCtor();
   }
 
-  if (context.state !== 'running') {
-    throw new Error('Initial playback was not started in response to a user interaction!');
-  }
+//  despite being in the moz docs, this doesn't work:
+//  if (context.state !== 'running') {
+//    throw new Error('Initial playback was not started in response to a user interaction!', context.state);
+//  }
 
   return context;
 }
