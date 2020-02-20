@@ -557,11 +557,11 @@ Session.prototype._receiveStartPlay = function (play, response) {
       this.config.current.canSkip = response.can_skip;
       this.config.current.started = true;
 
-      this.trigger('play-started', play);
-
       // since we're ok to start this song, we can start looking for the
       // next song
       this._requestNextPlay();
+
+      this.trigger('play-started', play);
 
     } else {
       log('received start play, but not waiting any more');
@@ -576,6 +576,7 @@ Session.prototype._failStartPlay = function (play, response) {
   var self = this;
 
   log('start failed', response);
+  
   /*
   this._submitLogHistory();
   setTimeout(function() {
@@ -620,9 +621,12 @@ Session.prototype._failStartPlay = function (play, response) {
 Session.prototype._assignCurrentPlay = function (play, waitingIfEmpty) {
   // remove any existing play
   if (this.config.current) {
-    this.trigger('play-completed', this.config.current.play);
+    var currentPlay = this.config.current.play;
     this.config.current = null;
+  
+    this.trigger('play-completed', currentPlay);
   }
+
   if (play === null) {
     // nothing to play right now
 
