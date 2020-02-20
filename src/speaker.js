@@ -127,19 +127,19 @@ function d(audio) {
 
 Sound.prototype = {
   play: function () {
-    log(this.id + ' sound play');
+    log('sound ' + this.id + ' play');
     return this.speaker._playSound(this);
   },
 
   // pause playback of the current sound clip
   pause: function () {
-    log(this.id + ' sound pause');
+    log('sound ' + this.id + ' pause');
     return this.speaker._pauseSound(this);
   },
 
   // resume playback of the current sound clip
   resume: function () {
-    log(this.id + ' sound resume');
+    log('sound ' + this.id + ' resume');
     return this.speaker._playSound(this);
   },
 
@@ -160,13 +160,12 @@ Sound.prototype = {
   // note that no further events will be sent from this sound
   // (so no 'finish' event, in particular)
   destroy: function () {
-    log(this.id + ' being called to destroy');
+    log('sound ' + this.id + ' destroy');
     this.speaker._destroySound(this);
   },
 
   gainAdjustedVolume: function (volume) {
     if (!this.gain) {
-      log('no volume adjustment');
       return volume / 100;
     }
 
@@ -368,7 +367,7 @@ Speaker.prototype = {
     }
 
     if (!this.active.sound || (this.active.sound.url !== audio.src)) {
-      log('active audio elapsed, but it no matching sound', this.active.sound);
+      log('active audio elapsed, but no matching sound, so ignoring', audio.src);
       return;
     }
 
