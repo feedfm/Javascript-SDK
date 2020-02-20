@@ -119,6 +119,75 @@ describe('Feed.Player integration tests', function () {
     player.stop();
   });
 
+  it('will be "idle" between the end of one song and the starting of the next song', async function () {
+    this.timeout(10000);
+
+    server.autoRespondAfter = 1;
+    server.autoRespond = true;
+
+    server.respondWith('GET', /placement/, function (response) {
+      console.log('placement handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    });
+
+    var playResponses = [];
+
+    server.respondWith('POST', /play$/, function (response) {
+      var playResponse = validPlayResponse();
+
+      playResponse.play.audio_file.url = 'https://feedfm-audio.s3.amazonaws.com/1409893532-94744.m4a';
+      playResponses.push(playResponse);
+
+      console.log('play handler returning play ' + playResponse.play.id);
+
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
+    });
+
+    server.respondWith('POST', /start$/, function (response) {
+      console.log('start handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
+    })
+
+    server.respondWith('POST', /complete$/, function (response) {
+      console.log('complete handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
+    })
+
+    server.respondWith('POST', /elapse$/, function (response) {
+      console.log('elapse handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
+    });
+
+    var player = new Feed.Player('demo', 'demo', { debug: true });
+    var spy = sinon.spy(player, 'trigger');
+
+    player.play();
+
+    expect(player.getCurrentState()).to.equal('idle');
+
+    player.on('all', (event) => console.log('player event:', event));
+
+    await new Promise((resolve) => {
+      player.once('play-started', resolve);
+    });
+
+    expect(player.getCurrentState()).to.equal('playing');
+
+    await new Promise((resolve) => {
+      player.once('play-completed', resolve);
+    });
+
+    expect(player.getCurrentState()).to.equal('idle');
+
+    await new Promise((resolve) => {
+      player.once('play-started', resolve);
+    });
+
+    expect(player.getCurrentState()).to.equal('playing');
+
+    player.stop();
+  });
+
   it('will be "idle" while a play becomes active, before the play starts', async function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
@@ -562,7 +631,6 @@ describe('Feed.Player integration tests', function () {
 
     player.stop();
   });
-
 
   it('will silently invalidate plays that do not play, and will retry and start the next play', async function () {
     this.timeout(8000);
