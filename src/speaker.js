@@ -217,15 +217,34 @@ function createAudioContext() {
 
 Speaker.prototype = {
   vol: 100,  // 0..100
-  outstandingPlays: {},
+  outstandingSounds: {}, // Sound instances that have not yet been destroyed
 
-  audioContext: null, // for mobile safari
+  audioContext: null, // for mobile safari volume adjustment
 
   active: null, // active audio element, sound, and gain node
   fading: null, // fading audio element, sound, and gain node
   preparing: null, // preparing audio element, sound, and gain node
 
-  prepareWhenReady: null, // url to prepare when active player is fully loaded
+  // each of the above look like:
+  // {
+  //   audio: an HTML Audio element (created during initializeAudio() and reused)
+  //   sound: refers to Sound object whose URL has been assigned to 'audio.src' and
+  //          audio.play() has successfully returned.
+  //   gain: AudioGainNode for iOS
+  //   volume: relative volume of this sound (0..1)
+  // }
+  //
+  // note that when audio.src is not SILENCE, and sound is null, we're waiting for
+  // a return from audio.play(). If the audio.src is changed, or audio.pause() is called
+  // before audio.play() returns, chrome will throw an error!
+  //
+  // When a sound is started, it is thrown into preparing.audio.src, then 'preparing' and
+  // 'active' are swapped, then active.audio.play() is called.
+  //
+  // When a sound has completed playback or been destroyed, the sound property is set
+  // to null, the audio is paused, and audio.src is set to SILENCE.
+
+  prepareWhenReady: null, // url to prepare once audio is initialized
 
   initializeAudio: function () {
     // On mobile devices, we need to kick off playback of a sound in
