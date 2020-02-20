@@ -148,14 +148,19 @@ var Player = function (token, secret, options) {
 };
 
 Player.prototype.initializeAudio = function () {
+  log('INTIALIZE AUDIO');
   this.speaker.initializeAudio();
 };
 
 Player.prototype.setPlacementId = function (placementId) {
+  log('SET PLACEMENT ID', placementId);
+
   this.session.setPlacementId(placementId);
 };
 
 Player.prototype.setStationId = function (stationId) {
+  log('SET STATION ID', stationId);
+
   this.session.setStationId(stationId);
 };
 
@@ -381,12 +386,16 @@ Player.prototype.getStationInformation = function (stationInformationCallback) {
 };
 
 Player.prototype.tune = function () {
+  log('TUNE');
+
   if (!this.session.isTuned()) {
     this.session.tune();
   }
 };
 
 Player.prototype.play = function () {
+  log('PLAY');
+
   const session = this.session;
   const state = this.state;
 
@@ -415,6 +424,8 @@ Player.prototype.play = function () {
 };
 
 Player.prototype.pause = function () {
+  log('PAUSE');
+
   if (!this.session.hasActivePlayStarted() ||
     !this.state.activePlay ||
     this.state.paused) {
@@ -426,6 +437,8 @@ Player.prototype.pause = function () {
 };
 
 Player.prototype.like = function () {
+  log('LIKE');
+
   if (!this.session.hasActivePlayStarted()) {
     return;
   }
@@ -436,6 +449,8 @@ Player.prototype.like = function () {
 };
 
 Player.prototype.unlike = function () {
+  log('UNLIKE')
+
   if (!this.session.hasActivePlayStarted()) {
     return;
   }
@@ -446,6 +461,8 @@ Player.prototype.unlike = function () {
 };
 
 Player.prototype.dislike = function () {
+  log('DISLIKE')
+
   if (!this.session.hasActivePlayStarted()) {
     return;
   }
@@ -460,6 +477,8 @@ Player.prototype.dislike = function () {
 };
 
 Player.prototype.skip = function () {
+  log('SKIP');
+
   if (!this.session.hasActivePlayStarted()) {
     // can't skip non-playing song
     return;
@@ -471,6 +490,8 @@ Player.prototype.skip = function () {
 };
 
 Player.prototype.stop = function () {
+  log('STOP');
+
   if (!this.state.paused) {
     this.state.paused = true;
 

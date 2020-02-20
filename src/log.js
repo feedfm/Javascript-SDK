@@ -4,6 +4,9 @@ let enabled = false;
 
 let log = function () {
   let args = [ ...arguments ];
+
+  args[0] = 'feed.fm: ' + args[0];
+  
   if (enabled) {
     console.log.apply( console, args);
   }
