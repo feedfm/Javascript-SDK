@@ -517,21 +517,76 @@ Speaker.prototype = {
 
   prepare: function (url) {
     if (!this.active || !this.active.audio) {
+      log('saving url to prepare for later', url);
       this.prepareWhenReady = url;
       return;
     }
 
     var ranges = this.active.audio.buffered;
     if ((ranges.length > 0) && (ranges.end(ranges.length - 1) >= this.active.audio.duration)) {
+      log('active song has loaded enough, to preparing', url);
       return this._prepare(url, 0);
     }
 
     if (this.active.audio.url === SILENCE) {
+      log('preparing over silence');
       return this._prepare(url, 0);
     }
 
     // still loading primary audio - so hold off for now
+    log('nothing available to do active prepare');
     this.prepareWhenReady = url;
+  },
+
+  logState: function(label) {
+    // local testing:
+    console.group('speaker: ' + (label || ''));
+
+    if (!this.active) {
+      console.group('active');
+      console.log('uninitialized');
+      console.groupEnd();
+
+      console.group('preparing');
+      console.log('uninitialized');
+      console.groupEnd();
+
+      console.group('fading');
+      console.log('uninitialized');
+      console.groupEnd();
+
+    } else {
+      console.group('active');
+      console.log(`audio.src: ${this.active.audio.src}`);
+      console.log(`audio.paused: ${this.active.audio.paused}`);
+      console.log(`sound: ${this.active.sound ? this.active.sound.id : 'NULL'}`);
+      console.log(`volume: ${this.active.volume}`);
+      console.groupEnd();
+
+      console.group('preparing');
+      console.log(`audio.src: ${this.preparing.audio.src}`);
+      console.log(`audio.paused: ${this.preparing.audio.paused}`);
+      console.log(`sound: ${this.preparing.sound ? this.preparing.sound.id : 'NULL'}`);
+      console.log(`volume: ${this.preparing.volume}`);
+      console.groupEnd();
+
+      console.group('fading');
+      console.log(`audio.src: ${this.fading.audio.src}`);
+      console.log(`audio.paused: ${this.fading.audio.paused}`);
+      console.log(`sound: ${this.fading.sound ? this.fading.sound.id : 'NULL'}`);
+      console.log(`volume: ${this.fading.volume}`);
+      console.groupEnd();
+    }
+
+    console.group('outstanding sounds');
+    for (let id in this.outstandingSounds) {
+      let play = this.outstandingSounds[id];
+      console.log(play.id + ': ' + play.url);
+    }
+    console.groupEnd();
+
+
+    console.groupEnd();
   },
 
   _prepare: function (url, startPosition) {
