@@ -514,9 +514,12 @@ Player.prototype.stop = function () {
     }
   }
 
-  this.trigger('play-stopped');
-
   delete this.state.activePlay;
+
+  // flush out any prepared sounds
+  this.speaker.flush();
+
+  this.trigger('play-stopped');
 };
 
 Player.prototype.destroy = function () {
