@@ -450,11 +450,14 @@ Session.prototype._failInvalidate = function (delay, play, response) {
 Session.prototype._receiveInvalidate = function (play, response) {
   log('invalidate response');
   var self = this;
+
+  /*
   this._submitLogHistory();
   setTimeout(function() {
     log('5 second follow up after invalidate');
     self._submitLogHistory();
   }, 5000);
+  */
 
   if (!this.config.current || (this.config.current.play !== play)) {
     // not holding this song any more - just ignore it
