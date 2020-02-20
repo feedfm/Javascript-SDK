@@ -61,6 +61,8 @@ export default function initializeAudio() {
 
   Feed.Speaker.prototype.initializeAudio = function () {
     if (this.active === null) {
+      console.log('initializing audio!');
+
       this.audioContext = context;
 
       this.active = recycleAudio(a, SILENCE, this);
