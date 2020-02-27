@@ -461,6 +461,81 @@ describe('Feed.Player integration tests', function () {
     expect(player.getCurrentState()).to.equal('idle');
   });
 
+  it('will not request a "start" on a play even after a tune()', async function () {
+    this.timeout(5000);
+
+    server.autoRespondAfter = 1;
+    server.autoRespond = true;
+
+    server.respondWith('GET', /placement/, function (response) {
+      console.log('placement handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    });
+
+    var playResponses = [];
+
+    server.respondWith('POST', /play$/, function (response) {
+      var playResponse = validPlayResponse();
+      playResponses.push(playResponse);
+
+      console.log('play handler returning play ' + playResponse.play.id);
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
+    });
+
+    server.respondWith('POST', /start$/, function (response) {
+      console.log('play start handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
+    })
+
+    server.respondWith('POST', /invalidate$/, function (response) {
+      throw new Error('invalidate called!');
+    });
+
+    var player = new Feed.Player('demo', 'demo', { debug: true });
+    var spy = sinon.spy(player, 'trigger');
+
+    player.on('all', (event) => console.log('player event:', event));
+
+    player.tune();
+    console.log('player tuned');
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1000);
+    });
+
+    console.log('calling play');
+    player.play();
+    console.log('play called!');
+    console.log('setting station');
+    player.setStationId(STATION_TWO_ID);
+    player.play();
+    console.log('did station change');
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 2000);
+    });
+
+    player.stop();
+
+    /*
+    // wait for song to be active
+    await new Promise((resolve) => {
+      player.once('play-active', () => { setTimeout(resolve, 1000) });
+    });
+
+    // change the station
+    player.setStationId(STATION_TWO_ID);
+
+    await new Promise((resolve) => {
+      player.once('play-active', () => { setTimeout(resolve, 1000) });
+    });
+
+    expect(player.getCurrentState()).to.equal('idle');
+    */
+  });
+
+
+
   it('will retry failed play creation calls', async function() {
     this.timeout(4000);
 
@@ -728,6 +803,69 @@ describe('Feed.Player integration tests', function () {
     await new Promise((resolve) => {
       player.once('play-started', () => setTimeout(resolve, 500));
     });
+
+    player.stop();
+  })
+
+
+  it('will gracefully handle sequential play calls', async function () {
+    this.timeout(8000);
+
+    server.autoRespondAfter = 1;
+    server.autoRespond = true;
+
+    server.respondWith('GET', /placement/, function (response) {
+      console.log('placement handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    });
+
+    var playResponses = [];
+
+    server.respondWith('POST', /play$/, function (response) {
+      var playResponse = validPlayResponse();
+      playResponses.push(playResponse);
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
+    });
+
+    let startCount = 0;
+    server.respondWith('POST', /start$/, function (response) {
+      if (startCount < 1) {
+        response.respond(500, { 'Content-Type': 'text/plain' }, 'Well, that did not work');
+      } else {
+        response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
+      }
+    })
+
+    server.respondWith('POST', /elapse$/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
+    });
+
+    var player = new Feed.Player('demo', 'demo', { debug: true });
+    var spy = sinon.spy(player, 'trigger');
+
+    player.tune();
+
+    player.on('all', (event) => console.log('player event:', event));
+
+    // wait for play to be available
+    await new Promise((resolve) => {
+      player.once('play-active', resolve);
+    });
+
+    let startedCount = 0;
+    player.on('play-started', (play) => {
+      startedCount++;
+
+      expect(startedCount).to.below(2);
+    });
+
+    // call play twice in a row
+    player.play();
+    player.play();
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 3000);
+    })
 
     player.stop();
   })

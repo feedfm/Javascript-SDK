@@ -414,6 +414,9 @@ Player.prototype.play = function () {
 
     } else {
       state.activePlay.sound.play();
+
+      // prevent race condition if play is called immediately after
+      this.state.paused = false;
     }
 
   } else {
