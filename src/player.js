@@ -418,8 +418,8 @@ Player.prototype.play = function () {
     }
 
     // prevent race condition if play is called immediately after
-    this.state.paused = false;
-    
+    state.paused = false;
+
   } else {
     // waiting for network request to complete
     state.paused = false;
