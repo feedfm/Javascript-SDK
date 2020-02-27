@@ -421,6 +421,8 @@ Speaker.prototype = {
     }
 
     if (this.prepareWhenReady) {
+      // we've got something we want to load. check if we've loaded 
+      // enough of the current song that we can start loading next song.
       this.prepare(this.prepareWhenReady);
     }
   },
