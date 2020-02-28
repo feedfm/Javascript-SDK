@@ -25,7 +25,7 @@
     <div id="mocha"></div>
 
     <script>
-      mocha.setup('bdd');
+      mocha.setup({ ui: 'bdd', bail: true });
       mocha.globals([
         'navigator',
         'top',

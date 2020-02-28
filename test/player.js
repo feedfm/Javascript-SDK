@@ -70,7 +70,7 @@ describe('Feed.Player integration tests', function () {
   });
 
   it('will be "idle" until the first song starts, then it will be "playing" after the song starts', async function () {
-    this.timeout(4000);
+    this.timeout(10000);
 
     server.autoRespondAfter = 1;
     server.autoRespond = true;
@@ -229,7 +229,7 @@ describe('Feed.Player integration tests', function () {
   });
 
   it('will continue to be "playing" when changing a station during playback', async function () {
-    this.timeout(4000);
+    this.timeout(10000);
 
     server.autoRespondAfter = 1;
     server.autoRespond = true;
@@ -355,7 +355,7 @@ describe('Feed.Player integration tests', function () {
   });
 
   it('will be in the idle state after calling stop', async function () {
-    this.timeout(4000);
+    this.timeout(10000);
 
     server.autoRespondAfter = 1;
     server.autoRespond = true;
@@ -708,7 +708,7 @@ describe('Feed.Player integration tests', function () {
   });
 
   it('will silently invalidate plays that do not play, and will retry and start the next play', async function () {
-    this.timeout(8000);
+    this.timeout(20000);
 
     server.autoRespondAfter = 1;
     server.autoRespond = true;
