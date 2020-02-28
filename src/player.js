@@ -406,8 +406,9 @@ Player.prototype.play = function () {
     state.paused = false;
 
     return session.tune();
+  }
 
-  } else if (session.getActivePlay() && state.activePlay && state.paused) {
+  if (session.getActivePlay() && state.activePlay && state.paused) {
     // resume playback of song
     if (state.activePlay.playStarted) {
       state.activePlay.sound.resume();
@@ -416,15 +417,10 @@ Player.prototype.play = function () {
       state.activePlay.sound.play();
 
     }
-
-    // prevent race condition if play is called immediately after
-    state.paused = false;
-
-  } else {
-    // waiting for network request to complete
-    state.paused = false;
-
   }
+
+  // 'start' event from sound will definitely be asynchronous, so prevent repeated calls
+  state.paused = false;
 };
 
 Player.prototype.pause = function () {
