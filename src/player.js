@@ -434,6 +434,9 @@ Player.prototype.pause = function () {
 
   // pause current song
   this.state.activePlay.sound.pause();
+
+  // 'pause' event from sound might be asynchronous, so prevent repeated calls
+  this.state.paused = true;
 };
 
 Player.prototype.like = function () {
