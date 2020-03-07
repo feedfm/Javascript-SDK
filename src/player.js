@@ -269,6 +269,12 @@ Player.prototype._onSoundFinish = function (playId, withError) {
   this.state.activePlay.soundCompleted = true;
   if (withError) {
     this.state.activePlay.soundCompletedWithError = true;
+
+    if (withError.name === 'NotAllowedError') {
+      console.error('Feed.fm: first call to "initializeAudio()" or "play()" must be made in user-initiated event handler');
+      this.stop();
+      return;
+    }
   }
 
   if (!this.state.activePlay.playStarted) {
@@ -570,7 +576,7 @@ Player.prototype.getDuration = function () {
 };
 
 Player.prototype.maybeCanSkip = function () {
-  return this.session.maybeCanSkip();
+  return !!this.session.maybeCanSkip();
 };
 
 var mutedKey = 'muted';
