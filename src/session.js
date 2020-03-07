@@ -402,7 +402,7 @@ Session.prototype.requestSkip = function () {
   }
 
   if (!this.config.current.canSkip) {
-    this.trigger('skip-denied');
+    setTimeout(() => { this.trigger('skip-denied'); }, 1);
     return;
   }
 

@@ -869,7 +869,59 @@ describe('Feed.Player integration tests', function () {
 
     player.stop();
   })
+
+  it('will emit skip-denied message when a skip is disallowed', async function () {
+    this.timeout(4000);
+
+    server.autoRespondAfter = 10;
+    server.autoRespond = true;
+
+    server.respondWith('GET', /placement/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    });
+    var playResponse = validPlayResponse();
+
+    server.respondWith('POST', /play$/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
+    });
+
+    server.respondWith('POST', /start$/, function (response) {
+      console.log('start handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: true }));
+    });
+
+    server.respondWith('POST', /skip$/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: false }));
+    });
+
+    server.respondWith(function (request) {
+      console.log('default response with request', request);
+    });
+
+    var player = new Feed.Player('demo', 'demo', { debug: true });
+    player.play();
+
+    player.on('all', (event) => console.log('player event:', event));
+
+    await new Promise((resolve) => {
+      player.on('play-started', () => setTimeout(resolve, 1000));
+    });
+
+    player.skip();
+
+    await new Promise((resolve) => {
+      console.log('on skip dewnied');
+      player.on('skip-denied', resolve);
+    });
+
+    //expect(player.getCurrentState()).to.equal('playing');
+
+    player.stop();
+  });
+
+
 });
+
 
 function newSessionWithClientAndCredentials() {
   var session = new Feed.Session();
