@@ -96,7 +96,7 @@ var Player = function (token, secret, options) {
   this.session.on('prepare-sound', this._onPrepareSound, this);
 
   let player = this;
-  for (let event of ['not-in-us', 'invalid-credentials', 'placement', 'stations', 'placement-changed', 'station-changed']) {
+  for (let event of ['not-in-us', 'invalid-credentials', 'placement', 'stations', 'placement-changed', 'station-changed', 'skip-denied']) {
     this.session.on(event, function() {
       player.trigger.apply(player, [ event ].concat(Array.prototype.slice.call(arguments, 0)));
     })
