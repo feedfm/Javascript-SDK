@@ -1052,7 +1052,7 @@ Session.prototype._sign = function (request) {
     };
   }
 
-  request.headers['X-Feed-SDK'] = FEED_VERSION;
+  request.headers['X-Feed-SDK'] = FEED_VERSION + ' js';
 
   if (this.extraHeaders) {
     for (var header in this.extraHeaders) {
