@@ -2,9 +2,12 @@
 
 1.99.15
 
-- improved handling of sound destroy() whe audio.play() call hasn't returned yet
+- improved handling of sound destroy() when audio.play() call hasn't returned yet
 - destroy all outstanding sounds after stop() call
 - reorder event triggers to happen after _all_ internal changes have been completed
+- more skip denial tests
+- console log error messages when you call play() not from user-initiated event
+- improved event handling to prevent some race conditions
 
 1.99.14
 
