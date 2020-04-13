@@ -35,7 +35,7 @@ export function uniqueId(prefix) {
 const nativeIndexOf = Array.prototype.indexOf;
 
 function contains(obj, target) {
-  if (obj == null) return false;
+  if (obj === null) return false;
   if (nativeIndexOf && obj.indexOf === nativeIndexOf) return obj.indexOf(target) != -1;
   return obj.some(function (value) {
     return value === target;
@@ -77,4 +77,16 @@ export function once (func) {
     func = null;
     return memo;
   };
+}
+
+export function repeatAfter(delay, max, cb) {
+  delay = delay ? 2 * delay : 200;
+
+  if (delay > max) {
+    delay = max;
+  }
+
+  setTimeout(function () {
+    cb(delay);
+  }, delay);
 }

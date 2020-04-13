@@ -16,6 +16,7 @@
  *    crossfadeIn: false,   // when true, songs do not fade in - they start at full volume
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
  *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions
+ *    simulcast: 'uuid'     // id to announce music playback on, for simulcast listeners
  *
  *  In response to a user-interaction event, and before you begin any
  *  music playback, be sure to call:
@@ -60,6 +61,8 @@ import Speaker from './speaker';
 import log from './log';
 import Events from './events';
 import Session from './session';
+import { getBaseUrl } from './base-url';
+import { getClientId } from './client-id';
 
 function supports_html5_storage() {
   try {
@@ -70,12 +73,13 @@ function supports_html5_storage() {
 }
 
 var Player = function (token, secret, options) {
+  options = options || {};
+
   this.state = {
     paused: true,
     // activePlay
+    simulcast: options.simulcast
   };
-
-  options = options || {};
 
   if (options.debug) {
     log.enable();
@@ -99,13 +103,13 @@ var Player = function (token, secret, options) {
   for (let event of ['not-in-us', 'invalid-credentials', 'placement', 'stations', 'placement-changed', 'station-changed', 'skip-denied']) {
     this.session.on(event, function() {
       player.trigger.apply(player, [ event ].concat(Array.prototype.slice.call(arguments, 0)));
-    })
+    });
   }
 
   if (options.debug) {
     this.session.on('play-active', function () {
       player.trigger.apply(player, [ 'play-active' ].concat(Array.prototype.slice.call(arguments, 0)));
-    })
+    });
   }
 
   const speaker = this.speaker = new Speaker();
@@ -271,6 +275,7 @@ Player.prototype._onSoundFinish = function (playId, withError) {
     this.state.activePlay.soundCompletedWithError = true;
 
     if (withError.name === 'NotAllowedError') {
+      // eslint-disable-next-line no-console
       console.error('Feed.fm: first call to "initializeAudio()" or "play()" must be made in user-initiated event handler');
       this.stop();
       return;
@@ -349,6 +354,8 @@ Player.prototype._onPlayStarted = function (play) {
     }
   }
 
+  this.updateSimulcast();
+
   this.trigger('play-started', play);
 };
 
@@ -375,6 +382,7 @@ Player.prototype._onPlayCompleted = function (play) {
 Player.prototype._onPlaysExhausted = function () {
   this.state.paused = false;
 
+  this.updateSimulcast();
   this.trigger('plays-exhausted');
 };
 
@@ -427,6 +435,8 @@ Player.prototype.play = function () {
 
   // 'start' event from sound will definitely be asynchronous, so prevent repeated calls
   state.paused = false;
+
+  this.updateSimulcast();
 };
 
 Player.prototype.pause = function () {
@@ -443,6 +453,8 @@ Player.prototype.pause = function () {
 
   // 'pause' event from sound might be asynchronous, so prevent repeated calls
   this.state.paused = true;
+
+  this.updateSimulcast();
 };
 
 Player.prototype.like = function () {
@@ -458,7 +470,7 @@ Player.prototype.like = function () {
 };
 
 Player.prototype.unlike = function () {
-  log('UNLIKE')
+  log('UNLIKE');
 
   if (!this.session.hasActivePlayStarted()) {
     return;
@@ -470,7 +482,7 @@ Player.prototype.unlike = function () {
 };
 
 Player.prototype.dislike = function () {
-  log('DISLIKE')
+  log('DISLIKE');
 
   if (!this.session.hasActivePlayStarted()) {
     return;
@@ -501,26 +513,24 @@ Player.prototype.skip = function () {
 Player.prototype.stop = function () {
   log('STOP');
 
-  if (!this.state.paused) {
-    this.state.paused = true;
+  this.state.paused = true;
+  
+  var activePlay = this.state.activePlay;
+  if (activePlay && activePlay.sound) {
+    log('stopping active play', activePlay);
 
-    var activePlay = this.state.activePlay;
-    if (activePlay && activePlay.sound) {
-      log('stopping active play', activePlay);
-
-      if (activePlay.startReportedToServer) {
-        // report where we played to
-        var position = activePlay.sound.position();
-        this.session.reportPlayStopped(Math.floor(position / 1000));
-      }
-
-      // stop any playback
-      activePlay.sound.pause();
-      activePlay.sound.destroy();
-
-    } else {
-      log('no active play');
+    if (activePlay.startReportedToServer) {
+      // report where we played to
+      var position = activePlay.sound.position();
+      this.session.reportPlayStopped(Math.floor(position / 1000));
     }
+
+    // stop any playback
+    activePlay.sound.pause();
+    activePlay.sound.destroy();
+
+  } else {
+    log('no active play');
   }
 
   delete this.state.activePlay;
@@ -529,6 +539,8 @@ Player.prototype.stop = function () {
   this.speaker.flush();
 
   this.trigger('play-stopped');
+  
+  this.updateSimulcast();
 };
 
 Player.prototype.destroy = function () {
@@ -609,6 +621,31 @@ Player.prototype.setMuted = function (isMuted) {
 
     this.trigger('unmuted');
   }
+};
+
+Player.prototype.updateSimulcast = function() {
+  if (!this.state.simulcast) {
+    return;
+  }
+
+  let state = this.getCurrentState();
+
+  if (state === 'suspended') {
+    state = 'idle';
+  }
+
+  getClientId().then((clientId) => {
+    this.session._signedAjax(getBaseUrl() + `/api/v2/simulcast/${this.state.simulcast}/in-progress`, {
+      method: 'POST',
+      body: JSON.stringify({
+        state: state,
+        client_id: clientId
+      }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+    });
+  });
 };
 
 export default Player;

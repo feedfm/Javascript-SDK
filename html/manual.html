@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=utf-8 />
+  <title>JS Bin</title>
+  <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
+  <script src="../build/feed.js"></script>
+</head>
+<body>
+  
+  <div id="player-view-div">
+    <div class='status'></div>
+    <button class="play-button">play</button>
+    <button class="pause-button">pause</button>
+    <button class="skip-button">skip</button>
+    <button class="stop-button">stop</button>
+  </div>
+
+  <div class="volume">
+    <button>1</button>
+    <button>5</button>
+    <button>25</button>
+    <button>50</button>
+    <button>75</button>
+  </div>
+
+  <ul class="stations">
+  </ul>
+
+  <div id="listener">
+    <button>listen</button>
+    <div class="status"></div>
+  </div>
+
+
+  <script>
+    var simulcast = 'nGwPEXk4js9V4Yp3HcyM2i';
+
+    // Create basic player.
+    var player = new Feed.Player('demo', 'demo', { 
+      baseUrl: 'https://stage.feed.fm', 
+      /* formats: 'quiet-50-aac', */ 
+      debug: true, 
+      simulcast: simulcast
+    });
+    
+    // Display all the events the player triggers
+    player.on('all', function(event) {
+      console.log('player triggered event \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
+    });
+
+    player.on('stations', function(stations) {
+      console.log('stations', stations);
+      for (var i = 0; i < stations.length; i++) {
+        var $button = $('<button>' + stations[i].name + '</button>').data('id', stations[i].id);
+        $button.on('click', function() {
+          var id = $(this).data('id');
+          player.setStationId(id);
+        });
+        $('.stations').append($button);
+      }
+    });
+    
+    var playerView = new Feed.PlayerView('player-view-div', player);    
+    
+    player.tune();
+
+    $('.stop-button').on('click', function() {
+      player.stop();
+    });
+
+    $('.volume button').on('click', function(e) {
+      var $button = $(this);
+      var level = parseInt($button.html());
+
+      player.speaker.setVolume(level);
+    });
+
+    var listener = new Feed.Listener(simulcast);
+
+    $('#listener').on('click', function() {
+      listener.listen();
+    });
+
+    listener.on('play-started', (play) => {
+      document.querySelector('#listener .status').innerHTML = play.audio_file.track.title + ' by ' + play.audio_file.artist.name;
+    });
+
+    listener.on('music-stopped', () => {
+      document.querySelector('#listener .status').innerHTML = '';
+    });
+
+  </script>
+  
+</body>
+</html>

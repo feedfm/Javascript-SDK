@@ -74,12 +74,11 @@ if (window.NodeList && !NodeList.prototype.forEach) {
 }
 
 var PlayerView = function (id, player) {
-  this.id = id;
   this.alertId = null;
   this.durationId = null;
   this.startedPlayback = false;
 
-  this.$el = document.getElementById(id);
+  this.$el = (id instanceof Element) ? id : document.getElementById(id);
   this.player = player;
 
   this.player.on('placement', this._onPlacement, this);
@@ -96,30 +95,30 @@ var PlayerView = function (id, player) {
   this.player.on('suspend', this._onSuspend, this);
 
   this._enableButtonsBasedOnState();
-  this.displayText = this.originalDisplayText = document.querySelector('.status').innerHTML;
+  this.displayText = this.originalDisplayText = this.$el.querySelector('.status').innerHTML;
   this.renderStatus();
 
-  document.querySelectorAll('.status').forEach(status => {
+  this.$el.querySelectorAll('.status').forEach((status) => {
     status.addEventListener('click', this._onStatusClick.bind(this));
   });
 
-  document.querySelectorAll('.play-button, .start-button, .resume-button').forEach(button => {
+  this.$el.querySelectorAll('.play-button, .start-button, .resume-button').forEach(button => {
     button.addEventListener('click', this._onPlayButtonClick.bind(this));
   });
 
-  document.querySelectorAll('.pause-button').forEach(pause => {
+  this.$el.querySelectorAll('.pause-button').forEach((pause) => {
     pause.addEventListener('click', this._onPauseButtonClick.bind(this));
   });
 
-  document.querySelectorAll('.skip-button').forEach(skip => {
+  this.$el.querySelectorAll('.skip-button').forEach((skip) => {
     skip.addEventListener('click', this._onSkipButtonClick.bind(this));
   });
 
-  document.querySelectorAll('.like-button').forEach(like => {
+  this.$el.querySelectorAll('.like-button').forEach((like) => {
     like.addEventListener('click', this._onLikeButtonClick.bind(this));
   });
 
-  document.querySelectorAll('.dislike-button').forEach(dislike => {
+  this.$el.querySelectorAll('.dislike-button').forEach((dislike) => {
     dislike.addEventListener('click', this._onDislikeButtonClick.bind(this));
   });
 
@@ -200,8 +199,8 @@ PlayerView.prototype._enablePositionTracker = function () {
 };
 
 PlayerView.prototype._setLikeStatus = function (liked) {
-  const likes = document.querySelectorAll('.like-button');
-  const dislikes = document.querySelectorAll('.dislike-button');
+  const likes = this.$el.querySelectorAll('.like-button');
+  const dislikes = this.$el.querySelectorAll('.dislike-button');
 
   if (liked === true) {
     // highlight the like button
@@ -298,7 +297,7 @@ PlayerView.prototype.renderStatus = function (displayText) {
   }
 
   if (!this.alertId) {
-    document.querySelectorAll('.status').forEach(status => {
+    this.$el.querySelectorAll('.status').forEach(status => {
       status.innerHTML = this.displayText;
       status.classList.remove('alert');
     });
@@ -307,15 +306,15 @@ PlayerView.prototype.renderStatus = function (displayText) {
 
 PlayerView.prototype.renderPosition = function (position, duration) {
 
-  document.querySelectorAll('.elapsed').forEach(elapsed => {
+  this.$el.querySelectorAll('.elapsed').forEach((elapsed) => {
     elapsed.innerHTML = formatTime(position);
   });
-  document.querySelectorAll('.duration').forEach(dur => {
+  this.$el.querySelectorAll('.duration').forEach((dur) => {
     dur.innerHTML = formatTime(duration);
   });
 
   if (duration === 0) {
-    document.querySelectorAll('.progress').forEach(progress => {
+    this.$el.querySelectorAll('.progress').forEach((progress) => {
       progress.style.width = '0';
     });
 
@@ -323,7 +322,7 @@ PlayerView.prototype.renderPosition = function (position, duration) {
     var elapsed = Math.round((position + 1000) / duration * 100);
     elapsed = (elapsed > 100) ? 100 : elapsed;
 
-    document.querySelectorAll('.progress').forEach(progress => {
+    this.$el.querySelectorAll('.progress').forEach((progress) => {
       progress.style.width = elapsed + '%';
     });
   }
@@ -346,7 +345,7 @@ PlayerView.prototype.renderAlert = function (alertText) {
     window.clearTimeout(this.alertId);
   }
 
-  document.querySelectorAll('.status').forEach(status => {
+  this.$el.querySelectorAll('.status').forEach((status) => {
     status.innerHTML = alertText;
     status.classList.add('alert');
   });
@@ -405,7 +404,7 @@ PlayerView.prototype._enableButtonsBasedOnState = function () {
   }
 
   for (let item of toDisable) {
-    document.querySelectorAll(item).forEach(element => {
+    this.$el.querySelectorAll(item).forEach((element) => {
       element.classList.remove('button-enabled');
       element.classList.add('button-disabled');
       element.disabled = true;
@@ -413,7 +412,7 @@ PlayerView.prototype._enableButtonsBasedOnState = function () {
   }
 
   for (let item of toEnable) {
-    document.querySelectorAll(item).forEach(element => {
+    this.$el.querySelectorAll(item).forEach((element) => {
       element.classList.remove('button-disabled');
       element.classList.add('button-enabled');
       element.disabled = false;

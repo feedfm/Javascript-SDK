@@ -62,7 +62,7 @@ import { uniqueId } from './util';
 const DEFAULT_VOLUME = 1.0;
 
 const iOSp = /(iPhone|iPad)/i.test(navigator.userAgent);
-const brokenWebkit = iOSp && /OS 13_/i.test(navigator.userAgent);
+const brokenWebkit = iOSp && /OS 13_[43210]/i.test(navigator.userAgent);
 
 const SILENCE = iOSp ?
   'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
@@ -207,10 +207,10 @@ function createAudioContext() {
     context = new AudioCtor();
   }
 
-//  despite being in the moz docs, this doesn't work:
-//  if (context.state !== 'running') {
-//    throw new Error('Initial playback was not started in response to a user interaction!', context.state);
-//  }
+  //  despite being in the moz docs, this doesn't work:
+  //  if (context.state !== 'running') {
+  //    throw new Error('Initial playback was not started in response to a user interaction!', context.state);
+  //  }
 
   return context;
 }
@@ -435,23 +435,23 @@ Speaker.prototype = {
 
     var calculatedVolume = sound.gainAdjustedVolume(this.vol);
 
-    if ((sound.fadeInStart != sound.fadeInEnd) && (currentTime < sound.fadeInStart)) {
+    if ((sound.fadeInStart !== sound.fadeInEnd) && (currentTime < sound.fadeInStart)) {
       calculatedVolume = 0;
 
       log('pre-fade-in volume is 0');
 
-    } else if ((sound.fadeInStart != sound.fadeInEnd) && (currentTime >= sound.fadeInStart) && (currentTime <= sound.fadeInEnd)) {
+    } else if ((sound.fadeInStart !== sound.fadeInEnd) && (currentTime >= sound.fadeInStart) && (currentTime <= sound.fadeInEnd)) {
       // ramp up from 0 - 100%
       calculatedVolume = (currentTime - sound.fadeInStart) / (sound.fadeInEnd - sound.fadeInStart) * calculatedVolume;
 
       log('ramping ▲ volume', { currentTime: currentTime, currentVolume: currentVolume, calculatedVolume: calculatedVolume, sound: sound });
 
-    } else if ((sound.fadeOutStart != sound.fadeOutEnd) && (currentTime > sound.fadeOutEnd)) {
+    } else if ((sound.fadeOutStart !== sound.fadeOutEnd) && (currentTime > sound.fadeOutEnd)) {
       calculatedVolume = 0;
 
       log('post-fade-out volume is 0');
 
-    } else if ((sound.fadeOutStart != sound.fadeOutEnd) && (currentTime >= sound.fadeOutStart) && (currentTime <= sound.fadeOutEnd)) {
+    } else if ((sound.fadeOutStart !== sound.fadeOutEnd) && (currentTime >= sound.fadeOutStart) && (currentTime <= sound.fadeOutEnd)) {
       // ramp down from 100% to 0
       calculatedVolume = (1 - (currentTime - sound.fadeOutStart) / (sound.fadeOutEnd - sound.fadeOutStart)) * calculatedVolume;
 
@@ -459,7 +459,7 @@ Speaker.prototype = {
 
     }
 
-    if (currentVolume != calculatedVolume) {
+    if (currentVolume !== calculatedVolume) {
       if (iOSp) {
         if (!brokenWebkit) {
           audioGroup.gain.value = calculatedVolume;
@@ -506,7 +506,7 @@ Speaker.prototype = {
 
     // start loading sound, if we can
     if (!this.active || !this.active.audio) {
-      log('no audio prepared yet, so preparing when ready')
+      log('no audio prepared yet, so preparing when ready');
       this.prepareWhenReady = sound.url;
 
     } else if (this.preparing.audio.src === SILENCE) {
@@ -540,6 +540,7 @@ Speaker.prototype = {
     this.prepareWhenReady = url;
   },
 
+  /* eslint-disable no-console */
   logState: function(label) {
     // local testing:
     console.group('speaker: ' + (label || ''));
@@ -614,6 +615,7 @@ Speaker.prototype = {
     var speaker = this;
 
     if (!this.active || !this.active.audio) {
+      // eslint-disable-next-line
       console.error('**** player.initializeAudio() *** not called before playback!');
       return;
     }
