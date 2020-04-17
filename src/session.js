@@ -28,10 +28,9 @@
  *
  *  The session will now emit the following events:
  *
- *  not-in-us: if feed can't determine that the user is in the US, then
- *    the user won't be allowed to play any music. This check is made
- *    every time we try to retrieve a song. Once you get this event, you
- *    should assume nothing further will work.
+ *  music-unavailable: if the current user may not listen to music
+ *    This check is made every time we try to retrieve a song. Once 
+ *    you get this event, you should assume nothing further will work.
  *  invalid-credentials: the token and secret passed to this function
  *    are not valid.
  *  placement: after we tune in to a placement or station,
@@ -797,6 +796,8 @@ Session.prototype._failedNextPlay = function (delay, ajax, response) {
 
         if (fullResponse.error && fullResponse.error.code === 19) {
           // user isn't in the US any more, so let the call fail
+          this.trigger('music-unavailable', fullResponse.error.message);
+          // legacy:
           this.trigger('not-in-us', fullResponse.error.message);
           return;
         }
