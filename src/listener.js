@@ -6,13 +6,21 @@ import { getBaseUrl } from './base-url';
 /**
  * This class connects to a specific simulcast stream and
  * sends out events to indicate when new songs are starting
- * or when music has stopped playing.
+ * or when music has stopped playing. This listener has a
+ * 'state' that is one of 
+ * 
+ *   'idle' - no music is playing
+ *   'playing' - a song is actively playing
+ *   'paused' - the current song is paused
+ *   'music-unavailable' - no music is available for this client
  * 
  * events:
  *    play-started - indicates a new song has begun playback, or we've
  *        dropped in on an already playing song
+ *    music-unavailable - indicates the listener may not listen to music
  *    music-stopped - indicates that music has stopped streaming. This maps
  *        up to the end of a broadcast, and not a 'pause' in music.
+ *    state-changed - indicates the state of the player changed
  * 
  */
 
@@ -54,24 +62,39 @@ class Listener {
         if (response.success) {
           const becameIdle = ((response.state === 'idle') && (this._state !== 'idle'));
           const previousPlay = this._activePlay;
+          const previousState = response.state;
           const state = this._state = response.state;
 
           if (state === 'idle') {
             delete this._activePlay;
+          } else {
+            this._activePlay = response.play;
+          }
 
+          if (previousState !== state) {
+            try {
+              this.trigger('state-changed', state, previousState);
+            } catch (e) {
+              /* ignore */
+            }
+          }
+
+          if (state === 'idle') {
             if (becameIdle) {
               try {
                 this.trigger('music-stopped');
-              } catch (e) { /* ignore */ }
+              } catch (e) { 
+                /* ignore */ 
+              }
             }
 
           } else {
-            this._activePlay = response.play;
-
             if (!previousPlay || (previousPlay.id !== this._activePlay.id)) {
               try {
                 this.trigger('play-started', this._activePlay);
-              } catch (e) { /* ignore */ }
+              } catch (e) { 
+                /* ignore */ 
+              }
             }
 
             if ((response.seconds_since_start > 20) &&
@@ -94,8 +117,12 @@ class Listener {
 
             if (fullResponse.id === 19) {
               try {
-                this.trigger('not-in-us');
-              } catch (e) { /* ignore */ }
+                this._state = 'music-unavailable';
+
+                this.trigger('music-unavailable');
+              } catch (e) { 
+                /* ignore */ 
+              }
               return;
             }            
             

@@ -1,5 +1,10 @@
 # Changelog
 
+1.99.17
+
+- new support for simulcast overlay streams with the `Listener` class.
+- deprecated the 'not-in-us' event, and replaced with 'music-unavailable'
+
 1.99.15
 
 - improved handling of sound destroy() when audio.play() call hasn't returned yet
