@@ -62,7 +62,7 @@ class Listener {
         if (response.success) {
           const becameIdle = ((response.state === 'idle') && (this._state !== 'idle'));
           const previousPlay = this._activePlay;
-          const previousState = response.state;
+          const previousState = this._state;
           const state = this._state = response.state;
 
           if (state === 'idle') {
@@ -103,6 +103,15 @@ class Listener {
             }
             
           }
+
+        } else {
+          if (response.error && (response.error.code === 19)) {
+            this._state = 'music-unavailable';
+            this.trigger('music-unavailable');
+            
+            // don't schedule another update
+            return;
+          }
         }
 
         this._timeout = setTimeout(() => {
@@ -115,7 +124,7 @@ class Listener {
           try {
             var fullResponse = JSON.parse(response.responseText);
 
-            if (fullResponse.id === 19) {
+            if (fullResponse.error && (fullResponse.error.code === 19)) {
               try {
                 this._state = 'music-unavailable';
 
