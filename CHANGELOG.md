@@ -1,5 +1,10 @@
 # Changelog
 
+1.99.19
+
+- add Listener.stop() method
+- fix 'music-unavailable' not parsing response correctly
+
 1.99.17
 
 - new support for simulcast overlay streams with the `Listener` class.
