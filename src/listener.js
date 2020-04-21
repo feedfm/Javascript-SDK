@@ -45,6 +45,25 @@ class Listener {
     });
   }
 
+  stop() {
+    if (this._timeout) {
+      clearTimeout(this._timeout);
+      delete this._timeout;
+    }
+
+    const previousState = this._state;
+    this._state = 'idle';
+    delete this._activePlay;
+
+    if (previousState !== 'idle') {
+      try {
+        this.trigger('state-changed', this._state, previousState);
+      } catch (e) {
+        /* ignore */
+      }
+    }
+  }
+
   onTimeout(clientId) {
     fetch(getBaseUrl() + `/api/v2/simulcast/${this._uuid}/listen`, {
       method: 'POST',
