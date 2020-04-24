@@ -105,11 +105,14 @@ can be tuned to.
 The basic methods for use on the object are `play()`, `pause()`, `stop()` and
 `skip()`, which do what you might expect.
 
+You can adjust and retrieve music volume via `getVolume()` and `setVolume(X)` (where `X` is 
+0..100) on the `Player` instance.
+
 Due to auto-play restrictions on browsers, and especially Mobile Safari,
-a call must be made to `initializeAudio()` on the player object in response to
-a user-intiated `click` event. This call may be
-made any number of times, but must be done before ever calling `play()`, or the
-browser may not play any audio.
+the first call to `play()` on the player object must be made in a user-initiated
+event handler. If you don't want to immediately play music on the user event, you
+can call `initializeAudio()` in the event handler, and then `play()` at a later
+time. Repeated calls to `initializeAudio()` are fine.
 
 The player emits named events that you can attach to in order to
 follow the state of the player. To follow an event, use the `on(event, callback, context)`
@@ -135,49 +138,17 @@ Event handling comes from the BackBone.js project. Some example usage:
 
 The player emits the following events:
 
-* not-in-us - Feed.fm doesn't think the client is located in the US, and so it
-  will refuse to serve up music. When this event is emitted, you can assume
+* music-unavailable - Feed.fm doesn't believe taht the client is located in a region for
+  which music is licensed for playback. When this event is emitted, you can assume
   the player will no longer function. This event is only emitted once, shortly
-  after construction of the `Player` instance.
-
-* stations - This event provides the list of stations associated with the
-  placement we are pulling music from. It is triggered before any music starts,
-  once the player has contacted feed.fm and retrieved a list of stations.
-
-  ```js
-    player.on('stations', function(stations) {
-      console.log('there are ' + stations.length + ' stations. The first is named ' + stations[0].name);
-    });
-
+  after construction of the `Player` instance, so register for this event early!
+* stations - This event provides the list of stations available to the player, as
+  provided by the server. It is triggered before any music starts,
+  after the player has contacted feed.fm.  See "Station and Play objects" below for
+  details on what the station object looks like.
 * play-started - This is sent when playback of a specific song has started.
   Details of the song that has just started are passed as an argument and
-  look like the following:
-
-  ```json
-  {
-    "id":"132459570",
-    "station": { 
-      "id":"727",
-      "name":"Pretty Lights Music"
-    },
-    "audio_file": {
-      "id":"8707",
-      "duration_in_seconds":349,
-      "track": { 
-        "id":"15226435",
-        "title":"Starve the Ego, Feed the Soul"
-      },
-      "release": {
-        "id":"1550367",
-        "title":"Drink the Sea"
-      },
-      "artist": {
-        "id":"1176632",
-        "name":"The Glitch Mob"
-      }
-    }
-  }
-  ```
+  are described in "Station and Play objects" below.
 * play-paused - This is sent when playback of the current song is paused.
 * play-resumed - This is sent when playback of the current song is resumed after
   pausing.
@@ -196,6 +167,63 @@ following strings:
 * playing - the player is currently playing a song
 * paused - the player is paused
 * idle - the player has no song actively playing or paused
+
+### Station and Play objects
+
+A `station` object looks like the following:
+
+```js
+  {
+    id: "276510",
+    name: "90BPM",
+    on_demand: 0,
+    pre_gain: 11.32,
+    options: {
+      id: "90BPM"
+    },
+    last_updated: "2019-04-05T21:49:08.000Z"
+  }
+```
+
+Some important points:
+
+* The station `id` __will change__ between different sessions - and should not
+be used, for instance, to remember a user's favorite station. Instead, you should
+use the station's name or a value in the `options` object.
+* The `options` object can be any arbitrary JSON object that you provide to feed.fm.
+We suggest you use this for storing foreign keys or values that you wish to use
+to search for particular stations. Some examples: storing a 'genre' or your own 'id'
+or numeric BPM range.
+* `last_updated` refers to the last time the contents of a station with this name
+were updated.
+
+A `play` object looks like the following:
+
+```json
+{
+  "id":"132459570",
+  "station": {
+    "id":"727",
+    "name":"Pretty Lights Music"
+  },
+  "audio_file": {
+    "id":"8707",
+    "duration_in_seconds":349,
+    "track": { 
+      "id":"15226435",
+      "title":"Starve the Ego, Feed the Soul"
+    },
+    "release": {
+      "id":"1550367",
+      "title":"Drink the Sea"
+    },
+    "artist": {
+      "id":"1176632",
+      "name":"The Glitch Mob"
+    }
+  }
+}
+```
 
 ## Working with Feed.PlayerView
 
