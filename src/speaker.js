@@ -826,6 +826,10 @@ Speaker.prototype = {
     }
 
     return this.vol;
+  },
+
+  getVolume: function() {
+    return this.vol;
   }
 
 };
