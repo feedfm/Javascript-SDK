@@ -1,5 +1,10 @@
 # Changelog
 
+1.99.20
+
+- add 'getVolume()' and 'setVolume(x)' methods to Player class
+- update documentation
+
 1.99.19
 
 - add Listener.stop() method
