@@ -35,6 +35,8 @@
  *    dislike() - tell the server we dislike this song, and skip to the next one
  *    skip() - request to skip the current song
  *    setStationId(xxx) - switch to a different station 
+ *    setVolume(xxx) - adjust music volume (0-100)
+ *    getVolume() - retrieve music volume (0-100)
  *
  *  player has a current state that can be queried with 'getCurrentState()':
  *    uninitialized - player is still trying to initialize
@@ -621,6 +623,14 @@ Player.prototype.setMuted = function (isMuted) {
 
     this.trigger('unmuted');
   }
+};
+
+Player.prototype.getVolume = function() {
+  return this.speaker.getVolume();
+};
+
+Player.prototype.setVolume = function(vol) {
+  this.speaker.setVolume(vol);
 };
 
 Player.prototype.updateSimulcast = function() {
