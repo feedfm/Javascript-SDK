@@ -994,7 +994,7 @@ Session.prototype._submitLogHistory = function() {
   let history = log.history;
   log.history = [];
 
-  return this._signedAjax('https://feed.fm/api/v2/session/event', {
+  return this._signedAjax(getBaseUrl() + '/api/v2/session/event', {
     method: 'POST',
     body: JSON.stringify({
       event: 'playerHistory',

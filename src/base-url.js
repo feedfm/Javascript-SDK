@@ -8,5 +8,4 @@ export function getBaseUrl() {
 
 export function setBaseUrl(url) {
   baseUrl = addProtocol(url);
-  console.log('updated url to', baseUrl);
 }
