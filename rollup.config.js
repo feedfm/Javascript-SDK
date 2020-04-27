@@ -1,11 +1,10 @@
-import resolve from 'rollup-plugin-node-resolve';
+import resolve from '@rollup/plugin-node-resolve';
 import babel from 'rollup-plugin-babel';
-import commonjs from 'rollup-plugin-commonjs';
-import json from 'rollup-plugin-json';
+import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
 import bundleSize from 'rollup-plugin-bundle-size';
 import visualizer from 'rollup-plugin-visualizer';
-import { uglify } from 'rollup-plugin-uglify';
-import pkg from './package.json';
+import { terser } from 'rollup-plugin-terser';
 
 export default [
   // production IIFE release
@@ -28,7 +27,7 @@ export default [
       babel({
         exclude: 'node_modules/**'
       }),
-      uglify({
+      terser({
         output: {
           ascii_only: true
         }
@@ -67,7 +66,7 @@ export default [
       babel({
         exclude: 'node_modules/**'
       }),
-      uglify({
+      terser({
         output: {
           ascii_only: true
         }
