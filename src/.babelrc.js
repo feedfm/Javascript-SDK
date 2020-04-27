@@ -9,7 +9,8 @@ const presets = [
         "chrome": "49",
         "safari": "11.2"
       },
-      "useBuiltIns": "usage",
+      "useBuiltIns": "entry",
+      "corejs": 3,
       "modules": false // for rollup.js
     }
   ]

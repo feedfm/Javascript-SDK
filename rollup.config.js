@@ -43,18 +43,7 @@ export default [
       format: 'cjs',
     },
     external: [ 
-      'tiny-cookie',
-      'core-js/modules/es6.object.assign',
-      'core-js/modules/es6.promise',
-      'core-js/modules/es7.promise.finally',
-      'core-js/modules/es6.regexp.split',
-      'core-js/modules/es7.symbol.async-iterator',
-      'core-js/modules/es6.symbol',
-      'core-js/modules/es6.function.name',
-      'core-js/modules/es6.array.find',
-      'core-js/modules/web.dom.iterable',
-      'core-js/modules/es6.array.iterator',
-      'core-js/modules/es6.object.keys'
+      'tiny-cookie'
     ],
     plugins: [
       json({ // so we can get version
@@ -65,11 +54,6 @@ export default [
       }),
       babel({
         exclude: 'node_modules/**'
-      }),
-      terser({
-        output: {
-          ascii_only: true
-        }
       }),
       bundleSize()
     ]
