@@ -22,6 +22,7 @@ import { getBaseUrl } from './base-url';
  *        up to the end of a broadcast, and not a 'pause' in music.
  *    state-changed - indicates the state of the player changed
  * 
+ * demo: https://jsbin.com/biwogiyewu/edit?html,js,output
  */
 
 class Listener {

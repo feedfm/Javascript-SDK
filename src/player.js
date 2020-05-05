@@ -170,10 +170,6 @@ Player.prototype.setStationId = function (stationId) {
   this.session.setStationId(stationId);
 };
 
-Player.prototype.setBaseUrl = function (baseUrl) {
-  this.session.setBaseUrl(baseUrl);
-};
-
 Player.prototype._onPlayActive = function (play) {
   // create a new sound object
   var options = {

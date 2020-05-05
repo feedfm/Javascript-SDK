@@ -7,6 +7,7 @@ import Player from './player';
 import Listener from './listener';
 import PlayerView from './player-view';
 import { deleteClientId as resetClientId } from './client-id';
+import { setBaseUrl } from './base-url';
 
 export default {
   Speaker,
@@ -16,5 +17,6 @@ export default {
   PlayerView,
   log,
   version,
-  resetClientId
+  resetClientId,
+  setBaseUrl
 };
