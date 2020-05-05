@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.21
+
+- expose 'setBaseUrl()' method at package level for internal work
+
 1.99.20
 
 - add 'getVolume()' and 'setVolume(x)' methods to Player class
