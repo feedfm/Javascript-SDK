@@ -87,10 +87,10 @@ var Player = function (token, secret, options) {
     log.enable();
   }
   
-  this.trimming = options.trimming || false;
-  this.normalizeVolume = options.normalizeVolume || true;
+  this.trimming = !!options.trimming;
+  this.normalizeVolume = ('normalizeVolume' in options) ? options.normalizeVolume : true;
   this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
-  this.crossfadeIn = options.crossfadeIn || false;
+  this.crossfadeIn = !!options.crossfadeIn;
 
   Object.assign(this, Events);
 
