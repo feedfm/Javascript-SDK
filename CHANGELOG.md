@@ -1,5 +1,9 @@
 # Changelog
 
+snapshot
+
+- add SimulcastPlayer for shoutcast style stream support
+
 1.99.21
 
 - expose 'setBaseUrl()' method at package level for internal work
