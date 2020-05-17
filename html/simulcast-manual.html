@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=utf-8 />
+  <title>JS Bin</title>
+  <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
+  <script src="../build/feed.js"></script>
+</head>
+<body>
+  
+  <div id="player-view-div">
+    <div class='status'></div>
+    
+    <button class="connect-button">connect</button>
+    <button class="disconnect-button">disconnect</button>
+  </div>
+
+  <div class="volume">
+    <button>1</button>
+    <button>5</button>
+    <button>25</button>
+    <button>50</button>
+    <button>75</button>
+  </div>
+
+  <script>
+    var uuid = '9R83kijQ8v9wqZ2KJAfA6f';
+
+    // Create basic player.
+    var player = new Feed.SimulcastPlayer(uuid);
+
+    // Display all the events the player triggers
+    player.on('all', function(event) {
+      console.log('player triggered event \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
+    });
+
+    var $status = $('.status');
+    player.on('state-changed', function(state) {
+      if (state === 'connecting') {
+        $status.text('connecting to server...');
+      } else if (state === 'music-unavailable') {
+        $status.text('music is not available to you, sorry');
+      } else if (state === 'idle') {
+        $status.text('');
+      }
+    });
+
+    player.on('play-started', function(play) {
+      if (play === null) {
+        $status.text('(no music)');
+      } else {
+        $status.text(play.audio_file.track.title + ' by ' + play.audio_file.artist.name + ' on ' + play.audio_file.release.title);
+      }
+    });
+
+    $('.connect-button').on('click', function() {
+      player.connect();
+    });
+
+    $('.disconnect-button').on('click', function() {
+      player.disconnect();
+    });
+
+    $('.volume button').on('click', function(e) {
+      var $button = $(this);
+      var level = parseInt($button.html());
+
+      player.setVolume(level);
+    });
+
+  </script>
+  
+</body>
+</html>
