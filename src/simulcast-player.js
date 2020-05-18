@@ -137,7 +137,7 @@ class SimulcastPlayer {
         if (res.success) {
           if (((res.play === null) && (this._activePlay !== null)) ||
               ((res.play !== null) && (this._activePlay === null)) ||
-              (res.play.audio_file.id !== this._activePlay.audio_file.id)) {
+              ((res.play !== null) && (this._activePlay !== null) && (res.play.audio_file.id !== this._activePlay.audio_file.id))) {
             this._activePlay = res.play;
 
             this.trigger('play-started', this._activePlay);
