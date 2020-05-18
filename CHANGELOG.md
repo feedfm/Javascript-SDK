@@ -1,8 +1,9 @@
 # Changelog
 
-snapshot
 
-- add SimulcastPlayer for shoutcast style stream support
+1.99.23
+
+- add SimulcastPlayer for shoutcast style stream support.
 
 1.99.21
 
