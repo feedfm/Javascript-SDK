@@ -62,7 +62,7 @@ import { uniqueId } from './util';
 const DEFAULT_VOLUME = 1.0;
 
 const iOSp = /(iPhone|iPad)/i.test(navigator.userAgent);
-const brokenWebkit = iOSp && /OS 13_[43210]/i.test(navigator.userAgent);
+const brokenWebkit = iOSp && /OS 13_[543210]/i.test(navigator.userAgent);
 
 const SILENCE = iOSp ?
   'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
