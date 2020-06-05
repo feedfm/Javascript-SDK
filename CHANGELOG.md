@@ -1,6 +1,10 @@
 # Changelog
 
 
+1.99.24
+
+- mobile safari 13.5 still needs workaround
+
 1.99.23
 
 - add SimulcastPlayer for shoutcast style stream support.
