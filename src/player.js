@@ -87,10 +87,18 @@ var Player = function (token, secret, options) {
     log.enable();
   }
   
+  // this._station = current station
+  // this._stations = list of available stations
+  // this._placement = current placement
+
   this.trimming = !!options.trimming;
   this.normalizeVolume = ('normalizeVolume' in options) ? options.normalizeVolume : true;
   this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
   this.crossfadeIn = !!options.crossfadeIn;
+  this._stationsPromise = new Promise((resolve, reject) => {
+    this._stationsResolve = resolve;
+    this._stationsReject = reject;
+  });
 
   Object.assign(this, Events);
 
@@ -101,8 +109,12 @@ var Player = function (token, secret, options) {
   this.session.on('plays-exhausted', this._onPlaysExhausted, this);
   this.session.on('prepare-sound', this._onPrepareSound, this);
 
+  this.session.on('placement', this._onPlacement, this);
+  this.session.on('stations', this._onStations, this);
+  this.session.on('station-changed', this._onStationChanged, this);
+
   let player = this;
-  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'placement', 'stations', 'placement-changed', 'station-changed', 'skip-denied']) {
+  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'skip-denied']) {
     this.session.on(event, function() {
       player.trigger.apply(player, [ event ].concat(Array.prototype.slice.call(arguments, 0)));
     });
@@ -158,10 +170,38 @@ Player.prototype.initializeAudio = function () {
   this.speaker.initializeAudio();
 };
 
-Player.prototype.setPlacementId = function (placementId) {
-  log('SET PLACEMENT ID', placementId);
+Player.prototype._onPlacement = function(placement) {
+  this._placement = placement;
 
-  this.session.setPlacementId(placementId);
+  if (placement.options && placement.options.crossfade_seconds) {
+    this.secondsOfCrossfade = placement.options.crossfade_seconds;
+  }
+
+  this.trigger('placement', placement);
+};
+
+Player.prototype._onStations = function(stations) {
+  this._stations = stations;
+
+  this._stationsResolve(stations);
+
+  this.trigger('stations', stations);
+};
+
+Player.prototype._onStationChanged = function(stationId, station) {
+  this._station = station;
+
+  if (station.options && ('crossfade_seconds' in station.options)) {
+    // apply station level crossfade, if available
+    this.secondsOfCrossfade = station.options.crossfade_seconds;
+    
+  } else if (this._placement.options && ('crossfade_seconds' in this._placement.options)) {
+    // revert to placement level crossfade, if available
+    this.secondsOfCrossfade = this._placement.options.crossfade_seconds;
+
+  }
+
+  this.trigger('station-changed', stationId, station);
 };
 
 Player.prototype.setStationId = function (stationId) {
@@ -627,6 +667,10 @@ Player.prototype.getVolume = function() {
 
 Player.prototype.setVolume = function(vol) {
   this.speaker.setVolume(vol);
+};
+
+Player.prototype.getStations = function() {
+  return this._stationsPromise;
 };
 
 Player.prototype.updateSimulcast = function() {

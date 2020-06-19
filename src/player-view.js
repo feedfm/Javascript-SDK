@@ -175,8 +175,8 @@ PlayerView.prototype._onPlacement = function (placement) {
   }
 };
 
-PlayerView.prototype.formatPlacement = function (placement) {
-  return 'Tune in to <em class=\'placement\'>' + placement.name + '</em>';
+PlayerView.prototype.formatPlacement = function () {
+  return 'Tune in!';
 };
 
 PlayerView.prototype._onPlayStarted = function (play) {

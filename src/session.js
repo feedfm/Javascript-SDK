@@ -11,9 +11,8 @@
  *
  *  session.on('play-active', someHandler);
  *
- *  Then you can optionally set a placement and a station:
+ *  Then you can optionally set a station:
  *
- *  session.setPlacementId(placementId);
  *  session.setStationId(stationId);
  *
  *  If any of the above calls are made while we're actively tuning (we've
@@ -39,9 +38,7 @@
  *  stations: after tuning to a specific placement, the server returns a
  *    list of available stations. This is that list.
  *  station-changed: emitted after a 'setStation' call, and passed the
- *    ID of the station
- *  placement-changed: emitted after a 'setPlacement' call, and passed the
- *    ID of the placement
+ *    ID of the station and the station object
  *  play-active: when the session has a play ready for playback
  *  play-started: when the active play has started playback (as
  *    a result of a call to reportPlayStarted)
@@ -123,6 +120,7 @@ var Session = function (token, secret, options) {
     // placement
     // stationId
     // stations
+    // station
 
     formats: 'mp3,aac',
     maxBitrate: 128,
@@ -166,19 +164,24 @@ Session.prototype.setCredentials = function (token, secret) {
   this.config.secret = secret;
 };
 
-Session.prototype.setPlacementId = function (placementId) {
-  this.config.placementId = placementId;
-  this.trigger('placement-changed', placementId);
-
-  this._retune();
-};
-
 Session.prototype.setStationId = function (stationId) {
-  if (('' + this.config.stationId) !== ('' + stationId)) {
-    this.config.stationId = stationId;
-    this.trigger('station-changed', stationId);
+  // if we haven't received stations, we can't select one
+  if (!this.config.stations) {
+    return;
+  }
 
-    this._retune();
+  let stringStationId = '' + stationId;
+  if (('' + this.config.stationId) !== stringStationId) {
+    let station = this.config.stations.find((station) => ('' + station.id) === stringStationId);
+
+    if (station) {
+      this.config.stationId = stationId;
+      this.config.station = station;
+
+      this.trigger('station-changed', stationId, station);
+
+      this._retune();
+    }
   }
 };
 
@@ -241,16 +244,15 @@ Session.prototype._receiveDefaultPlacementInformation = function (placementInfor
     this.config.stations = placementInformation.stations;
 
     this.config.placementId = placementInformation.placement.id;
-    this.trigger('placement-changed', this.config.placementId);
+    this.trigger('placement', this.config.placement);
 
-    this.trigger('placement', placementInformation.placement);
-
-    if (!('stationId' in this.config) && (placementInformation.stations.length > 0)) {
-      this.config.stationId = placementInformation.stations[0].id;
-      this.trigger('station-changed', this.config.stationId);
+    if (this.config.stations.length > 0) {
+      this.config.stationId = this.config.stations[0].id;
+      this.config.station = this.config.stations[0];
+      this.trigger('station-changed', this.config.stationId, this.config.station);
     }
 
-    this.trigger('stations', placementInformation.stations);
+    this.trigger('stations', this.config.stations);
 
     // kick off request for next play
     this._requestNextPlay();
@@ -851,86 +853,6 @@ Session.prototype.dislikePlay = function (playId) {
 
   if (this.config.current && (this.config.current.play.id === playId)) {
     this.config.current.play.liked = false;
-  }
-};
-
-/*
- * Save the current state of the session, so we can recreate
- * our current state in the future. The object returned
- * is what should be passed to 'unsuspend'. The 'startPosition'
- * should be the current playback offset for the active play, 
- * in milliseconds.
- */
-
-Session.prototype.suspend = function (startPosition) {
-  var saved = {};
-
-  if (this.config.placementId) {
-    saved.placementId = this.config.placementId;
-  }
-
-  if (this.config.stationId) {
-    saved.stationId = this.config.stationId;
-  }
-
-  if (this.config.current && this.config.current.started) {
-    // only save the active play if we've actually started
-    // playing it (otherwise the next call to create a play
-    // will return the same data)
-    saved.placement = this.config.placement;
-    saved.stations = this.config.stations;
-    saved.play = { ...this.config.current.play };
-    saved.play.startPosition = startPosition;
-    saved.canSkip = this.config.current.canSkip;
-  }
-
-  return saved;
-};
-
-/*
- * Use the saved session passed in to restore the player to
- * the state it was in previously. This method will make sure
- * all the necessary events are triggered so that any
- * object observing events from this session will believe a
- * 'session.tune()' call was made.
- */
-
-Session.prototype.unsuspend = function (saved) {
-  if (this.getActivePlay()) {
-    throw new Error('You cannot unsuspend after running tune()');
-  }
-
-  if ('placementId' in saved) {
-    this.config.placementId = saved.placementId;
-    this.trigger('placement-changed', this.config.placementId);
-  }
-
-  if ('stationId' in saved) {
-    this.config.stationId = saved.stationId;
-    this.trigger('station-changed', this.config.stationId);
-  }
-
-  if ('play' in saved) {
-    this.config.placement = saved.placement;
-    this.config.stations = saved.stations;
-
-    this.trigger('placement', this.config.placement);
-    this.trigger('stations', this.config.stations);
-
-    // emit the 'play-active' event
-    this._assignCurrentPlay(saved.play);
-
-    // make a fake start response from the server, emit
-    // a 'play-start' event, and then start queueing
-    // up the next song to play
-    this._receiveStartPlay(saved.play, { success: true, can_skip: saved.canSkip });
-
-    return saved.play;
-
-  } else {
-    this.tune();
-
-    return null;
   }
 };
 
