@@ -57,12 +57,11 @@ describe('Feed.Player integration tests', function () {
       player.on('play-active', resolve);
     });
 
-    expect(spy.callCount).to.equal(5);
-    expect(spy.getCall(0).calledWith('placement-changed'), 'placement-changed').to.be.true;
-    expect(spy.getCall(1).calledWith('placement'), 'placement').to.be.true;
-    expect(spy.getCall(2).calledWith('station-changed'), 'station-changed').to.be.true;
-    expect(spy.getCall(3).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.callCount).to.equal(4);
+    expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
+    expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
+    expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
+    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
@@ -94,7 +93,7 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /start$/, function (response) {
       console.log('start handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       console.log('elapse handler');
@@ -146,12 +145,12 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /start$/, function (response) {
       console.log('start handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /complete$/, function (response) {
       console.log('complete handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       console.log('elapse handler');
@@ -214,12 +213,11 @@ describe('Feed.Player integration tests', function () {
       player.on('play-active', resolve);
     });
 
-    expect(spy.callCount).to.equal(5);
-    expect(spy.getCall(0).calledWith('placement-changed'), 'placement-changed').to.be.true;
-    expect(spy.getCall(1).calledWith('placement'), 'placement').to.be.true;
-    expect(spy.getCall(2).calledWith('station-changed'), 'station-changed').to.be.true;
-    expect(spy.getCall(3).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.callCount).to.equal(4);
+    expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
+    expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
+    expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
+    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
@@ -286,7 +284,7 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /elapse$/, function(response) {
       console.log('BAD ELAPSE!');
       throw new Error('should not elapse the unstarted play!');
-    })
+    });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
     var spy = sinon.spy(player, 'trigger');
@@ -301,7 +299,7 @@ describe('Feed.Player integration tests', function () {
 
     await new Promise((resolve) => {
       setTimeout(resolve, 1000);
-    })
+    });
   });
 
   it('will send out specific events from initialization to start of playback', async function () {
@@ -336,16 +334,15 @@ describe('Feed.Player integration tests', function () {
     player.on('all', (event) => console.log('player event:', event));
 
     await new Promise((resolve) => {
-      player.on('play-started', () => { setTimeout(resolve, 2000) });
+      player.on('play-started', () => { setTimeout(resolve, 2000); });
     });
 
-    expect(spy.callCount).to.equal(6);
-    expect(spy.getCall(0).calledWith('placement-changed'), 'placement-changed').to.be.true;
-    expect(spy.getCall(1).calledWith('placement'), 'placement').to.be.true;
-    expect(spy.getCall(2).calledWith('station-changed'), 'station-changed').to.be.true;
-    expect(spy.getCall(3).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
-    expect(spy.getCall(5).calledWith('play-started'), 'play-started').to.be.true;
+    expect(spy.callCount).to.equal(5);
+    expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
+    expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
+    expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
+    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.getCall(4).calledWith('play-started'), 'play-started').to.be.true;
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
@@ -379,7 +376,7 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /start$/, function (response) {
       console.log('start handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       console.log('elapse handler');
@@ -394,7 +391,7 @@ describe('Feed.Player integration tests', function () {
     player.on('all', (event) => console.log('player event:', event));
 
     await new Promise((resolve) => {
-      player.on('play-started', () => { setTimeout(resolve, 2000) });
+      player.on('play-started', () => { setTimeout(resolve, 2000); });
     });
 
     player.stop();
@@ -427,7 +424,7 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /start$/, function (response) {
       console.log('start handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       console.log('elapse handler');
@@ -448,14 +445,14 @@ describe('Feed.Player integration tests', function () {
     player.tune();
     // wait for song to be active
     await new Promise((resolve) => {
-      player.once('play-active', () => { setTimeout(resolve, 1000) });
+      player.once('play-active', () => { setTimeout(resolve, 1000); });
     });
 
     // change the station
     player.setStationId(STATION_TWO_ID);
 
     await new Promise((resolve) => {
-      player.once('play-active', () => { setTimeout(resolve, 1000) });
+      player.once('play-active', () => { setTimeout(resolve, 1000); });
     });
 
     expect(player.getCurrentState()).to.equal('idle');
@@ -485,7 +482,7 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /start$/, function (response) {
       console.log('play start handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /invalidate$/, function (response) {
       throw new Error('invalidate called!');
@@ -569,7 +566,7 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /start$/, function (response) {
       console.log('start handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       console.log('elapse handler');
@@ -584,7 +581,7 @@ describe('Feed.Player integration tests', function () {
     player.on('all', (event) => console.log('player event:', event));
 
     await new Promise((resolve) => {
-      player.on('play-started', () => { setTimeout(resolve, 2000) });
+      player.on('play-started', () => { setTimeout(resolve, 2000); });
     });
 
     player.stop();
@@ -625,7 +622,7 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /start$/, function (response) {
       console.log('start handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       console.log('elapse handler');
@@ -640,7 +637,7 @@ describe('Feed.Player integration tests', function () {
     player.on('all', (event) => console.log('player event:', event));
 
     await new Promise((resolve) => {
-      player.once('play-started', () => { setTimeout(resolve, 1000) });
+      player.once('play-started', () => { setTimeout(resolve, 1000); });
     });
 
     player.stop();
@@ -682,7 +679,7 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('POST', /start$/, function (response) {
       console.log('start handler');
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       console.log('elapse handler');
@@ -697,7 +694,7 @@ describe('Feed.Player integration tests', function () {
     player.on('all', (event) => console.log('player event:', event));
 
     await new Promise((resolve) => {
-      player.once('play-started', () => { setTimeout(resolve, 5000) });
+      player.once('play-started', () => { setTimeout(resolve, 5000); });
     });
 
     // 5 seconds have passed since the first song started, so we should have prepared
@@ -734,7 +731,7 @@ describe('Feed.Player integration tests', function () {
 
     server.respondWith('POST', /start$/, function (response) {
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
@@ -786,7 +783,7 @@ describe('Feed.Player integration tests', function () {
       } else {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       }
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
@@ -805,7 +802,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     player.stop();
-  })
+  });
 
 
   it('will gracefully handle sequential play calls', async function () {
@@ -834,7 +831,7 @@ describe('Feed.Player integration tests', function () {
       } else {
         response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
       }
-    })
+    });
 
     server.respondWith('POST', /elapse$/, function (response) {
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
@@ -865,10 +862,10 @@ describe('Feed.Player integration tests', function () {
 
     await new Promise((resolve) => {
       setTimeout(resolve, 3000);
-    })
+    });
 
     player.stop();
-  })
+  });
 
   it('will emit skip-denied message when a skip is disallowed', async function () {
     this.timeout(4000);
@@ -1026,7 +1023,7 @@ const urls = [
   'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1563964895-88514.mp3'
 ];
 
-var counter = 0
+var counter = 0;
 function validPlayResponse(id) {
   if (!id) { id = counter++; }
 

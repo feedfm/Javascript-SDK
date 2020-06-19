@@ -16,6 +16,6 @@ const presets = [
   ]
 ];
 
-const plugins = [ ];
+const plugins = ['@babel/plugin-transform-runtime'];
 
 module.exports = { presets, plugins };
