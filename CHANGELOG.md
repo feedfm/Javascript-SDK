@@ -1,5 +1,8 @@
 # Changelog
 
+1.99.25
+
+- expose station list via promise in Player instance
 
 1.99.24
 
