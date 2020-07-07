@@ -39,4 +39,12 @@ log.enable = function() {
   enabled = true;
 };
 
+log.reset = function() {
+  let oldHistory = log.history;
+
+  log.history = [];
+
+  return oldHistory;
+};
+
 export default log;

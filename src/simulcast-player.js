@@ -3,6 +3,7 @@ import Events from './events';
 import { getBaseUrl } from './base-url';
 import Speaker from './speaker';
 import log from './log';
+import { version as FEED_VERSION } from '../package.json';
 
 const METADATA_TIMEOUT = 10000;
 
@@ -66,6 +67,7 @@ class SimulcastPlayer {
     this._activeSound = null;
     this._metadataTimeout = null;
     this._tryingToPlay = false;
+    this._elapsed = 0;
   }
 
   initializeAudio() {
@@ -74,9 +76,10 @@ class SimulcastPlayer {
   }
 
   connect() {
-    log('CONNECT');
+    log(`CONNECT to ${this._uuid}`);
 
     if (this._tryingToPlay) {
+      log(`ignoring pointless connect to ${this._uuid}`);
       return;
     }
 
@@ -94,7 +97,8 @@ class SimulcastPlayer {
     // send URL off to speaker and make _activeSound
     this._activeSound = this._speaker.create(this._streamUrl, {
       play: this._onSoundPlay.bind(this),
-      finish: this._onSoundFinish.bind(this)
+      finish: this._onSoundFinish.bind(this),
+      elapse: this._onSoundElapse.bind(this)
     });
 
     this._activeSound.play();
@@ -129,6 +133,12 @@ class SimulcastPlayer {
     }
   }
 
+  _onSoundElapse() {
+    if (this._activeSound) {
+      this._elapsed = this._activeSound.position();
+    }
+  }
+
   _onMetadataTimeout() {
     // check for update of current song
     fetch(this._streamUrl + '/play')
@@ -140,6 +150,7 @@ class SimulcastPlayer {
               ((res.play !== null) && (this._activePlay !== null) && (res.play.audio_file.id !== this._activePlay.audio_file.id))) {
             this._activePlay = res.play;
 
+            log('current play updated', this._activePlay);
             this.trigger('play-started', this._activePlay);
           }
         }
@@ -151,7 +162,7 @@ class SimulcastPlayer {
   }
 
   _onSoundFinish(error) {
-    log('sound finished', error);
+    log('sound finished while in state and with error', this.toObject(), error);
 
     if ((this._state === 'connecting') && error) {
       // we lost connection to the stream or never got it
@@ -185,11 +196,14 @@ class SimulcastPlayer {
 
       this._activeSound.play();
     }
+
+    // help us narrow down streaming issues
+    this._logEvents();
   }
 
   disconnect() {
-    log('DISCONNECT');
-    
+    log('DISCONNECT', this.toObject());
+
     if (!this._tryingToPlay) {
       return;
     }
@@ -209,6 +223,8 @@ class SimulcastPlayer {
     }
 
     this._setState('idle');
+
+    this._logEvents();
   }
 
   getVolume() {
@@ -221,6 +237,7 @@ class SimulcastPlayer {
 
   _setState(newState) {
     if (this._state !== newState) {
+      log(`state transition ${this._state} -> ${newState}`);
       this._state = newState;
       this.trigger('state-changed', this._state);
     }
@@ -232,6 +249,37 @@ class SimulcastPlayer {
 
   getCurrentPlay() {
     return this._activePlay;
+  }
+
+  _logEvents() {
+    let history = log.reset();
+
+    return fetch(getBaseUrl() + '/api/v2/session/event', {
+      method: 'POST',
+      body: JSON.stringify({
+        event: 'playerHistory',
+        parameters: history
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Feed-SDK': FEED_VERSION + ' js'
+      }
+    });
+  }
+
+  toObject() {
+    return {
+      state: this._state,
+      activePlay: this._activePlay,
+      uuid: this._uuid,
+      metadataTimeoutIsNull: (this._metadataTimeout === null),
+      tryingToPlay: this._tryingToPlay,
+      elapsed: this._elapsed
+    };
+  }
+
+  toString() {
+    return JSON.stringify(this.toString());
   }
 
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.26
+
+- extra debugging for SimulcastPlayer class
+
 1.99.25
 
 - expose station list via promise in Player instance
