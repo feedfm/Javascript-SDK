@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.27
+
+- force SimulcastPlayer to keep retrying after loss of stream
+
 1.99.26
 
 - extra debugging for SimulcastPlayer class

@@ -54,6 +54,7 @@ class SimulcastPlayer {
   // var _activeSound; // if we're playing, this holds the sound
   // var _metadataTimeout; // timeout for retrieving updated metadata
   // var _tryingToPlay = false; // true if we want to play/hear music
+  // var _retries; // number of times we've retried playing music
 
   constructor(uuid) {
     Object.assign(this, Events);
@@ -67,7 +68,7 @@ class SimulcastPlayer {
     this._activeSound = null;
     this._metadataTimeout = null;
     this._tryingToPlay = false;
-    this._elapsed = 0;
+    this._retries = 0;
   }
 
   initializeAudio() {
@@ -94,29 +95,29 @@ class SimulcastPlayer {
     const baseApiUrl = new URL(getBaseUrl());
     this._streamUrl = 'https://cast.' + baseApiUrl.hostname + '/' + this._uuid;
  
-    // send URL off to speaker and make _activeSound
-    this._activeSound = this._speaker.create(this._streamUrl, {
-      play: this._onSoundPlay.bind(this),
-      finish: this._onSoundFinish.bind(this),
-      elapse: this._onSoundElapse.bind(this)
-    });
-
-    this._activeSound.play();
+    this._requestStream();
   }
 
   _onSoundPlay() {
     // we've just connected to the stream.
     log('sound play!');
 
+    // reset retry count
+    this._retries = 0;
+
+    // starting point to watch for stalls
+    this._lastElapsedAt = Date.now();
+
     if (this._state === 'connecting') {
+      this._setState('connected');
+
       // get details about the play
-      fetch(this._streamUrl + '/play')
+      fetch(this._streamUrl + '/play?elapsed=' + this._elapsed)
         .then((res) => res.json())
         .then((res) => {
           if (res.success) {
             this._activePlay = res.play;
 
-            this._setState('connected');
             this.trigger('play-started', this._activePlay);
 
             this._metadataTimeout = setTimeout(() => {
@@ -129,19 +130,69 @@ class SimulcastPlayer {
               this._onSoundPlay();
             }, 3000);
           }
+        })
+        .catch(() => {
+          // try again in 2 seconds
+          this._metadataTimeout = setTimeout(() => {
+            this._onSoundPlay();
+          }, 2000);
         });
+
+    } else if (!this._metadataTimeout) {
+      this._metadataTimeout = setTimeout(() => {
+        this._onMetadataTimeout();
+      }, METADATA_TIMEOUT);
+
     }
   }
 
   _onSoundElapse() {
     if (this._activeSound) {
-      this._elapsed = this._activeSound.position();
+      const oldElapsed = this._elapsed;
+      const newlyElapsed = this._elapsed = this._activeSound.position();
+
+      if ((newlyElapsed - oldElapsed) > 0) {
+        this._lastElapsedAt = Date.now();
+      }
     }
+  }
+
+  _requestStream() {
+    log('requesting stream');
+
+    if (!this._tryingToPlay) {
+      return;
+    }
+
+    if (this._activeSound) {
+      this._activeSound.destroy();
+      this._activeSound = null;
+    }
+
+    // don't query for metadata while we are trying to stream again
+    if (this._metadataTimeout) {
+      clearTimeout(this._metadataTimeout);
+      this._metadataTimeout = null;
+    }
+
+    this._activePlay = null;
+
+    // keep retrying until we reconnect (but increase space between retries)
+    this._activeSound = this._speaker.create(this._streamUrl, {
+      play: this._onSoundPlay.bind(this),
+      finish: this._onSoundFinish.bind(this),
+      elapse: this._onSoundElapse.bind(this)
+    });
+
+    this._activeSound.play();
+
+    this._elapsed = 0;
+    this._lastElapsedAt = Date.now();
   }
 
   _onMetadataTimeout() {
     // check for update of current song
-    fetch(this._streamUrl + '/play')
+    fetch(this._streamUrl + '/play?elapsed=' + this._elapsed)
       .then((res) => res.json())
       .then((res) => {
         if (res.success) {
@@ -158,26 +209,40 @@ class SimulcastPlayer {
         this._metadataTimeout = setTimeout(() => {
           this._onMetadataTimeout();
         }, METADATA_TIMEOUT);
+      })
+      .catch(() => {
+        this._metadataTimeout = setTimeout(() => {
+          this._onMetadataTimeout();
+        }, METADATA_TIMEOUT);
       });
+
+    if ((Date.now() - this._lastElapsedAt) > 4000) {
+      // try reconnecting if we've been down for a while
+      this._requestStream();
+    }
   }
 
   _onSoundFinish(error) {
-    log('sound finished while in state and with error', this.toObject(), error);
+    log('sound finished', this.toObject());
 
     if ((this._state === 'connecting') && error) {
-      // we lost connection to the stream or never got it
+      // we weren't granted access to stream
       this._tryingToPlay = false;
 
       this._setState('music-unavailable');
       this.trigger('music-unavailable');
 
     } else {
+      log('reconnecting after stream ended', error);
+
       // we must have lost the stream during playback. try
       // reconnecting. 
       if (this._activeSound) {
         this._activeSound.destroy();
+        this._activeSound = null;
       }
 
+      // don't query for metadata while we are trying to stream again
       if (this._metadataTimeout) {
         clearTimeout(this._metadataTimeout);
         this._metadataTimeout = null;
@@ -185,16 +250,14 @@ class SimulcastPlayer {
 
       this._activePlay = null;
 
-      // this will lead us to a single retry, but if this fails, then
-      // we'll transition to 'music-unavailable'.
-      this._setState('connecting');
-
-      this._activeSound = this._speaker.create(this._streamUrl, {
-        play: this._onSoundPlay.bind(this),
-        finish: this._onSoundFinish.bind(this)
-      });
-
-      this._activeSound.play();
+      // keep retrying until we reconnect (but increase space between retries)
+      this._retries += 1;
+      setTimeout(() => {
+        if (this._tryingToPlay) {
+          this._requestStream();
+        }
+  
+      }, Math.pow(2, this._retries));
     }
 
     // help us narrow down streaming issues
@@ -210,6 +273,7 @@ class SimulcastPlayer {
 
     this._tryingToPlay = false;
     this._activePlay = null;
+    this._elapsed = 0;
 
     if (this._metadataTimeout) {
       clearTimeout(this._metadataTimeout);
@@ -274,7 +338,8 @@ class SimulcastPlayer {
       uuid: this._uuid,
       metadataTimeoutIsNull: (this._metadataTimeout === null),
       tryingToPlay: this._tryingToPlay,
-      elapsed: this._elapsed
+      elapsed: this._elapsed,
+      retries: this._retries
     };
   }
 
