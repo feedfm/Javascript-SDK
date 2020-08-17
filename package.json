@@ -6,7 +6,7 @@
     "name": "Eric Lambrecht",
     "email": "eric@feed.fm"
   },
-  "version": "1.99.27",
+  "version": "1.99.28",
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
@@ -34,6 +34,7 @@
     "serve": "^11.3.0"
   },
   "dependencies": {
+    "resolve": "^1.17.0",
     "tiny-cookie": "^2.3.2",
     "whatwg-fetch": "^3.0.0"
   },

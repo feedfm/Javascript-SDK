@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.28
+
+- expose 'Feed.getClientId()' method 
+
 1.99.27
 
 - force SimulcastPlayer to keep retrying after loss of stream

@@ -7,7 +7,7 @@ import Player from './player';
 import Listener from './listener';
 import PlayerView from './player-view';
 import SimulcastPlayer from './simulcast-player';
-import { deleteClientId as resetClientId } from './client-id';
+import { deleteClientId as resetClientId, getClientId } from './client-id';
 import { setBaseUrl } from './base-url';
 
 export default {
@@ -20,5 +20,6 @@ export default {
   log,
   version,
   resetClientId,
+  getClientId,
   setBaseUrl
 };
