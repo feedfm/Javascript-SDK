@@ -7,16 +7,31 @@ import { getBaseUrl } from './base-url';
 const cookieName = 'cid';
 let clientPromise;
 
+const noDocument = (typeof(document) === 'undefined');
+let noDocumentClientId = null;
+
 function _getStoredCid() {
-  return getCookie(cookieName);
+  if (noDocument) {
+    return noDocumentClientId;
+  } else {
+    return getCookie(cookieName);
+  }
 }
 
 function _setStoredCid(value) {
-  setCookie(cookieName, value, { expires: 3650, path: '/' });
+  if (noDocument) {
+    noDocumentClientId = value;
+  } else {
+    setCookie(cookieName, value, { expires: 3650, path: '/' });
+  }
 }
 
 function _deleteStoredCid() {
-  removeCookie(cookieName);
+  if (noDocument) {
+    noDocumentClientId = null;
+  } else {
+    removeCookie(cookieName);
+  }
 }
 
 // hit the server up for a client id and return it to the callback

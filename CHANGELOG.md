@@ -1,5 +1,10 @@
 # Changelog
 
+1.99.29
+
+- if no 'document' defined then do not use cookies so that react native
+  will work with Listner class.
+
 1.99.28
 
 - expose 'Feed.getClientId()' method 
