@@ -385,7 +385,12 @@ Speaker.prototype = {
       return;
     }
 
-    if (!this.active.sound || (this.active.sound.url !== audio.src)) {
+    if (!this.active.sound) {
+      // got an elapse event before the play() succeeded
+      return;
+    }
+
+    if (this.active.sound.url !== audio.src) {
       log('active audio elapsed, but no matching sound, so ignoring', audio.src);
       return;
     }
