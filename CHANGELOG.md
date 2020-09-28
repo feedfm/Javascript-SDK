@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.30
+
+- update SimulcastPlayer to ignore 'connect()' calls when not idle
+
 1.99.29
 
 - if no 'document' defined then do not use cookies so that react native
