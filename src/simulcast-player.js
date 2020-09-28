@@ -84,6 +84,11 @@ class SimulcastPlayer {
       return;
     }
 
+    if (this._state !== 'idle') {
+      log(`ignoring connect() since we're already connected`);
+      return;
+    }
+
     this._tryingToPlay = true;
 
     // initialize speaker,
