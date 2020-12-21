@@ -4,7 +4,7 @@
  *  This class requests and plays audio files from the feed servers. It
  *  makes use of the Session class to communicate with the server. There
  *  should technically only ever be one instance of this class in a page.
- *  This class does no UI - that should be handled by Feed.PlayerView 
+ *  This class does no UI - that should be handled by Feed.PlayerView
  *  or similar.
  *
  *  Create this with:
@@ -34,7 +34,7 @@
  *    unlike() - tell the server to remove the 'like' for this song
  *    dislike() - tell the server we dislike this song, and skip to the next one
  *    skip() - request to skip the current song
- *    setStationId(xxx) - switch to a different station 
+ *    setStationId(xxx) - switch to a different station
  *    setVolume(xxx) - adjust music volume (0-100)
  *    getVolume() - retrieve music volume (0-100)
  *
@@ -44,7 +44,7 @@
  *    idle - ready for playback, not playing anything
  *    playing - if session.hasActivePlayStarted() and we're not paused
  *    paused -  if session.hasActivePlayStarted() and we're paused
- * 
+ *
  *  events emitted by the player:
  *    music-unavailable - user isn't located in the US and can't play music
  *    play-started - this play has begun playback.
@@ -58,17 +58,21 @@
  *
  */
 
-import { intersection } from './util';
-import Speaker from './speaker';
-import log from './log';
-import Events from './events';
-import Session from './session';
-import { getBaseUrl } from './base-url';
-import { getClientId } from './client-id';
+import { intersection } from "./util";
+import Speaker from "./speaker";
+import log from "./log";
+import Events from "./events";
+import Session from "./session";
+import { getBaseUrl } from "./base-url";
+import { getClientId } from "./client-id";
 
 function supports_html5_storage() {
   try {
-    return 'localStorage' in window && window['localStorage'] !== null && (window.localStorage['feed-test'] = true);
+    return (
+      "localStorage" in window &&
+      window["localStorage"] !== null &&
+      (window.localStorage["feed-test"] = true)
+    );
   } catch (e) {
     return false;
   }
@@ -80,19 +84,20 @@ var Player = function (token, secret, options) {
   this.state = {
     paused: true,
     // activePlay
-    simulcast: options.simulcast
+    simulcast: options.simulcast,
   };
 
   if (options.debug) {
     log.enable();
   }
-  
+
   // this._station = current station
   // this._stations = list of available stations
   // this._placement = current placement
 
   this.trimming = !!options.trimming;
-  this.normalizeVolume = ('normalizeVolume' in options) ? options.normalizeVolume : true;
+  this.normalizeVolume =
+    "normalizeVolume" in options ? options.normalizeVolume : true;
   this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
   this.crossfadeIn = !!options.crossfadeIn;
   this._stationsPromise = new Promise((resolve, reject) => {
@@ -102,62 +107,71 @@ var Player = function (token, secret, options) {
 
   Object.assign(this, Events);
 
-  var session = this.session = new Session(token, secret, options);
-  this.session.on('play-active', this._onPlayActive, this);
-  this.session.on('play-started', this._onPlayStarted, this);
-  this.session.on('play-completed', this._onPlayCompleted, this);
-  this.session.on('plays-exhausted', this._onPlaysExhausted, this);
-  this.session.on('prepare-sound', this._onPrepareSound, this);
+  var session = (this.session = new Session(token, secret, options));
+  this.session.on("play-active", this._onPlayActive, this);
+  this.session.on("play-started", this._onPlayStarted, this);
+  this.session.on("play-completed", this._onPlayCompleted, this);
+  this.session.on("plays-exhausted", this._onPlaysExhausted, this);
+  this.session.on("prepare-sound", this._onPrepareSound, this);
 
-  this.session.on('placement', this._onPlacement, this);
-  this.session.on('stations', this._onStations, this);
-  this.session.on('station-changed', this._onStationChanged, this);
+  this.session.on("placement", this._onPlacement, this);
+  this.session.on("stations", this._onStations, this);
+  this.session.on("station-changed", this._onStationChanged, this);
 
   let player = this;
-  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'skip-denied']) {
-    this.session.on(event, function() {
-      player.trigger.apply(player, [ event ].concat(Array.prototype.slice.call(arguments, 0)));
+  for (let event of [
+    "music-unavailable",
+    "not-in-us",
+    "invalid-credentials",
+    "skip-denied",
+  ]) {
+    this.session.on(event, function () {
+      player.trigger.apply(
+        player,
+        [event].concat(Array.prototype.slice.call(arguments, 0))
+      );
     });
   }
 
   if (options.debug) {
-    this.session.on('play-active', function () {
-      player.trigger.apply(player, [ 'play-active' ].concat(Array.prototype.slice.call(arguments, 0)));
+    this.session.on("play-active", function () {
+      player.trigger.apply(
+        player,
+        ["play-active"].concat(Array.prototype.slice.call(arguments, 0))
+      );
     });
   }
 
-  const speaker = this.speaker = new Speaker();
+  const speaker = (this.speaker = options.speaker || new Speaker());
 
   if (options.brokenWebkitFormats && Speaker.brokenWebkit) {
-    let reqFormatList = options.brokenWebkitFormats.split(','),
-      suppFormatList = speaker.getSupportedFormats().split(','),
+    let reqFormatList = options.brokenWebkitFormats.split(","),
+      suppFormatList = speaker.getSupportedFormats().split(","),
       reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
-      reqAndSuppFormats = reqAndSuppFormatList.join(',');
+      reqAndSuppFormats = reqAndSuppFormatList.join(",");
 
-    log('input format list is', reqFormatList, suppFormatList);
-    log('final support list is', reqAndSuppFormats);
+    log("input format list is", reqFormatList, suppFormatList);
+    log("final support list is", reqAndSuppFormats);
 
     if (reqAndSuppFormatList.length === 0) {
       reqAndSuppFormats = speaker.getSupportedFormats();
     }
 
     session.setFormats(reqAndSuppFormats);
-
   } else if (options.formats) {
-    let reqFormatList = options.formats.split(','),
-      suppFormatList = speaker.getSupportedFormats().split(','),
+    let reqFormatList = options.formats.split(","),
+      suppFormatList = speaker.getSupportedFormats().split(","),
       reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
-      reqAndSuppFormats = reqAndSuppFormatList.join(',');
+      reqAndSuppFormats = reqAndSuppFormatList.join(",");
 
     if (reqAndSuppFormatList.length === 0) {
       reqAndSuppFormats = speaker.getSupportedFormats();
     }
 
-    log('input format list is', reqFormatList, suppFormatList);
-    log('final support list is', reqAndSuppFormats);
+    log("input format list is", reqFormatList, suppFormatList);
+    log("final support list is", reqAndSuppFormats);
 
     session.setFormats(reqAndSuppFormats);
-
   } else {
     session.setFormats(speaker.getSupportedFormats());
   }
@@ -166,46 +180,47 @@ var Player = function (token, secret, options) {
 };
 
 Player.prototype.initializeAudio = function () {
-  log('INTIALIZE AUDIO');
+  log("INTIALIZE AUDIO");
   this.speaker.initializeAudio();
 };
 
-Player.prototype._onPlacement = function(placement) {
+Player.prototype._onPlacement = function (placement) {
   this._placement = placement;
 
   if (placement.options && placement.options.crossfade_seconds) {
     this.secondsOfCrossfade = placement.options.crossfade_seconds;
   }
 
-  this.trigger('placement', placement);
+  this.trigger("placement", placement);
 };
 
-Player.prototype._onStations = function(stations) {
+Player.prototype._onStations = function (stations) {
   this._stations = stations;
 
   this._stationsResolve(stations);
 
-  this.trigger('stations', stations);
+  this.trigger("stations", stations);
 };
 
-Player.prototype._onStationChanged = function(stationId, station) {
+Player.prototype._onStationChanged = function (stationId, station) {
   this._station = station;
 
-  if (station.options && ('crossfade_seconds' in station.options)) {
+  if (station.options && "crossfade_seconds" in station.options) {
     // apply station level crossfade, if available
     this.secondsOfCrossfade = station.options.crossfade_seconds;
-    
-  } else if (this._placement.options && ('crossfade_seconds' in this._placement.options)) {
+  } else if (
+    this._placement.options &&
+    "crossfade_seconds" in this._placement.options
+  ) {
     // revert to placement level crossfade, if available
     this.secondsOfCrossfade = this._placement.options.crossfade_seconds;
-
   }
 
-  this.trigger('station-changed', stationId, station);
+  this.trigger("station-changed", stationId, station);
 };
 
 Player.prototype.setStationId = function (stationId) {
-  log('SET STATION ID', stationId);
+  log("SET STATION ID", stationId);
 
   this.session.setStationId(stationId);
 };
@@ -216,20 +231,32 @@ Player.prototype._onPlayActive = function (play) {
     play: this._onSoundPlay.bind(this, play.id),
     pause: this._onSoundPause.bind(this, play.id),
     finish: this._onSoundFinish.bind(this, play.id),
-    elapse: this._onSoundElapse.bind(this, play.id)
+    elapse: this._onSoundElapse.bind(this, play.id),
   };
 
   if (this.normalizeVolume) {
-    options.gain = (play.audio_file.replaygain_track_gain || 0) + (play.station.pre_gain || 0);
+    options.gain =
+      (play.audio_file.replaygain_track_gain || 0) +
+      (play.station.pre_gain || 0);
   }
 
-  if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_start) {
+  if (
+    this.trimming &&
+    play.audio_file.extra &&
+    play.audio_file.extra.trim_start
+  ) {
     options.startPosition = play.audio_file.extra.trim_start * 1000;
   }
 
-  if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_end &&
-    play.audio_file.duration_in_seconds) {
-    options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
+  if (
+    this.trimming &&
+    play.audio_file.extra &&
+    play.audio_file.extra.trim_end &&
+    play.audio_file.duration_in_seconds
+  ) {
+    options.endPosition =
+      (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) *
+      1000;
   }
 
   if (this.secondsOfCrossfade) {
@@ -246,9 +273,9 @@ Player.prototype._onPlayActive = function (play) {
     id: play.id,
     sound: sound,
     startReportedToServer: false, // whether we got a 'play-started' event from session
-    soundCompleted: false,        // whether the sound object told us it finished playback
-    playStarted: false,           // whether playback started on the sound object yet
-    previousPosition: 0           // last time we got an 'elapse' callback
+    soundCompleted: false, // whether the sound object told us it finished playback
+    playStarted: false, // whether playback started on the sound object yet
+    previousPosition: 0, // last time we got an 'elapse' callback
   };
 
   // if we're not paused, then start it
@@ -261,8 +288,12 @@ Player.prototype._onPlayActive = function (play) {
 
 Player.prototype._onSoundPlay = function (playId) {
   // sound started playing
-  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-    log('received sound play, but active play does not match', this.state.activePlay, playId);
+  if (!this.state.activePlay || this.state.activePlay.id !== playId) {
+    log(
+      "received sound play, but active play does not match",
+      this.state.activePlay,
+      playId
+    );
     return;
   }
 
@@ -275,7 +306,7 @@ Player.prototype._onSoundPlay = function (playId) {
   }
 
   // subsequent plays are considered 'resumed' events
-  this.trigger('play-resumed', this.session.getActivePlay());
+  this.trigger("play-resumed", this.session.getActivePlay());
 };
 
 Player.prototype.getActivePlay = function () {
@@ -292,19 +323,27 @@ Player.prototype.getActivePlacement = function () {
 
 Player.prototype._onSoundPause = function (playId) {
   // sound paused playback
-  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-    log('received sound pause, but active play does not match', this.state.activePlay, playId);
+  if (!this.state.activePlay || this.state.activePlay.id !== playId) {
+    log(
+      "received sound pause, but active play does not match",
+      this.state.activePlay,
+      playId
+    );
     return;
   }
 
   this.state.paused = true;
 
-  this.trigger('play-paused', this.session.getActivePlay());
+  this.trigger("play-paused", this.session.getActivePlay());
 };
 
 Player.prototype._onSoundFinish = function (playId, withError) {
-  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-    log('received sound finish, but active play does not match', this.state.activePlay, playId);
+  if (!this.state.activePlay || this.state.activePlay.id !== playId) {
+    log(
+      "received sound finish, but active play does not match",
+      this.state.activePlay,
+      playId
+    );
     return;
   }
 
@@ -312,9 +351,11 @@ Player.prototype._onSoundFinish = function (playId, withError) {
   if (withError) {
     this.state.activePlay.soundCompletedWithError = true;
 
-    if (withError.name === 'NotAllowedError') {
+    if (withError.name === "NotAllowedError") {
       // eslint-disable-next-line no-console
-      console.error('Feed.fm: first call to "initializeAudio()" or "play()" must be made in user-initiated event handler');
+      console.error(
+        'Feed.fm: first call to "initializeAudio()" or "play()" must be made in user-initiated event handler'
+      );
       this.stop();
       return;
     }
@@ -336,24 +377,29 @@ Player.prototype._onSoundFinish = function (playId, withError) {
   }
 
   if (withError) {
-    log('song completed with error - marking as invalid');
+    log("song completed with error - marking as invalid");
     this.session.requestInvalidate();
-
   } else {
     this.session.reportPlayCompleted();
   }
 };
 
 Player.prototype._onSoundElapse = function (playId) {
-  if (!this.state.activePlay || (this.state.activePlay.id !== playId)) {
-    log('received sound elapse, but active play does not match', this.state.activePlay, playId);
+  if (!this.state.activePlay || this.state.activePlay.id !== playId) {
+    log(
+      "received sound elapse, but active play does not match",
+      this.state.activePlay,
+      playId
+    );
     return;
   }
 
   var sound = this.state.activePlay.sound,
     position = sound.position(),
-    interval = 30 * 1000,  // ping server every 30 seconds
-    previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
+    interval = 30 * 1000, // ping server every 30 seconds
+    previousCount = Math.floor(
+      this.state.activePlay.previousPosition / interval
+    ),
     currentCount = Math.floor(position / interval);
 
   this.state.activePlay.previousPosition = position;
@@ -366,8 +412,12 @@ Player.prototype._onSoundElapse = function (playId) {
 Player.prototype._onPlayStarted = function (play) {
   var session = this.session;
 
-  if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
-    log('received play started, but it does not match active play', play, this.state.activePlay);
+  if (!this.state.activePlay || this.state.activePlay.id !== play.id) {
+    log(
+      "received play started, but it does not match active play",
+      play,
+      this.state.activePlay
+    );
     return;
   }
 
@@ -375,7 +425,10 @@ Player.prototype._onPlayStarted = function (play) {
 
   if (this.state.activePlay.soundCompleted) {
     // the audio completed playback before the session announced the play started
-    log('sound completed before we finished reporting start', this.state.activePlay);
+    log(
+      "sound completed before we finished reporting start",
+      this.state.activePlay
+    );
 
     // In the normal case we'd just quit here, but since the audio completed playback
     // already, we've got to make sure a 'session.reportPlayCompleted()' gets kicked
@@ -385,21 +438,23 @@ Player.prototype._onPlayStarted = function (play) {
 
     if (this.state.activePlay.soundCompletedWithError) {
       setTimeout(() => session.requestInvalidate(), 1);
-
     } else {
       setTimeout(() => session.reportPlayCompleted(), 1);
-
     }
   }
 
   this.updateSimulcast();
 
-  this.trigger('play-started', play);
+  this.trigger("play-started", play);
 };
 
 Player.prototype._onPlayCompleted = function (play) {
-  if (!this.state.activePlay || (this.state.activePlay.id !== play.id)) {
-    log('received play completed, but it does not match active play', play, this.state.activePlay);
+  if (!this.state.activePlay || this.state.activePlay.id !== play.id) {
+    log(
+      "received play completed, but it does not match active play",
+      play,
+      this.state.activePlay
+    );
     return;
   }
 
@@ -410,7 +465,7 @@ Player.prototype._onPlayCompleted = function (play) {
   delete this.state.activePlay;
 
   if (started) {
-    this.trigger('play-completed', play);
+    this.trigger("play-completed", play);
   }
 
   // skip to complete the current song.
@@ -421,11 +476,11 @@ Player.prototype._onPlaysExhausted = function () {
   this.state.paused = false;
 
   this.updateSimulcast();
-  this.trigger('plays-exhausted');
+  this.trigger("plays-exhausted");
 };
 
 Player.prototype._onPrepareSound = function (url) {
-  log('preparing', url);
+  log("preparing", url);
   this.speaker.prepare(url);
 };
 
@@ -438,7 +493,7 @@ Player.prototype.getStationInformation = function (stationInformationCallback) {
 };
 
 Player.prototype.tune = function () {
-  log('TUNE');
+  log("TUNE");
 
   if (!this.session.isTuned()) {
     this.session.tune();
@@ -446,7 +501,7 @@ Player.prototype.tune = function () {
 };
 
 Player.prototype.play = function () {
-  log('PLAY');
+  log("PLAY");
 
   const session = this.session;
   const state = this.state;
@@ -464,10 +519,8 @@ Player.prototype.play = function () {
     // resume playback of song
     if (state.activePlay.playStarted) {
       state.activePlay.sound.resume();
-
     } else {
       state.activePlay.sound.play();
-
     }
   }
 
@@ -478,11 +531,13 @@ Player.prototype.play = function () {
 };
 
 Player.prototype.pause = function () {
-  log('PAUSE');
+  log("PAUSE");
 
-  if (!this.session.hasActivePlayStarted() ||
+  if (
+    !this.session.hasActivePlayStarted() ||
     !this.state.activePlay ||
-    this.state.paused) {
+    this.state.paused
+  ) {
     return;
   }
 
@@ -496,7 +551,7 @@ Player.prototype.pause = function () {
 };
 
 Player.prototype.like = function () {
-  log('LIKE');
+  log("LIKE");
 
   if (!this.session.hasActivePlayStarted()) {
     return;
@@ -504,11 +559,11 @@ Player.prototype.like = function () {
 
   this.session.likePlay(this.state.activePlay.id);
 
-  this.trigger('play-liked');
+  this.trigger("play-liked");
 };
 
 Player.prototype.unlike = function () {
-  log('UNLIKE');
+  log("UNLIKE");
 
   if (!this.session.hasActivePlayStarted()) {
     return;
@@ -516,11 +571,11 @@ Player.prototype.unlike = function () {
 
   this.session.unlikePlay(this.state.activePlay.id);
 
-  this.trigger('play-unliked');
+  this.trigger("play-unliked");
 };
 
 Player.prototype.dislike = function () {
-  log('DISLIKE');
+  log("DISLIKE");
 
   if (!this.session.hasActivePlayStarted()) {
     return;
@@ -528,7 +583,7 @@ Player.prototype.dislike = function () {
 
   this.session.dislikePlay(this.state.activePlay.id);
 
-  this.trigger('play-disliked');
+  this.trigger("play-disliked");
 
   // start playback if we're paused and try to advance to next song
   this.state.paused = false;
@@ -536,7 +591,7 @@ Player.prototype.dislike = function () {
 };
 
 Player.prototype.skip = function () {
-  log('SKIP');
+  log("SKIP");
 
   if (!this.session.hasActivePlayStarted()) {
     // can't skip non-playing song
@@ -549,13 +604,13 @@ Player.prototype.skip = function () {
 };
 
 Player.prototype.stop = function () {
-  log('STOP');
+  log("STOP");
 
   this.state.paused = true;
-  
+
   var activePlay = this.state.activePlay;
   if (activePlay && activePlay.sound) {
-    log('stopping active play', activePlay);
+    log("stopping active play", activePlay);
 
     if (activePlay.startReportedToServer) {
       // report where we played to
@@ -566,9 +621,8 @@ Player.prototype.stop = function () {
     // stop any playback
     activePlay.sound.pause();
     activePlay.sound.destroy();
-
   } else {
-    log('no active play');
+    log("no active play");
   }
 
   delete this.state.activePlay;
@@ -576,8 +630,8 @@ Player.prototype.stop = function () {
   // flush out any prepared sounds
   this.speaker.flush();
 
-  this.trigger('play-stopped');
-  
+  this.trigger("play-stopped");
+
   this.updateSimulcast();
 };
 
@@ -591,18 +645,15 @@ Player.prototype.destroy = function () {
 
 Player.prototype.getCurrentState = function () {
   if (this.state.suspended) {
-    return 'suspended';
-
+    return "suspended";
   } else if (!this.session.hasActivePlayStarted()) {
     // nothing started, so we're idle
-    return 'idle';
-
+    return "idle";
   } else {
     if (this.state.paused) {
-      return 'paused';
-
+      return "paused";
     } else {
-      return 'playing';
+      return "playing";
     }
   }
 };
@@ -610,7 +661,6 @@ Player.prototype.getCurrentState = function () {
 Player.prototype.getPosition = function () {
   if (this.state.activePlay && this.state.activePlay.sound) {
     return this.state.activePlay.sound.position();
-
   } else {
     return 0;
   }
@@ -619,7 +669,6 @@ Player.prototype.getPosition = function () {
 Player.prototype.getDuration = function () {
   if (this.state.activePlay && this.state.activePlay.sound) {
     return this.state.activePlay.sound.duration();
-
   } else {
     return 0;
   }
@@ -629,11 +678,11 @@ Player.prototype.maybeCanSkip = function () {
   return !!this.session.maybeCanSkip();
 };
 
-var mutedKey = 'muted';
+var mutedKey = "muted";
 Player.prototype.isMuted = function () {
   if (supports_html5_storage()) {
     if (mutedKey in localStorage) {
-      return localStorage[mutedKey] === 'true';
+      return localStorage[mutedKey] === "true";
     }
   }
 
@@ -648,8 +697,7 @@ Player.prototype.setMuted = function (isMuted) {
       localStorage[mutedKey] = true;
     }
 
-    this.trigger('muted');
-
+    this.trigger("muted");
   } else {
     this.speaker.setVolume(100);
 
@@ -657,44 +705,47 @@ Player.prototype.setMuted = function (isMuted) {
       localStorage[mutedKey] = false;
     }
 
-    this.trigger('unmuted');
+    this.trigger("unmuted");
   }
 };
 
-Player.prototype.getVolume = function() {
+Player.prototype.getVolume = function () {
   return this.speaker.getVolume();
 };
 
-Player.prototype.setVolume = function(vol) {
+Player.prototype.setVolume = function (vol) {
   this.speaker.setVolume(vol);
 };
 
-Player.prototype.getStations = function() {
+Player.prototype.getStations = function () {
   return this._stationsPromise;
 };
 
-Player.prototype.updateSimulcast = function() {
+Player.prototype.updateSimulcast = function () {
   if (!this.state.simulcast) {
     return;
   }
 
   let state = this.getCurrentState();
 
-  if (state === 'suspended') {
-    state = 'idle';
+  if (state === "suspended") {
+    state = "idle";
   }
 
   getClientId().then((clientId) => {
-    this.session._signedAjax(getBaseUrl() + `/api/v2/simulcast/${this.state.simulcast}/in-progress`, {
-      method: 'POST',
-      body: JSON.stringify({
-        state: state,
-        client_id: clientId
-      }),
-      headers: {
-        'Content-Type': 'application/json'
-      },
-    });
+    this.session._signedAjax(
+      getBaseUrl() + `/api/v2/simulcast/${this.state.simulcast}/in-progress`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          state: state,
+          client_id: clientId,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
   });
 };
 
