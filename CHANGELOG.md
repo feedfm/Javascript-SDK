@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.31
+
+- default to honoring song trim metadata
+
 1.99.30
 
 - update SimulcastPlayer to ignore 'connect()' calls when not idle
