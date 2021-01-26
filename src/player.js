@@ -91,7 +91,7 @@ var Player = function (token, secret, options) {
   // this._stations = list of available stations
   // this._placement = current placement
 
-  this.trimming = !!options.trimming;
+  this.trimming = (options.trimming === false) ? false : true;
   this.normalizeVolume = ('normalizeVolume' in options) ? options.normalizeVolume : true;
   this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
   this.crossfadeIn = !!options.crossfadeIn;
