@@ -61,10 +61,10 @@ import { uniqueId } from './util';
 
 const DEFAULT_VOLUME = 1.0;
 
-const iOSp = /(iPhone|iPad)/i.test(navigator.userAgent);
-const brokenWebkit = iOSp && /OS 13_[543210]/i.test(navigator.userAgent);
+const APPLE = /(iPhone|iPad|Mac)/i.test(navigator.userAgent);
+const brokenWebkit = APPLE && /OS 13_[543210]/i.test(navigator.userAgent);
 
-const SILENCE = iOSp ?
+const SILENCE = APPLE ?
   'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
   'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
@@ -183,7 +183,7 @@ let Speaker = function () {
 };
 
 // exports with this version of Javacript isn't working, so...
-Speaker.iOSp = iOSp;
+Speaker.APPLE = APPLE;
 Speaker.brokenWebkit = brokenWebkit;
 
 function createAudioContext() {
@@ -230,7 +230,7 @@ Speaker.prototype = {
   //   audio: an HTML Audio element (created during initializeAudio() and reused)
   //   sound: refers to Sound object whose URL has been assigned to 'audio.src' and
   //          audio.play() has successfully returned.
-  //   gain: AudioGainNode for iOS
+  //   gain: AudioGainNode for apple
   //   volume: relative volume of this sound (0..1)
   // }
   //
@@ -251,6 +251,11 @@ Speaker.prototype = {
     // response to a user event. This does that.
     if (this.active === null) {
       log('initializing for mobile');
+      try {
+        throw new Error('initialize check');
+      } catch (e) {
+        log('initialize audio called from', e);
+      }
 
       this.audioContext = createAudioContext();
 
@@ -294,9 +299,9 @@ Speaker.prototype = {
 
     this._addEventListeners(audio);
 
-    // iOS volume adjustment
+    // apple volume adjustment
     var gain = null;
-    if (iOSp && !brokenWebkit) {
+    if (APPLE && !brokenWebkit) {
       gain = this._createAudioGainNode(audio);
     }
 
@@ -465,7 +470,7 @@ Speaker.prototype = {
     }
 
     if (currentVolume !== calculatedVolume) {
-      if (iOSp) {
+      if (APPLE) {
         if (!brokenWebkit) {
           audioGroup.gain.value = calculatedVolume;
         }

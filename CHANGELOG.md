@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.32
+
+- handle iPads that identify as Intel Macs
+
 1.99.31
 
 - default to honoring song trim metadata
