@@ -1,5 +1,10 @@
 # Changelog
 
+1.99.33
+
+- trimming is enabled by default
+- remove support for mobile web browsers
+
 1.99.32
 
 - handle iPads that identify as Intel Macs

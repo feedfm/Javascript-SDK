@@ -7,9 +7,16 @@ You can read more about the Feed Media API at [https://feed.fm/][1]. This librar
 a `Feed.Player` class, which offers a simple interface starting and stopping audio
 playback, and `Feed.PlayerView`, which offers a simple way to render a music player in HTML.
 
-This javascript library makes use of the `Audio` element and works with all browsers
-that support it: IE 11+, Edge 17+, Firefox 61+, Chrome 49+, and Mobile Safari 11.2+
-and Safari 11.1+.
+This javascript library makes use of the `Audio` element and works with desktop browsers
+that support it: Edge 80+, Firefox 76+, Chrome 79+, and Safari 11.1+. 
+
+**NOTE** - we do NOT support mobile web browsers using our Javascript SDK. While the
+Javascript SDK may have some success on mobile web browsers, we do not officially support
+these mobile web integrations. To create the best user experience, we recommend understanding
+these limitations prior to developing on mobile web.In general, Feed.fm best practices
+discourage the use of our Javascript SDK on mobile web to ensure the applications you develop
+are optimized for the best possible user experience. We recommend building native mobile
+applications which can utilize our iOS SDK and Android SDK.
 
 This library will work with the default demo credentials built into it, but you will
 need to get a set of production credentials from your contact at Feed.fm.

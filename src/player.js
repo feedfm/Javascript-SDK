@@ -12,7 +12,7 @@
  *
  *  options can be:
  *    debug: false,         // when true, display console logging statements
- *    trimming: false,      // when true, song start/end trims will be honored
+ *    trimming: true,       // when true, song start/end trims will be honored
  *    crossfadeIn: false,   // when true, songs do not fade in - they start at full volume
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
  *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions
