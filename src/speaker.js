@@ -61,10 +61,20 @@ import { uniqueId } from './util';
 
 const DEFAULT_VOLUME = 1.0;
 
-const APPLE = /(iPhone|iPad|Mac)/i.test(navigator.userAgent);
-const brokenWebkit = APPLE && /OS 13_[543210]/i.test(navigator.userAgent);
+const IOS = [
+    'iPad Simulator',
+    'iPhone Simulator',
+    'iPod Simulator',
+    'iPad',
+    'iPhone',
+    'iPod'
+  ].includes(navigator.platform)
+  // iPad on iOS 13 detection
+  || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 
-const SILENCE = APPLE ?
+const brokenWebkit = IOS && /OS 13_[543210]/i.test(navigator.userAgent);
+
+const SILENCE = IOS ?
   'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
   'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
@@ -183,7 +193,7 @@ let Speaker = function () {
 };
 
 // exports with this version of Javacript isn't working, so...
-Speaker.APPLE = APPLE;
+Speaker.IOS = IOS;
 Speaker.brokenWebkit = brokenWebkit;
 
 function createAudioContext() {
@@ -301,7 +311,7 @@ Speaker.prototype = {
 
     // apple volume adjustment
     var gain = null;
-    if (APPLE && !brokenWebkit) {
+    if (Speaker.IOS && !brokenWebkit) {
       gain = this._createAudioGainNode(audio);
     }
 
@@ -470,7 +480,7 @@ Speaker.prototype = {
     }
 
     if (currentVolume !== calculatedVolume) {
-      if (APPLE) {
+      if (Speaker.IOS) {
         if (!brokenWebkit) {
           audioGroup.gain.value = calculatedVolume;
         }
