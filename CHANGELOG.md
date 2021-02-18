@@ -1,5 +1,10 @@
 # Changelog
 
+1.99.34
+
+- improve iOS vs Mac detection, and prevent desktop Safari from using AudioContext
+  for volume control, which appears to be the cause of music dropping out. 
+
 1.99.33
 
 - trimming is enabled by default
