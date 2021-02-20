@@ -26,6 +26,10 @@
 
   <ul class="stations">
   </ul>
+  
+  <div>
+    <label><input type="checkbox" id="crossfade"> crossfade</label>
+  </div>
 
   <div id="listener">
     <button>listen</button>
@@ -55,7 +59,9 @@
         var $button = $('<button>' + stations[i].name + '</button>').data('id', stations[i].id);
         $button.on('click', function() {
           var id = $(this).data('id');
-          player.setStationId(id);
+          var crossfade = $('#crossfade').is(':checked');
+
+          player.setStationId(id, crossfade);
         });
         $('.stations').append($button);
       }
@@ -90,6 +96,11 @@
       document.querySelector('#listener .status').innerHTML = '';
     });
 
+    /*
+    setInterval(function() {
+      player.speaker.logState();
+    }, 2000);
+    */
   </script>
   
 </body>
