@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.35
+
+- allow crossfade between stations via Player.setStationId() 
+
 1.99.34
 
 - improve iOS vs Mac detection, and prevent desktop Safari from using AudioContext
