@@ -169,9 +169,9 @@ Sound.prototype = {
   // stop playing the given sound clip, unload it, and disable events
   // note that no further events will be sent from this sound
   // (so no 'finish' event, in particular)
-  destroy: function () {
-    log('sound ' + this.id + ' destroy');
-    this.speaker._destroySound(this);
+  destroy: function (fadeOut) {
+    log('sound ' + this.id + ' destroy' + (fadeOut ? ' (with fade)' : ''));
+    this.speaker._destroySound(this, fadeOut);
   },
 
   gainAdjustedVolume: function (volume) {
@@ -618,6 +618,11 @@ Speaker.prototype = {
 
     if (this.preparing.audio.src !== url) {
       log('preparing ' + url);
+
+      if (this.preparing.audio.playing) {
+        this.preparing.audio.pause();
+      }
+
       this.preparing.audio.src = url;
     }
 
@@ -760,12 +765,40 @@ Speaker.prototype = {
     }
   },
 
-  _destroySound: function (sound) {
+  _destroySound: function (sound, fadeOut = false) {
     sound.off();
 
     if (this.active && (this.active.sound === sound)) {
-      log('destroy triggered for current sound', sound.id);
-      this.active.audio.pause();
+
+      if (!fadeOut || !sound.fadeOutSeconds) {
+        log('destroy triggered for current sound (no fadeout)', sound.id);
+        this.active.audio.pause();
+
+      } else {
+        log('destroy triggered for current sound (with fadeout)', sound.id);
+
+        let audio = this.active.audio;
+        sound.fadeOutStart = audio.currentTime;
+
+        if (sound.endPosition) {
+          sound.fadeOutEnd = Math.min(audio.currentTime + sound.fadeOutSeconds, sound.endPosition / 1000);
+          sound.endPosition = Math.min(sound.fadeOutEnd * 1000, sound.endPosition);
+  
+        } else {
+          sound.fadeOutEnd = audio.currentTime + sound.fadeOutSeconds;
+          sound.endPosition = sound.fadeOutEnd * 1000;
+        }
+        
+        // song hit start of fade out
+        this._setVolume(this.active);
+
+        // active becomes fading, and fading becomes active
+        var fading = this.fading;
+        this.fading = this.active;
+        this.active = fading;
+
+        this.active.sound = null; // not used any more 
+      }
 
     } else {
       log('destroy triggered for inactive sound', sound.id);

@@ -34,7 +34,8 @@
  *    unlike() - tell the server to remove the 'like' for this song
  *    dislike() - tell the server we dislike this song, and skip to the next one
  *    skip() - request to skip the current song
- *    setStationId(xxx) - switch to a different station 
+ *    setStationId(xxx, fade) - switch to a different station. Optionally set 'fade' to true to
+ *         crossfade playback to the new station
  *    setVolume(xxx) - adjust music volume (0-100)
  *    getVolume() - retrieve music volume (0-100)
  *
@@ -204,8 +205,13 @@ Player.prototype._onStationChanged = function(stationId, station) {
   this.trigger('station-changed', stationId, station);
 };
 
-Player.prototype.setStationId = function (stationId) {
-  log('SET STATION ID', stationId);
+Player.prototype.setStationId = function (stationId, fadeOut) {
+  log('SET STATION ID' + (fadeOut ? ' (WITH FADE)' : ''), stationId);
+
+  if (fadeOut && this.state.activePlay) {
+    // when we destroy the sound, have it fade out
+    this.state.activePlay.fadeOnDestroy = true;
+  }
 
   this.session.setStationId(stationId);
 };
@@ -248,6 +254,7 @@ Player.prototype._onPlayActive = function (play) {
     startReportedToServer: false, // whether we got a 'play-started' event from session
     soundCompleted: false,        // whether the sound object told us it finished playback
     playStarted: false,           // whether playback started on the sound object yet
+    fadeOnDestroy: false,         // when true, apply a fade out when destroying the sound
     previousPosition: 0           // last time we got an 'elapse' callback
   };
 
@@ -403,7 +410,7 @@ Player.prototype._onPlayCompleted = function (play) {
     return;
   }
 
-  this.state.activePlay.sound.destroy();
+  this.state.activePlay.sound.destroy(this.state.activePlay.fadeOnDestroy);
 
   let started = this.state.activePlay.playStarted;
 
