@@ -343,7 +343,7 @@ Player.prototype._onSoundFinish = function (playId, withError) {
   }
 
   if (withError) {
-    log('song completed with error - marking as invalid');
+    log('song completed with error - marking as invalid', withError);
     this.session.requestInvalidate();
 
   } else {

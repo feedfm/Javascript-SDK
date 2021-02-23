@@ -114,6 +114,8 @@ var Session = function (token, secret, options) {
   }
 
   this.config = {
+    remoteLogging: !!options.remoteLogging,
+
     // token
     // secret
     // placementId
@@ -157,6 +159,12 @@ var Session = function (token, secret, options) {
   if (token && secret) {
     this.setCredentials(token, secret);
   }
+
+  if (options.remoteLogging) {
+    log('remote logging enabled', this.config);
+    this._submitLogHistory();
+  }
+
 };
 
 Session.prototype.setCredentials = function (token, secret) {
@@ -449,13 +457,12 @@ Session.prototype._failInvalidate = function (delay, play, response) {
 
 Session.prototype._receiveInvalidate = function (play, response) {
   log('invalidate response');
-  /*
+
   this._submitLogHistory();
   setTimeout(function() {
     log('5 second follow up after invalidate');
     self._submitLogHistory();
   }, 5000);
-  */
 
   if (!this.config.current || (this.config.current.play !== play)) {
     // not holding this song any more - just ignore it
@@ -573,13 +580,11 @@ Session.prototype._receiveStartPlay = function (play, response) {
 Session.prototype._failStartPlay = function (play, response) {
   log('start failed', response);
   
-  /*
   this._submitLogHistory();
   setTimeout(function() {
     log('5 second follow up after start failure');
     self._submitLogHistory();
   }, 5000);
-  */
 
   // only process if we're still actually waiting for this
   if (this.config.current && (this.config.current.play === play)) {
@@ -781,13 +786,11 @@ Session.prototype._receiveNextPlay = function (ajax, response) {
 Session.prototype._failedNextPlay = function (delay, ajax, response) {
   log('next play failed', response);
   
-  /*
   this._submitLogHistory();
-  setTimeout(()  {
+  setTimeout(() => {
     log('5 second follow up after next play failure');
     this._submitLogHistory();
   }, 5000);
-  */
 
   // only process if we're still actually waiting for this
   if (this.config.pendingRequest && (this.config.pendingRequest.ajax === ajax)) {
@@ -912,9 +915,14 @@ Session.prototype._ajax = function (url, request) {
   return fetch(url, request);
 };
 
-Session.prototype._submitLogHistory = function() {
+Session.prototype._submitLogHistory = function(count = 0) {
+  let session = this;
   let history = log.history;
   log.history = [];
+
+  if (!this.config.remoteLogging) {
+    return;
+  }
 
   return this._signedAjax(getBaseUrl() + '/api/v2/session/event', {
     method: 'POST',
@@ -924,6 +932,13 @@ Session.prototype._submitLogHistory = function() {
     }),
     headers: {
       'Content-Type': 'application/json'
+    }
+  }).catch(function(err) {
+    if (count < 2) {
+      setTimeout(() => {
+        log.history = history.concat([ 'failed log report attempt, try #' + count ], log.history);
+        session._submitLogHistory(count + 1);
+      }, 5000);
     }
   });
 };
