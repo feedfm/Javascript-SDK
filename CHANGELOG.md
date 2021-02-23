@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.36
+
+- new 'remoteLogging' option, to send full logs to Feed for debugging
+
 1.99.35
 
 - allow crossfade between stations via Player.setStationId() 

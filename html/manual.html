@@ -42,10 +42,11 @@
 
     // Create basic player.
     var player = new Feed.Player('demo', 'demo', { 
-      baseUrl: 'https://stage.feed.fm', 
+      baseUrl: 'https://feed.fm', 
       /* formats: 'quiet-50-aac', */ 
       debug: true, 
-      simulcast: simulcast
+      simulcast: simulcast,
+      remoteLogging: true
     });
     
     // Display all the events the player triggers
