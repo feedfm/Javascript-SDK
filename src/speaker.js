@@ -656,8 +656,8 @@ Speaker.prototype = {
             sound.trigger('play');
 
           })
-          .catch(function () {
-            log('error resuming playback');
+          .catch(function (e) {
+            log('error resuming playback', e.name, e.message, e.stack, sound.id);
             speaker.active.sound = null;
             sound.trigger('finish');
           });
@@ -669,7 +669,7 @@ Speaker.prototype = {
 
             })
             .catch(function () {
-              log('error resuming fading playback');
+              log('error resuming fading playback', e.name, e.message, e.stack, sound.id);
               speaker.fading.sound = null;
               speaker.fading.audio.src = SILENCE;
             });
@@ -759,7 +759,7 @@ Speaker.prototype = {
 
         })
         .catch(function (error) {
-          log('error starting playback with sound ' + sound.id, error);
+          log('error starting playback with sound ' + sound.id, error.name, error.message, error.stack);
           sound.trigger('finish', error);
         });
     }
