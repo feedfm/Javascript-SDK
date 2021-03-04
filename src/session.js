@@ -456,6 +456,7 @@ Session.prototype._failInvalidate = function (delay, play, response) {
 };
 
 Session.prototype._receiveInvalidate = function (play, response) {
+  var self = this;
   log('invalidate response');
 
   this._submitLogHistory();
@@ -578,6 +579,7 @@ Session.prototype._receiveStartPlay = function (play, response) {
 };
 
 Session.prototype._failStartPlay = function (play, response) {
+  var self = this;
   log('start failed', response);
   
   this._submitLogHistory();
