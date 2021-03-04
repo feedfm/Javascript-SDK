@@ -668,7 +668,7 @@ Speaker.prototype = {
               log('resumed fading playback');
 
             })
-            .catch(function () {
+            .catch(function (e) {
               log('error resuming fading playback', e.name, e.message, e.stack, sound.id);
               speaker.fading.sound = null;
               speaker.fading.audio.src = SILENCE;
