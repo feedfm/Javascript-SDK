@@ -1,5 +1,10 @@
 # Changelog
 
+1.99.37
+
+- tweaks remote logging
+- fix with 'invalid' play reporting
+
 1.99.36
 
 - new 'remoteLogging' option, to send full logs to Feed for debugging
