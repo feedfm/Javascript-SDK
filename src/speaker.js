@@ -571,7 +571,7 @@ Speaker.prototype = {
       log('no audio prepared yet, so preparing when ready');
       this.prepareWhenReady = sound.url;
 
-    } else if (!CHROMECAST && this.preparing.audio.src === SILENCE) {
+    } else if (CHROMECAST || this.preparing.audio.src === SILENCE) {
       log('preparing sound now');
       this._prepare(sound.url, sound.startPosition);
     }
