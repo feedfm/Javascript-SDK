@@ -115,15 +115,9 @@ var Player = function (token, secret, options) {
   this.session.on('station-changed', this._onStationChanged, this);
 
   let player = this;
-  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'skip-denied']) {
+  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'skip-denied', 'play-active', 'prepare-sound']) {
     this.session.on(event, function() {
       player.trigger.apply(player, [ event ].concat(Array.prototype.slice.call(arguments, 0)));
-    });
-  }
-
-  if (options.debug) {
-    this.session.on('play-active', function () {
-      player.trigger.apply(player, [ 'play-active' ].concat(Array.prototype.slice.call(arguments, 0)));
     });
   }
 
