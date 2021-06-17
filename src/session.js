@@ -104,7 +104,7 @@ import Events from './events';
 import { getCookie, setCookie, removeCookie } from 'tiny-cookie';
 import { version as FEED_VERSION } from '../package.json';
 import { getBaseUrl, setBaseUrl } from './base-url';
-import { getClientId } from './client-id';
+import { getClientId, getStoredClientId, setStoredClientId } from './client-id';
 
 var Session = function (token, secret, options) {
   options = options || {};
@@ -238,13 +238,23 @@ Session.prototype._getDefaultPlacementInformation = function (delay) {
 
   // request placement info from server
   log('requesting default placement information from server');
-  self._signedAjax(getBaseUrl() + '/api/v2/session', { method: 'POST' })
+  self._signedAjax(getBaseUrl() + '/api/v2/session', { 
+      method: 'POST',
+      body: JSON.stringify({ client_id: getStoredClientId() }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
     .then((response) => response.json())
-    .then((session) => { 
-      // client id creation now tied to session, so this isn't strictly necessary,
-      // but we leave it in to assist with testing.
+    .then((response) => { 
+      if (response.session && response.session.client_id) {
+        setStoredClientId(response.session.client_id);
+      }
+
+      // client id creation now tied to session, so this next call is superfluous,
+      // and only exists for testing
       return self._getClientId()
-        .then(() => session);
+        .then(() => response);
     })
     .then(self._receiveDefaultPlacementInformation.bind(self))
     .catch(self._failedDefaultPlacementInformation.bind(self, delay));

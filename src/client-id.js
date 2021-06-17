@@ -92,6 +92,9 @@ export function getClientId() {
   return clientPromise;
 }
 
+export let getStoredClientId = _getStoredCid;
+export let setStoredClientId = _setStoredCid;
+
 export function deleteClientId() {
   _deleteStoredCid();
 
