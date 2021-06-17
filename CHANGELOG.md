@@ -1,6 +1,10 @@
 # Changelog
 
-1.99.38
+1.99.40
+
+- Load client id from session response explicitly, not cookie
+
+1.99.39
 
 - Use single /session call during initialization, rather than /placement and /client
 
