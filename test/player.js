@@ -37,8 +37,8 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    server.respondWith('POST', /session/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
     var playResponse = validPlayResponse();
 
@@ -57,11 +57,12 @@ describe('Feed.Player integration tests', function () {
       player.on('play-active', resolve);
     });
 
-    expect(spy.callCount).to.equal(4);
+    expect(spy.callCount).to.equal(5);
     expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
     expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
     expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.getCall(3).calledWith('prepare-sound'), 'prepare-sound').to.be.true;
+    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
@@ -74,9 +75,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -124,9 +125,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -191,8 +192,8 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    server.respondWith('POST', /session/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
     var playResponse = validPlayResponse();
 
@@ -213,11 +214,12 @@ describe('Feed.Player integration tests', function () {
       player.on('play-active', resolve);
     });
 
-    expect(spy.callCount).to.equal(4);
+    expect(spy.callCount).to.equal(5);
     expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
     expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
     expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.getCall(3).calledWith('prepare-sound'), 'prepare-sound').to.be.true;
+    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
@@ -232,8 +234,8 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    server.respondWith('POST', /session/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
     var playResponse = validPlayResponse();
 
@@ -272,8 +274,8 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    server.respondWith('POST', /session/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
     var playResponse = validPlayResponse();
 
@@ -308,8 +310,8 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    server.respondWith('POST', /session/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
     var playResponse = validPlayResponse();
 
@@ -337,12 +339,14 @@ describe('Feed.Player integration tests', function () {
       player.on('play-started', () => { setTimeout(resolve, 2000); });
     });
 
-    expect(spy.callCount).to.equal(5);
+    expect(spy.callCount).to.equal(7);
     expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
     expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
     expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
-    expect(spy.getCall(4).calledWith('play-started'), 'play-started').to.be.true;
+    expect(spy.getCall(3).calledWith('prepare-sound'), 'prepare-sound').to.be.true;
+    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.getCall(5).calledWith('play-started'), 'play-started').to.be.true;
+    expect(spy.getCall(6).calledWith('prepare-sound'), 'prepare-sound').to.be.true;
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
@@ -357,9 +361,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -405,9 +409,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -464,9 +468,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -539,9 +543,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -595,9 +599,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -651,9 +655,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -710,9 +714,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -763,9 +767,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -811,9 +815,9 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 1;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
+    server.respondWith('POST', /session/, function (response) {
       console.log('placement handler');
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
 
     var playResponses = [];
@@ -873,8 +877,8 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 10;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    server.respondWith('POST', /session/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
     var playResponse = validPlayResponse();
 
@@ -922,8 +926,8 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 10;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    server.respondWith('POST', /session/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
     var playResponse = validPlayResponse();
 
@@ -967,8 +971,8 @@ describe('Feed.Player integration tests', function () {
     server.autoRespondAfter = 10;
     server.autoRespond = true;
 
-    server.respondWith('GET', /placement/, function (response) {
-      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validPlacementResponse()));
+    server.respondWith('POST', /session/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
     });
     var playResponse = validPlayResponse();
 
@@ -1061,7 +1065,8 @@ function validPlayResponse(id) {
 const STATION_ONE_ID = '222';
 const STATION_TWO_ID = '333';
 
-function validPlacementResponse() {
+function validSessionResponse() {
+  
   return {
     success: true,
 

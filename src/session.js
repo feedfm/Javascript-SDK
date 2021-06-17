@@ -236,14 +236,18 @@ Session.prototype._getDefaultPlacementInformation = function (delay) {
     return;
   }
 
-  getClientId().then((clientId) => {
-    // request placement info from server
-    log('requesting default placement information from server');
-    self._signedAjax(getBaseUrl() + '/api/v2/placement?client_id=' + clientId)
-      .then((response) => response.json())
-      .then(self._receiveDefaultPlacementInformation.bind(self))
-      .catch(self._failedDefaultPlacementInformation.bind(self, delay));
-  });
+  // request placement info from server
+  log('requesting default placement information from server');
+  self._signedAjax(getBaseUrl() + '/api/v2/session', { method: 'POST' })
+    .then((response) => response.json())
+    .then((session) => { 
+      // client id creation now tied to session, so this isn't strictly necessary,
+      // but we leave it in to assist with testing.
+      return self._getClientId()
+        .then(() => session);
+    })
+    .then(self._receiveDefaultPlacementInformation.bind(self))
+    .catch(self._failedDefaultPlacementInformation.bind(self, delay));
 };
 
 Session.prototype._receiveDefaultPlacementInformation = function (placementInformation) {
@@ -663,7 +667,7 @@ Session.prototype._assignCurrentPlay = function (play, waitingIfEmpty) {
 Session.prototype._requestNextPlay = function (delay) {
   var self = this;
 
-  getClientId().then(function (clientId) {
+  self._getClientId().then(function (clientId) {
     if (self.config.pendingRequest) {
       if (!delay) {
         log('already waiting for a request to finish');
@@ -944,6 +948,10 @@ Session.prototype._submitLogHistory = function(count = 0) {
     }
   });
 };
+
+Session.prototype._getClientId = function() {
+  return getClientId()
+}
 
 export default Session;
 
