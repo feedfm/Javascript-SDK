@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.38
+
+- Use single /session call during initialization, rather than /placement and /client
+
 1.99.37
 
 - tweaks remote logging
