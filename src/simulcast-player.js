@@ -6,6 +6,7 @@ import log from './log';
 import { version as FEED_VERSION } from '../package.json';
 
 const METADATA_TIMEOUT = 10000;
+const ADVANCE_TIMEOUT = 8000;
 
 /**
  * This class connects to a specific simulcast stream and
@@ -85,7 +86,7 @@ class SimulcastPlayer {
     }
 
     if (this._state !== 'idle') {
-      log(`ignoring connect() since we're already connected`);
+      log('ignoring connect() since we\'re already connected');
       return;
     }
 
@@ -125,30 +126,38 @@ class SimulcastPlayer {
 
             this.trigger('play-started', this._activePlay);
 
-            this._metadataTimeout = setTimeout(() => {
-              this._onMetadataTimeout();
-            }, METADATA_TIMEOUT);
+            this._scheduleMetadataTimeout();
 
           } else {
             // try again in 3 seconds
-            this._metadataTimeout = setTimeout(() => {
-              this._onSoundPlay();
-            }, 3000);
+            this._scheduleMetadataTimeout(3000);
           }
         })
         .catch(() => {
           // try again in 2 seconds
-          this._metadataTimeout = setTimeout(() => {
-            this._onSoundPlay();
-          }, 2000);
+          this._scheduleMetadataTimeout(2000);
         });
 
     } else if (!this._metadataTimeout) {
-      this._metadataTimeout = setTimeout(() => {
-        this._onMetadataTimeout();
-      }, METADATA_TIMEOUT);
+      this._scheduleMetadataTimeout();
 
     }
+  }
+
+  _scheduleMetadataTimeout(ms = METADATA_TIMEOUT) {
+    this._cancelMetadataTimeout();
+
+    this._metadataTimeout = setTimeout(() => {
+      this._onMetadataTimeout();
+    }, ms);
+  }
+
+  _cancelMetadataTimeout() {
+    if (this._metadataTimeout) {
+      clearTimeout(this._metadataTimeout);
+    }
+
+    this._metadataTimeout = null;
   }
 
   _onSoundElapse() {
@@ -175,10 +184,7 @@ class SimulcastPlayer {
     }
 
     // don't query for metadata while we are trying to stream again
-    if (this._metadataTimeout) {
-      clearTimeout(this._metadataTimeout);
-      this._metadataTimeout = null;
-    }
+    this._cancelMetadataTimeout();
 
     this._activePlay = null;
 
@@ -196,6 +202,8 @@ class SimulcastPlayer {
   }
 
   _onMetadataTimeout() {
+    this._cancelMetadataTimeout();
+    
     // check for update of current song
     fetch(this._streamUrl + '/play?elapsed=' + this._elapsed)
       .then((res) => res.json())
@@ -211,20 +219,26 @@ class SimulcastPlayer {
           }
         }
 
-        this._metadataTimeout = setTimeout(() => {
-          this._onMetadataTimeout();
-        }, METADATA_TIMEOUT);
+        this._scheduleMetadataTimeout();
+
+        let elapsed = Date.now() - this._lastElapsedAt;
+        if (elapsed > ADVANCE_TIMEOUT) {
+          log(`stream has not advanced for ${elapsed} ms, so reconnecting`, this.toObject());
+          // reconnect if we've been down for a while
+          this._requestStream();
+        }
       })
       .catch(() => {
-        this._metadataTimeout = setTimeout(() => {
-          this._onMetadataTimeout();
-        }, METADATA_TIMEOUT);
-      });
+        let elapsed = Date.now() - this._lastElapsedAt;
+        if (elapsed > ADVANCE_TIMEOUT) {
+          log(`stream has not advanced for ${elapsed} ms, so reconnecting`, this.toObject());
+          // reconnect if we've been down for a while
+          this._requestStream();
 
-    if ((Date.now() - this._lastElapsedAt) > 4000) {
-      // try reconnecting if we've been down for a while
-      this._requestStream();
-    }
+        } else {
+          this._scheduleMetadataTimeout();
+        }
+      });
   }
 
   _onSoundFinish(error) {
@@ -248,10 +262,7 @@ class SimulcastPlayer {
       }
 
       // don't query for metadata while we are trying to stream again
-      if (this._metadataTimeout) {
-        clearTimeout(this._metadataTimeout);
-        this._metadataTimeout = null;
-      }
+      this._cancelMetadataTimeout();
 
       this._activePlay = null;
 
@@ -259,6 +270,7 @@ class SimulcastPlayer {
       this._retries += 1;
       setTimeout(() => {
         if (this._tryingToPlay) {
+          log('retrying connection after stream ended');
           this._requestStream();
         }
   
@@ -280,10 +292,7 @@ class SimulcastPlayer {
     this._activePlay = null;
     this._elapsed = 0;
 
-    if (this._metadataTimeout) {
-      clearTimeout(this._metadataTimeout);
-      this._metadataTimeout = null;
-    }
+    this._cancelMetadataTimeout();
 
     // stop and destroy our sound object
     if (this._activeSound) {
