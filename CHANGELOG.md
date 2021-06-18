@@ -1,5 +1,9 @@
 # Changelog
 
+1.99.41
+
+- Update simulcast player to allow more grace time before attempting to reconnect to stalled stream
+
 1.99.40
 
 - Load client id from session response explicitly, not cookie
