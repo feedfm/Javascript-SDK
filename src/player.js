@@ -34,8 +34,11 @@
  *    unlike() - tell the server to remove the 'like' for this song
  *    dislike() - tell the server we dislike this song, and skip to the next one
  *    skip() - request to skip the current song
- *    setStationId(xxx, fade) - switch to a different station. Optionally set 'fade' to true to
+ *    setStationId(id [, fade]) - switch to a different station. Optionally set 'fade' to true to
  *         crossfade playback to the new station
+ *    setStationId(id, advanceTo) - switch to station with id `id`, and begin playback of that
+ *         station at `advanceTo` seconds from the start of the station. This only works for first play
+ *         or single play stations, and will trigger an error for other stations.
  *    setVolume(xxx) - adjust music volume (0-100)
  *    getVolume() - retrieve music volume (0-100)
  *
@@ -52,8 +55,9 @@
  *    play-stopped - player.stop() has been called
  *    skip-denied - the given song could not be skipped due to DMCA rules
  *    skip-failed - the request to skip a song was denied
- *    forbidden - an unsatisfiable request for music was made (such as
- *        trying to start playback in the middle of a non-first play station)
+ *    forbidden - an unsatisfiable request for music was made (currently only
+ *       triggered when trying to start playback in the middle of a non-first
+ *       play station with the `advanceTo` argument to `setStationId`)
  *
  *  Some misc methods:
  *
