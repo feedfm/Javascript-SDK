@@ -54,6 +54,8 @@
  *    tune() to begin pulling in more music.
  *  prepare-sound: this holds a URL of a sound that might be played
  *    next. Clients can start loading the sound in preparation.
+ *  forbidden: if an unsatisfiable request is made (such as to advance
+ *   in a non-first play station)
  *
  *  Clients that use the session object should tell the session about
  *  the status of the current play as it progresses:
@@ -172,23 +174,36 @@ Session.prototype.setCredentials = function (token, secret) {
   this.config.secret = secret;
 };
 
-Session.prototype.setStationId = function (stationId) {
+Session.prototype.setStationId = function (stationId, advance, secondsOfCrossfade) {
   // if we haven't received stations, we can't select one
   if (!this.config.stations) {
     return;
   }
 
   let stringStationId = '' + stationId;
-  if (('' + this.config.stationId) !== stringStationId) {
+  const changed = ('' + this.config.stationId) !== stringStationId;
+
+  if (changed || advance) {
     let station = this.config.stations.find((station) => ('' + station.id) === stringStationId);
 
     if (station) {
       this.config.stationId = stationId;
       this.config.station = station;
 
-      this.trigger('station-changed', stationId, station);
+      if (changed) {
+        this.trigger('station-changed', stationId, station);
+      }
 
-      this._retune();
+      // abort any pending requests or plays
+      this.config.pendingRequest = null;
+      this.config.pendingPlay = null;
+
+      // stop playback of any current song, and set
+      // the status to waiting
+      this._assignCurrentPlay(null, true);
+
+      // request the next play
+      this._requestNextPlay(0, advance, secondsOfCrossfade);
     }
   }
 };
@@ -196,7 +211,10 @@ Session.prototype.setStationId = function (stationId) {
 Session.prototype.setFormats = function (formats) {
   this.config.formats = formats;
 
-  this._retune();
+  // re-retrieve the next song, since we changed formats
+  if (this.isTuned()) {
+    this.tune();
+  }
 };
 
 Session.prototype.setMaxBitrate = function (maxBitrate) {
@@ -239,12 +257,12 @@ Session.prototype._getDefaultPlacementInformation = function (delay) {
   // request placement info from server
   log('requesting default placement information from server');
   self._signedAjax(getBaseUrl() + '/api/v2/session', { 
-      method: 'POST',
-      body: JSON.stringify({ client_id: getStoredClientId() }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+    method: 'POST',
+    body: JSON.stringify({ client_id: getStoredClientId() }),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
     .then((response) => response.json())
     .then((response) => { 
       if (response.session && response.session.client_id) {
@@ -328,16 +346,6 @@ Session.prototype.hasActivePlayStarted = function () {
   return this.config.current && this.config.current.started;
 };
 
-// re-tune
-Session.prototype._retune = function () {
-  // if we're not actively playing anything, nothing needs to be sent
-  if (!this.isTuned()) {
-    return;
-  }
-
-  this.tune();
-};
-
 Session.prototype.reportPlayStarted = function () {
   if (!this.config.current) {
     throw new Error('attempt to report a play started, but there is no active play');
@@ -412,7 +420,6 @@ Session.prototype.reportPlayStopped = function (seconds) {
   // we're not playing anything now, baby!
   this._assignCurrentPlay(null, true);
 };
-
 
 Session.prototype.requestSkip = function () {
   if (!this.config.current) {
@@ -674,7 +681,7 @@ Session.prototype._assignCurrentPlay = function (play, waitingIfEmpty) {
   }
 };
 
-Session.prototype._requestNextPlay = function (delay) {
+Session.prototype._requestNextPlay = function (delay, advance, secondsOfCrossfade) {
   var self = this;
 
   self._getClientId().then(function (clientId) {
@@ -729,6 +736,14 @@ Session.prototype._requestNextPlay = function (delay) {
         data.station_id = self.config.stationId;
       }
 
+      if (advance) {
+        data.at = advance;
+
+        if (secondsOfCrossfade) {
+          data.crossfade = secondsOfCrossfade;
+        }
+      }
+
       var ajax = {
         method: 'POST',
         body: JSON.stringify(data),
@@ -761,7 +776,7 @@ Session.prototype._receiveNextPlay = function (ajax, response) {
     this.config.pendingRequest = null;
 
     if (response.success) {
-      this.trigger('prepare-sound', response.play.audio_file.url);
+      this.trigger('prepare-sound', response.play.audio_file.url, response.play.start_at);
 
       if (this.config.current) {
         log('received play, but we\'re already playing, so queueing up', response.play);
@@ -788,6 +803,9 @@ Session.prototype._receiveNextPlay = function (ajax, response) {
 
         this.trigger('plays-exhausted');
       }
+
+    } else if (response.error && response.error.code === 6) {
+      this.trigger('forbidden', response.error.message);
 
     } else {
       log('unsuccessful response', response);
@@ -960,8 +978,8 @@ Session.prototype._submitLogHistory = function(count = 0) {
 };
 
 Session.prototype._getClientId = function() {
-  return getClientId()
-}
+  return getClientId();
+};
 
 export default Session;
 

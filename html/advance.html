@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=utf-8 />
+  <title>JS Bin</title>
+  <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
+  <script src="../build/feed.js"></script>
+  <style>
+
+    .stations label {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="player-view-div">
+    <div class='status'></div>
+    <button class="play-button">play</button>
+    <button class="pause-button">pause</button>
+    <button class="skip-button">skip</button>
+    <button class="stop-button">stop</button>
+    <div>
+      <span class='elapsed'></span> / <span class='duration'></span>
+    </div>
+  </div>
+
+  <div id="error"></div>
+
+  <div style="margin-top: 20px; border-top: 1px dotted; padding-top: 10px">
+    <div class="stations"></div>
+    <label>start station at (seconds): <input id="advance"></label>
+
+    <button id="start">select station</button>
+  </div>
+
+  <div style="margin-top: 20px; border-top: 1px dotted; padding-top: 10px">
+    <div>
+      <label>token: <input id="token" value=""></label>
+    </div>
+    <div>
+      <label>secret: <input id="secret" value=""></label>
+    </div>
+    <button id="update">update credentials</button>
+  </div>
+
+  <div style="margin-top: 20px; border-top: 1px dotted; padding-top: 10px">
+    <button id="reset">reset client</button>
+  </div>
+  
+  <script>
+    var store = window.localStorage;
+
+    var token = store.getItem('token') || "d9b27a6b64f25ee6de295c3d2bb7da1204ccf7a8";
+    var secret = store.getItem('secret') || "dad9db7eafb29fcd6dc7f8022489cb79c7009798";
+
+    $('#token').val(token);
+    $('#secret').val(secret);
+
+    // Create basic player.
+    var player = new Feed.Player(token, secret, { 
+      baseUrl: 'https://stage.feed.fm', 
+      /* formats: 'quiet-50-aac', */ 
+      debug: true, 
+      remoteLogging: true
+    });
+    
+    // Display all the events the player triggers
+    player.on('all', function(event) {
+      console.log('player triggered event \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
+    });
+
+    player.on('stations', function(stations) {
+      console.log('stations', stations);
+      for (var i = 0; i < stations.length; i++) {
+        var station = stations[i];
+
+        var $button = $('<label><input type="radio" name="station_id" value="' + station.id + '">' + station.name + (station.single_play ? ' (first play!)' : '') + '</input></label>');
+        $('.stations').append($button);
+      }
+    });
+
+    player.on('station-changed', function(id, station) {
+      $('.status').text('Station changed to ' + station.name);
+    });
+
+    player.on('forbidden', function(err) {
+      $('#error').text(err);
+    });
+
+    $('#start').on('click', function() {
+      $('#error').text('');
+
+      var stationId = $('input[name=station_id]:checked').val();
+      var advance = $('#advance').val();
+
+      console.log('clicked start!', { stationId, advance });
+
+      player.setStationId(stationId, advance);
+    });
+
+    $('#reset').on('click', function() {
+      player.session._deleteStoredCid();
+      window.location.reload();
+    });
+
+    $('#update').on('click', function() {
+      store.setItem('token', $('#token').val());
+      store.setItem('secret', $('#secret').val());
+      window.location.reload();
+    });
+    
+    var playerView = new Feed.PlayerView('player-view-div', player);    
+    player.tune();
+
+    $('.stop-button').on('click', function() {
+      player.stop();
+    });
+
+    $('.volume button').on('click', function(e) {
+      var $button = $(this);
+      var level = parseInt($button.html());
+
+      player.speaker.setVolume(level);
+    });
+
+    /*
+    setInterval(function() {
+      player.speaker.logState();
+    }, 2000);
+    */
+  </script>
+  
+</body>
+</html>

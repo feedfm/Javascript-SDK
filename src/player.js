@@ -51,7 +51,9 @@
  *    play-started - this play has begun playback.
  *    play-stopped - player.stop() has been called
  *    skip-denied - the given song could not be skipped due to DMCA rules
- *    skip-failed
+ *    skip-failed - the request to skip a song was denied
+ *    forbidden - an unsatisfiable request for music was made (such as
+ *        trying to start playback in the middle of a non-first play station)
  *
  *  Some misc methods:
  *
@@ -115,7 +117,7 @@ var Player = function (token, secret, options) {
   this.session.on('station-changed', this._onStationChanged, this);
 
   let player = this;
-  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'skip-denied', 'play-active', 'prepare-sound']) {
+  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'skip-denied', 'play-active', 'prepare-sound', 'forbidden']) {
     this.session.on(event, function() {
       player.trigger.apply(player, [ event ].concat(Array.prototype.slice.call(arguments, 0)));
     });
@@ -199,15 +201,28 @@ Player.prototype._onStationChanged = function(stationId, station) {
   this.trigger('station-changed', stationId, station);
 };
 
-Player.prototype.setStationId = function (stationId, fadeOut) {
-  log('SET STATION ID' + (fadeOut ? ' (WITH FADE)' : ''), stationId);
+Player.prototype.setStationId = function (stationId, fadeOutOrAdvance) {
+  let advance;
+  let fadeOut = false;
+
+  if (fadeOutOrAdvance === true) {
+    fadeOut = fadeOutOrAdvance;
+
+    log('SET STATION ID (WITH FADE)', stationId);
+
+  } else if (fadeOutOrAdvance) {
+    advance = fadeOutOrAdvance;
+
+    log('SET STATION ID (WITH ADVANCE)', stationId, advance);
+  
+  }
 
   if (fadeOut && this.state.activePlay) {
     // when we destroy the sound, have it fade out
     this.state.activePlay.fadeOnDestroy = true;
   }
 
-  this.session.setStationId(stationId);
+  this.session.setStationId(stationId, advance, this.crossfadeIn);
 };
 
 Player.prototype._onPlayActive = function (play) {
@@ -223,13 +238,18 @@ Player.prototype._onPlayActive = function (play) {
     options.gain = (play.audio_file.replaygain_track_gain || 0) + (play.station.pre_gain || 0);
   }
 
-  if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_start) {
-    options.startPosition = play.audio_file.extra.trim_start * 1000;
-  }
+  if (play.start_at) {
+    options.startPosition = play.start_at * 1000;
 
-  if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_end &&
+  } else {
+    if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_start) {
+      options.startPosition = play.audio_file.extra.trim_start * 1000;
+    }
+
+    if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_end &&
     play.audio_file.duration_in_seconds) {
-    options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
+      options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
+    }
   }
 
   if (this.secondsOfCrossfade) {
@@ -425,9 +445,9 @@ Player.prototype._onPlaysExhausted = function () {
   this.trigger('plays-exhausted');
 };
 
-Player.prototype._onPrepareSound = function (url) {
-  log('preparing', url);
-  this.speaker.prepare(url);
+Player.prototype._onPrepareSound = function (url, startPosition) {
+  log('preparing', url, startPosition);
+  this.speaker.prepare(url, startPosition * 1000);
 };
 
 Player.prototype.isPaused = function () {

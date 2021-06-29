@@ -537,7 +537,7 @@ Speaker.prototype = {
     return sound;
   },
 
-  prepare: function (url) {
+  prepare: function (url, startPosition = 0) {
     if (!this.active || !this.active.audio) {
       log('saving url to prepare for later', url);
       this.prepareWhenReady = url;
@@ -547,12 +547,12 @@ Speaker.prototype = {
     var ranges = this.active.audio.buffered;
     if ((ranges.length > 0) && (ranges.end(ranges.length - 1) >= this.active.audio.duration)) {
       log('active song has loaded enough, to preparing', url);
-      return this._prepare(url, 0);
+      return this._prepare(url, startPosition);
     }
 
     if (this.active.audio.url === SILENCE) {
       log('preparing over silence');
-      return this._prepare(url, 0);
+      return this._prepare(url, startPosition);
     }
 
     // still loading primary audio - so hold off for now
