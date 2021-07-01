@@ -1,5 +1,9 @@
 # Changelog
 
+1.100.0
+
+- Support for indexing into ordered stations
+
 1.99.41
 
 - Update simulcast player to allow more grace time before attempting to reconnect to stalled stream
