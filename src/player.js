@@ -243,6 +243,7 @@ Player.prototype._onPlayActive = function (play) {
   }
 
   if (play.start_at) {
+    // when offsetting into a station, ignore the trim and honor the start_at
     options.startPosition = play.start_at * 1000;
 
   } else {
@@ -250,10 +251,10 @@ Player.prototype._onPlayActive = function (play) {
       options.startPosition = play.audio_file.extra.trim_start * 1000;
     }
 
-    if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_end &&
-    play.audio_file.duration_in_seconds) {
-      options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
-    }
+  }
+
+  if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_end && play.audio_file.duration_in_seconds) {
+    options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
   }
 
   if (this.secondsOfCrossfade) {
