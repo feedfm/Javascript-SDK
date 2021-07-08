@@ -730,7 +730,7 @@ Speaker.prototype = {
     }
 
     if (this.active.sound === sound) {
-      if (this.active.audio.paused || this.active.audio.src === 'not-a-real-file' ) {
+      if (this.active.audio.paused || this.active.audio.src === 'not-a-real-file-paused' ) {
         log(sound.id + ' was paused, so resuming');
         if (CHROMECAST)
         {
@@ -924,7 +924,7 @@ Speaker.prototype = {
         {
           sound.savedPos = this.active.audio.currentTime;
           sound.savedSrc =this.active.audio.src;
-          this.active.audio.src = 'not-a-real-file';
+          this.active.audio.src = 'not-a-real-file-paused';
         }
         else
         {
