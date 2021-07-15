@@ -188,8 +188,14 @@ Sound.prototype = {
 
 };
 
-let Speaker = function () {
+/**
+ * Create new speaker object. Add event handling to it.
+ * 
+ * @returns Speaker
+ */
 
+let Speaker = function () {
+  return Object.assign(this, Events);
 };
 
 // exports with this version of Javacript isn't working, so...
@@ -241,7 +247,9 @@ Speaker.prototype = {
   //   sound: refers to Sound object whose URL has been assigned to 'audio.src' and
   //          audio.play() has successfully returned.
   //   gain: AudioGainNode for apple
-  //   volume: relative volume of this sound (0..1)
+  //   volume: relative volume of this sound (0..1),
+  //   canplaythrough: boolean indicating if the 'canplaythrough' event has been
+  //         triggered for this URL
   // }
   //
   // note that when audio.src is not SILENCE, and sound is null, we're waiting for
@@ -254,7 +262,7 @@ Speaker.prototype = {
   // When a sound has completed playback or been destroyed, the sound property is set
   // to null, the audio is paused, and audio.src is set to SILENCE.
 
-  prepareWhenReady: null, // url to prepare once audio is initialized
+  prepareWhenReady: null, // { url, start }
 
   initializeAudio: function () {
     // On mobile devices, we need to kick off playback of a sound in
@@ -271,9 +279,16 @@ Speaker.prototype = {
 
       this.active = this._createAudio(SILENCE);
       this.fading = this._createAudio(SILENCE);
-      this.preparing = this._createAudio(this.prepareWhenReady ? this.prepareWhenReady : SILENCE);
 
-      this.prepareWhenReady = null;
+      const pwr = this.prepareWhenReady;
+      if (pwr) {
+        this.preparing = this._createAudio(pwr.url);
+        this._prepare(pwr.url, pwr.startPosition);
+
+      } else {
+        this.preparing = this._createAudio(SILENCE);
+      }
+
 
     } else {
       log('mobile already initialized');
@@ -305,6 +320,7 @@ Speaker.prototype = {
     var audio = new Audio(url);
     audio.crossOrigin = 'anonymous';
     audio.loop = false;
+    audio.preload = 'auto';
     audio.volume = DEFAULT_VOLUME;
 
     this._addEventListeners(audio);
@@ -319,7 +335,8 @@ Speaker.prototype = {
       audio: audio,
       sound: null,
       gain: gain,
-      volume: DEFAULT_VOLUME
+      volume: DEFAULT_VOLUME,
+      canplaythrough: false
     };
   },
 
@@ -327,7 +344,26 @@ Speaker.prototype = {
     audio.addEventListener('pause', this._onAudioPauseEvent.bind(this));
     audio.addEventListener('ended', this._onAudioEndedEvent.bind(this));
     audio.addEventListener('timeupdate', this._onAudioTimeUpdateEvent.bind(this));
+    audio.addEventListener('canplaythrough', this._onAudioCanPlay.bind(this));
+    audio.addEventListener('canplay', (event) => { log('can play!', event.currentTarget.src); });
     //this._debugAudioObject(audio);
+  },
+
+  _onAudioCanPlay: function(event) {
+    var audio = event.currentTarget;
+
+    if (audio.src === SILENCE) {
+      return;
+    }
+
+    log('can play through!', audio.src);
+
+    if (audio === this.preparing.audio) {
+      log('preparing file can play through', audio.src);
+
+      this.preparing.canplaythrough = true;
+      this.trigger('prepared', audio.src);
+    }
   },
 
   _onAudioPauseEvent: function (event) {
@@ -443,7 +479,7 @@ Speaker.prototype = {
     if (this.prepareWhenReady) {
       // we've got something we want to load. check if we've loaded 
       // enough of the current song that we can start loading next song.
-      this.prepare(this.prepareWhenReady);
+      this.prepare(this.prepareWhenReady.url, this.prepareWhenReady.startPosition);
     }
   },
 
@@ -525,39 +561,44 @@ Speaker.prototype = {
     this.outstandingSounds[sound.id] = sound;
 
     // start loading sound, if we can
-    if (!this.active || !this.active.audio) {
-      log('no audio prepared yet, so preparing when ready');
-      this.prepareWhenReady = sound.url;
-
-    } else if (this.preparing.audio.src === SILENCE) {
-      log('preparing sound now');
-      this._prepare(sound.url, sound.startPosition);
-    }
+    //this.prepare(url, optionsAndCallbacks.startPosition);
 
     return sound;
   },
 
+  /**
+   * This function checks to see if we can prepare the given audio. 
+   * If it believes we can, it calls _prepare to put the audio in the
+   * prepared audio element and actually prepare it. If it doesn't 
+   * believe we can, it makes a note of what we want prepared.
+   * 
+   * @param {string} url 
+   * @param {number} startPosition?
+   * @returns true if the song is already loaded up and ready to play
+   */
+
   prepare: function (url, startPosition = 0) {
     if (!this.active || !this.active.audio) {
-      log('saving url to prepare for later', url);
-      this.prepareWhenReady = url;
-      return;
+      log('saving url to prepare when audio is initialized', { url, startPosition });
+      this.prepareWhenReady = { url, startPosition };
+      return false;
     }
 
     var ranges = this.active.audio.buffered;
     if ((ranges.length > 0) && (ranges.end(ranges.length - 1) >= this.active.audio.duration)) {
-      log('active song has loaded enough, to preparing', url);
+      log('active song has loaded enough, so preparing', url);
       return this._prepare(url, startPosition);
-    }
-
-    if (this.active.audio.url === SILENCE) {
+    
+    } else if (this.active.audio.url === SILENCE) {
       log('preparing over silence');
       return this._prepare(url, startPosition);
     }
 
     // still loading primary audio - so hold off for now
-    log('nothing available to do active prepare');
-    this.prepareWhenReady = url;
+    log('still loading primary, so waiting to do active prepare');
+    this.prepareWhenReady = { url, startPosition };
+
+    return false;
   },
 
   /* eslint-disable no-console */
@@ -612,17 +653,36 @@ Speaker.prototype = {
     console.groupEnd();
   },
 
+  /**
+ * This function puts the given URL into the prepared audio element and tells
+ * the browser to advance to the given start position.
+ * 
+ * @param {*} url 
+ * @param {*} startPosition 
+ * @returns true if the song is already loaded up and ready to play
+ */
   _prepare: function (url, startPosition) {
     // empty out any pending request
     this.prepareWhenReady = null;
 
+    if (!url) {
+      return false;
+    }
+
+    if (this.preparing && (this.preparing.audio.src === url) && this.preparing.canplaythrough) {
+      log('play already prepared!');
+      // song is already prepared!
+      return true;
+    }
+
     if (this.preparing.audio.src !== url) {
-      log('preparing ' + url);
+      log('preparing', url);
 
       if (this.preparing.audio.playing) {
         this.preparing.audio.pause();
       }
 
+      this.preparing.canplaythrough = false;
       this.preparing.audio.src = url;
     }
 
@@ -630,6 +690,8 @@ Speaker.prototype = {
       log('advancing preparing audio to', startPosition / 1000);
       this.preparing.audio.currentTime = startPosition / 1000;
     }
+
+    return false;
   },
 
   /*
@@ -699,14 +761,15 @@ Speaker.prototype = {
       this.active = this.preparing;
       this.preparing = active;
 
+      this.preparing.canplaythrough = false;
+      this.preparing.audio.src = SILENCE;
+
       // don't throw sound object in active until playback starts (below)
       this.active.sound = null;
       this._setVolume(this.active, sound);
 
       // notify clients that whatever was previously playing has finished
       if (this.preparing.sound) {
-        this.preparing.audio.src = SILENCE;
-
         var finishedSound = this.preparing.sound;
         this.preparing.sound = null;
         finishedSound.trigger('finish');
@@ -773,6 +836,7 @@ Speaker.prototype = {
       if (!fadeOut || !sound.fadeOutSeconds) {
         log('destroy triggered for current sound (no fadeout)', sound.id);
         this.active.audio.pause();
+        this.active.audio.src = SILENCE;
 
       } else {
         log('destroy triggered for current sound (with fadeout)', sound.id);

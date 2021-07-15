@@ -121,7 +121,7 @@ var Player = function (token, secret, options) {
   this.session.on('station-changed', this._onStationChanged, this);
 
   let player = this;
-  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'skip-denied', 'play-active', 'prepare-sound', 'forbidden']) {
+  for (let event of [ 'music-unavailable', 'not-in-us', 'invalid-credentials', 'skip-denied', 'play-active', 'forbidden']) {
     this.session.on(event, function() {
       player.trigger.apply(player, [ event ].concat(Array.prototype.slice.call(arguments, 0)));
     });
@@ -468,6 +468,81 @@ Player.prototype.tune = function () {
 
   if (!this.session.isTuned()) {
     this.session.tune();
+  }
+};
+
+/**
+ * This call triggers the SDK to load the next song into memory and
+ * returns a promise that resolves when the next song is fully loaded
+ * and ready for immediate playback via play().
+ * 
+ * Additionally, this method triggers a 'prepared' event on the player
+ * object when the next song is fully loaded and ready for immediate
+ * playback.
+ * 
+ * Note: a song cannot be fully loaded into memory until initializeAudio()
+ * has been called. The promise returned by this method will not resolve
+ * unless initializeAudio() is successfully called before or after this
+ * method.
+ * 
+ * @returns Promise that resolves when a song is in memory and ready for immediate playback
+ */
+
+Player.prototype.prepare = function () {
+  log('PREPARE');
+
+  this.speaker.initializeAudio();
+
+  let ap = this.state.activePlay;
+  if (ap) {
+    let prepared = this.speaker.prepare(ap.sound.url, ap.sound.startPosition);
+
+    if (prepared) {
+      return Promise.resolve(true).then(() => {
+        log('already prepared');
+        this.trigger('prepared');
+      });
+    } else {
+      return new Promise((resolve) => {
+        log('waiting for prepared event');
+        this.speaker.on('prepared', () => resolve(true));
+      }).then(() => {
+        this.trigger('prepared');
+      });
+    }
+  } else {
+    return new Promise((resolve) => {
+      this.session.once('play-active', (play) => {
+        log('play active');
+        let startPosition;
+
+        if (play.start_at) {
+          // when offsetting into a station, ignore the trim and honor the start_at
+          startPosition = play.start_at * 1000;
+      
+        } else {
+          if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_start) {
+            startPosition = play.audio_file.extra.trim_start * 1000;
+          }
+
+        }
+
+        let ready = this.speaker.prepare(play.audio_file.url, startPosition);
+
+        if (ready) {
+          log('song is prepared!');
+          resolve(true);
+        } else {
+          this.speaker.on('prepared', resolve);
+        }
+      });
+
+      if (!this.session.isTuned()) {
+        log('tuning');
+        this.session.tune();
+      }
+
+    }).then(() => this.trigger('prepared'));
   }
 };
 
