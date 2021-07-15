@@ -1,5 +1,9 @@
 # Changelog
 
+1.100.1
+
+- New 'prepare()' method and 'prepared' event, so ensure music starts immediately upon calling 'play()'
+
 1.100.0
 
 - Support for indexing into ordered stations

@@ -1,4 +1,4 @@
-/*global it:false describe:false, player:false, chai:false */
+/*global it:false describe:false, chai:false, beforeEach:false, afterEach:false, sinon:false, require:false, Feed:false */
 
 /* 
   assume there's a global Feed.Player instance that has had its
@@ -57,12 +57,11 @@ describe('Feed.Player integration tests', function () {
       player.on('play-active', resolve);
     });
 
-    expect(spy.callCount).to.equal(5);
     expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
     expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
     expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(3).calledWith('prepare-sound'), 'prepare-sound').to.be.true;
-    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.callCount).to.equal(4);
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
@@ -214,12 +213,11 @@ describe('Feed.Player integration tests', function () {
       player.on('play-active', resolve);
     });
 
-    expect(spy.callCount).to.equal(5);
     expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
     expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
     expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(3).calledWith('prepare-sound'), 'prepare-sound').to.be.true;
-    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.callCount).to.equal(4);
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
@@ -339,14 +337,12 @@ describe('Feed.Player integration tests', function () {
       player.on('play-started', () => { setTimeout(resolve, 2000); });
     });
 
-    expect(spy.callCount).to.equal(7);
     expect(spy.getCall(0).calledWith('placement'), 'placement').to.be.true;
     expect(spy.getCall(1).calledWith('station-changed'), 'station-changed').to.be.true;
     expect(spy.getCall(2).calledWith('stations'), 'stations').to.be.true;
-    expect(spy.getCall(3).calledWith('prepare-sound'), 'prepare-sound').to.be.true;
-    expect(spy.getCall(4).calledWith('play-active'), 'play-active').to.be.true;
-    expect(spy.getCall(5).calledWith('play-started'), 'play-started').to.be.true;
-    expect(spy.getCall(6).calledWith('prepare-sound'), 'prepare-sound').to.be.true;
+    expect(spy.getCall(3).calledWith('play-active'), 'play-active').to.be.true;
+    expect(spy.getCall(4).calledWith('play-started'), 'play-started').to.be.true;
+    expect(spy.callCount).to.equal(5);
 
     expect(player.getActivePlay()).to.deep.equal(playResponse.play);
 
