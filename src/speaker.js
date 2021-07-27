@@ -589,13 +589,13 @@ Speaker.prototype = {
       log('active song has loaded enough, so preparing', url);
       return this._prepare(url, startPosition);
     
-    } else if (this.active.audio.url === SILENCE) {
+    } else if (this.active.audio.src === SILENCE) {
       log('preparing over silence');
       return this._prepare(url, startPosition);
     }
 
     // still loading primary audio - so hold off for now
-    log('still loading primary, so waiting to do active prepare');
+    log('still loading primary, so waiting to do active prepare', { activeUrl: this.active.audio.src });
     this.prepareWhenReady = { url, startPosition };
 
     return false;

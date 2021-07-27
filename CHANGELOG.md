@@ -1,5 +1,9 @@
 # Changelog
 
+1.100.2
+
+- Fix for `prepare()` check to see if the active play is silence
+
 1.100.1
 
 - New 'prepare()' method and 'prepared' event, so ensure music starts immediately upon calling 'play()'
