@@ -1,5 +1,9 @@
 # Changelog
 
+1.100.3
+
+- 'no-music-available' error was not being triggered properly on tune() call
+
 1.100.2
 
 - Fix for `prepare()` check to see if the active play is silence

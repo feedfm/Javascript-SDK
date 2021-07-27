@@ -28,7 +28,8 @@
  *  The session will now emit the following events:
  *
  *  music-unavailable: if the current user may not listen to music
- *    This check is made every time we try to retrieve a song. Once 
+ *    This check is made every time we try to retrieve a song, and also
+ *    on the 'tune()' call.  Once 
  *    you get this event, you should assume nothing further will work.
  *  invalid-credentials: the token and secret passed to this function
  *    are not valid.
@@ -296,6 +297,9 @@ Session.prototype._receiveDefaultPlacementInformation = function (placementInfor
 
     // kick off request for next play
     this._requestNextPlay();
+  } else {
+    // music is not available to this user for some reason.
+    this.trigger('music-unavailable');
   }
 };
 

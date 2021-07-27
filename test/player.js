@@ -118,6 +118,36 @@ describe('Feed.Player integration tests', function () {
     player.stop();
   });
 
+
+
+  it('will fire a no-music-available event when out of the US', async function () {
+    this.timeout(10000);
+
+    server.autoRespondAfter = 1;
+    server.autoRespond = true;
+
+    server.respondWith('POST', /session/, function (response) {
+      console.log('placement handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ 
+        success: true,
+        session: {
+          available: false,
+          client_id: '123',
+          message: 'Sorry, there is no music available for your client',
+          time: 123123123
+        }
+      }));
+    });
+
+    var player = new Feed.Player('demo', 'demo', { debug: true });
+
+    player.tune();
+
+    await new Promise((resolve) => {
+      player.once('music-unavailable', resolve);
+    });
+  });
+
   it('will be "idle" between the end of one song and the starting of the next song', async function () {
     this.timeout(10000);
 
