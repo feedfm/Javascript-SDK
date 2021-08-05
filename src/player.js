@@ -349,6 +349,7 @@ Player.prototype._onSoundFinish = function (playId, withError) {
   if (!this.state.activePlay.playStarted) {
     // never reported this as started...  mark it as invalidated so
     // we can advance.
+    this.trigger('invalidated', playId);
     this.session.requestInvalidate();
 
     return;
@@ -363,6 +364,7 @@ Player.prototype._onSoundFinish = function (playId, withError) {
 
   if (withError) {
     log('song completed with error - marking as invalid', withError);
+    this.trigger('invalidated', playId);
     this.session.requestInvalidate();
 
   } else {
@@ -410,7 +412,10 @@ Player.prototype._onPlayStarted = function (play) {
     // before a 'play-completed' gets triggered
 
     if (this.state.activePlay.soundCompletedWithError) {
-      setTimeout(() => session.requestInvalidate(), 1);
+      setTimeout(() => {
+        this.trigger('invalidated', play.id);
+        session.requestInvalidate();
+      }, 1);
 
     } else {
       setTimeout(() => session.reportPlayCompleted(), 1);
