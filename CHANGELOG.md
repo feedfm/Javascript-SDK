@@ -1,5 +1,9 @@
 # Changelog
 
+1.100.5
+
+- emit 'invalidated' event when the player force-skips a song
+
 1.100.4
 
 - handle clients that aggressively reset the client id
