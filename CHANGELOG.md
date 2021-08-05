@@ -1,5 +1,9 @@
 # Changelog
 
+1.100.4
+
+- handle clients that aggressively reset the client id
+
 1.100.3
 
 - 'no-music-available' error was not being triggered properly on tune() call

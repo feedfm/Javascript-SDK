@@ -80,11 +80,26 @@ function _requestClientId(onSuccess, delay) {
 
 export function getClientId() {
   if (!clientPromise) {
-    clientPromise = new Promise((resolve) => {
+    const localClientPromise = clientPromise = new Promise((resolve) => {
       _requestClientId((clientId) => {
-        _setStoredCid(clientId);
+        if (clientPromise === localClientPromise) {
+          // success!
+          _setStoredCid(clientId);
 
-        resolve(clientId);
+          resolve(clientId);
+
+        } else if (clientPromise) {
+          // end user updated the client id while we were waiting for a new one
+          clientPromise.then((clientId) => {
+            resolve(clientId);
+          });
+        
+        } else {
+          // end user deleted the client id while we were waiting for a new one
+          getClientId().then((clientId) => {
+            resolve(clientId);
+          });
+        }
       });
     });
   }
