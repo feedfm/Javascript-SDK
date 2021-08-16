@@ -1,5 +1,9 @@
 # Changelog
 
+1.101.0
+
+- new `Feed.resumable()` functionality, to allow resuming playback after a page refresh.
+
 1.100.5
 
 - emit 'invalidated' event when the player force-skips a song
