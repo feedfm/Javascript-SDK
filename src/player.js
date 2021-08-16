@@ -12,6 +12,9 @@
  *
  *  options can be:
  *    debug: false,         // when true, display console logging statements
+ *    remoteLogging: false  // when true, failed play starts or errors will cause the
+ *                          // last 500 log entries from the player to be sent to
+ *                          // feed.fm to assist with debugging.
  *    trimming: true,       // when true, song start/end trims will be honored
  *    crossfadeIn: false,   // when true, songs do not fade in - they start at full volume
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
@@ -25,6 +28,18 @@
  *
  *  That will ensure the library has permission from the browser to play
  *  audio.
+ * 
+ *  To retrieve a list of available stations, register for the 'stations' event,
+ *  and then call `player.tune()`:
+ * 
+ *    player.on('stations', function(stations) {
+ *       console.log('available stations', stations);
+ *    });
+ *    player.tune();
+ * 
+ *  or use the promise returned from `player.tune()`:
+ *
+ *    let stations = await player.tune();
  *
  *  Then control playback with:
  *
@@ -35,7 +50,8 @@
  *    dislike() - tell the server we dislike this song, and skip to the next one
  *    skip() - request to skip the current song
  *    setStationId(id [, fade]) - switch to a different station. Optionally set 'fade' to true to
- *         crossfade playback to the new station
+ *         crossfade playback to the new station. This has a side effect of triggering
+ *         a 'station-changed' event.
  *    setStationId(id, advanceTo) - switch to station with id `id`, and begin playback of that
  *         station at `advanceTo` seconds from the start of the station. This only works for first play
  *         or single play stations, and will trigger an error for other stations.
@@ -50,8 +66,21 @@
  *    paused -  if session.hasActivePlayStarted() and we're paused
  * 
  *  events emitted by the player:
+ *    station-changed - the current station from which music is pulled has changed.
+ *                      this is triggered in response to a 
+ *    stations - this is triggered after a call to `tune()`, and passes the event handler an
+ *               array of all stations available for playback. Alterntively, the
+ *               `getStations()` method returns a promise that resolves to the same
+ *               value.
  *    music-unavailable - user isn't located in the US and can't play music
- *    play-started - this play has begun playback.
+ *    play-started - this play has begun playback. The event handler is passed a 
+ *                   'play' object with song metadata. If the event was triggered
+ *                   via a `Feed.resumable().tune()` call, then a second argument
+ *                   of `true` will be passed to the event handler.
+ *    play-paused - the currently playing song has been paused. The event handler
+ *                    is passed a 'play' object with song metadata. if the event
+ *                   was triggered via a `Feed.resumable().tune()` call, then a
+ *                   second argument of `true` will be passed to the event handler.
  *    play-stopped - player.stop() has been called
  *    skip-denied - the given song could not be skipped due to DMCA rules
  *    skip-failed - the request to skip a song was denied
@@ -244,40 +273,43 @@ Player.prototype._restore = function({ persisted, elapsed }) {
   // swap out the default tune
   this.tune = function() {
     // on the next tick, throw out events to simulate a normal tune() call
-    Promise.resolve(true).then(() => {
-      this._station = persisted._station;
-      this._stations = persisted._stations;
-      this._placement = persisted._placement;
+    return Promise
+      .resolve(true)
+      .then(() => {
+        this._station = persisted._station;
+        this._stations = persisted._stations;
+        this._placement = persisted._placement;
 
-      this._stationsResolve(persisted._stations);
+        this._stationsResolve(persisted._stations);
   
-      this.trigger('placement', this._placement);
-      this.trigger('station-changed', this._station);
-      this.trigger('stations', this._stations);
+        this.trigger('placement', this._placement);
+        this.trigger('station-changed', this._station);
+        this.trigger('stations', this._stations);
 
-      // stick the previously active song into the session
-      this.session.config.current = sessionCurrent;
-      this.session.config.current.started = false;
+        // stick the previously active song into the session
+        this.session.config.current = sessionCurrent;
+        this.session.config.current.started = false;
 
-      let play = this.session.config.current.play;
+        let play = this.session.config.current.play;
 
-      // get the player to create a sound object with the audio advanced to the
-      // old elapsed position
-      play.start_at = elapsed / 1000;
-      this.session.trigger('play-active', play);
+        // get the player to create a sound object with the audio advanced to the
+        // old elapsed position
+        play.start_at = elapsed / 1000;
+        this.session.trigger('play-active', play);
 
-      this.session.config.current.started = true;
+        this.session.config.current.started = true;
 
-      // pretend the song was started
-      this.state.paused = false;
-      this.session.trigger('play-started', play);
+        // pretend the song was started
+        this.state.paused = false;
+        this.session.trigger('play-started', play, true);
 
-      // announce that the song is paused
-      this.state.paused = true;
-      this.trigger('play-paused', play);
+        // announce that the song is paused
+        this.state.paused = true;
+        this.trigger('play-paused', play, true);
 
       // now we're in the same spot we'd be if we played and paused.
-    });
+      })
+      .then(() => this._stationsPromise);
   };
 };
 
@@ -599,6 +631,8 @@ Player.prototype.tune = function () {
   if (!this.session.isTuned()) {
     this.session.tune();
   }
+
+  return this._stationsPromise;
 };
 
 /**
