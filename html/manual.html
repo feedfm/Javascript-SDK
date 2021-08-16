@@ -46,17 +46,24 @@
     var simulcast = 'nGwPEXk4js9V4Yp3HcyM2i';
 
     // Create basic player.
-    var player = new Feed.Player('demo', 'demo', {
-      baseUrl: 'https://feed.fm',
-      /* formats: 'quiet-50-aac', */
-      debug: true,
-      simulcast: simulcast,
-      remoteLogging: true
-    });
+    console.log('pre');
+    var player =  Feed.resumable(60000) ||
+        new Feed.Player('demo', 'demo', {
+          baseUrl: 'https://feed.fm',
+          debug: true,
+          simulcast: simulcast,
+          remoteLogging: true
+        });
+    console.log("post!");
+
+    console.log('state', player.getCurrentState());
 
     // Display all the events the player triggers
     player.on('all', function (event) {
-      console.log('player triggered event \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
+      console.log('EVENT: \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
+      console.log('  state', player.getCurrentState());
+      console.log('  ', JSON.stringify(player._persist(), null, 2));
+
     });
 
     player.on('stations', function (stations) {
@@ -85,8 +92,6 @@
     });
 
     var playerView = new Feed.PlayerView('player-view-div', player);
-
-    player.tune();
 
     $('.stop-button').on('click', function () {
       player.stop();
@@ -120,6 +125,9 @@
     listener.on('music-stopped', () => {
       document.querySelector('#listener .status').innerHTML = '';
     });
+
+    player.tune();
+
 
     /*
     setInterval(function() {

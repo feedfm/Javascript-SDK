@@ -65,13 +65,15 @@
  *
  */
 
-import { intersection } from './util';
-import Speaker from './speaker';
-import log from './log';
+import { clearPersistance, persistElapsed, persistState } from './persist';
+
 import Events from './events';
 import Session from './session';
+import Speaker from './speaker';
 import { getBaseUrl } from './base-url';
 import { getClientId } from './client-id';
+import { intersection } from './util';
+import log from './log';
 
 function supports_html5_storage() {
   try {
@@ -82,34 +84,78 @@ function supports_html5_storage() {
 }
 
 var Player = function (token, secret, options) {
-  options = options || {};
+  if (!secret) {
+    // restore from saved state
+    this._restore(token);
 
-  this.state = {
-    paused: true,
-    // activePlay
-    simulcast: options.simulcast
-  };
+  } else {
+    options = options || {};
+    this.options = options;
 
-  if (options.debug) {
-    log.enable();
-  }
+    this.state = {
+      paused: true,
+      // activePlay
+      simulcast: options.simulcast
+    };
+
+    if (options.debug) {
+      log.enable();
+    }
   
-  // this._station = current station
-  // this._stations = list of available stations
-  // this._placement = current placement
+    // this._station = current station
+    // this._stations = list of available stations
+    // this._placement = current placement
 
-  this.trimming = (options.trimming === false) ? false : true;
-  this.normalizeVolume = ('normalizeVolume' in options) ? options.normalizeVolume : true;
-  this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
-  this.crossfadeIn = !!options.crossfadeIn;
-  this._stationsPromise = new Promise((resolve, reject) => {
-    this._stationsResolve = resolve;
-    this._stationsReject = reject;
-  });
+    this.trimming = (options.trimming === false) ? false : true;
+    this.normalizeVolume = ('normalizeVolume' in options) ? options.normalizeVolume : true;
+    this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
+    this.crossfadeIn = !!options.crossfadeIn;
+    this._stationsPromise = new Promise((resolve, reject) => {
+      this._stationsResolve = resolve;
+      this._stationsReject = reject;
+    });
+
+    const speaker = this.speaker = new Speaker();
+    
+    var session = this.session = new Session(token, secret, options);
+
+    if (options.brokenWebkitFormats && Speaker.brokenWebkit) {
+      let reqFormatList = options.brokenWebkitFormats.split(','),
+        suppFormatList = speaker.getSupportedFormats().split(','),
+        reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
+        reqAndSuppFormats = reqAndSuppFormatList.join(',');
+
+      log('input format list is', reqFormatList, suppFormatList);
+      log('final support list is', reqAndSuppFormats);
+
+      if (reqAndSuppFormatList.length === 0) {
+        reqAndSuppFormats = speaker.getSupportedFormats();
+      }
+
+      session.setFormats(reqAndSuppFormats);
+
+    } else if (options.formats) {
+      let reqFormatList = options.formats.split(','),
+        suppFormatList = speaker.getSupportedFormats().split(','),
+        reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
+        reqAndSuppFormats = reqAndSuppFormatList.join(',');
+
+      if (reqAndSuppFormatList.length === 0) {
+        reqAndSuppFormats = speaker.getSupportedFormats();
+      }
+
+      log('input format list is', reqFormatList, suppFormatList);
+      log('final support list is', reqAndSuppFormats);
+
+      session.setFormats(reqAndSuppFormats);
+
+    } else {
+      session.setFormats(speaker.getSupportedFormats());
+    }
+  }
 
   Object.assign(this, Events);
 
-  var session = this.session = new Session(token, secret, options);
   this.session.on('play-active', this._onPlayActive, this);
   this.session.on('play-started', this._onPlayStarted, this);
   this.session.on('play-completed', this._onPlayCompleted, this);
@@ -127,43 +173,112 @@ var Player = function (token, secret, options) {
     });
   }
 
-  const speaker = this.speaker = new Speaker();
+  this.setMuted(this.isMuted());
+};
 
-  if (options.brokenWebkitFormats && Speaker.brokenWebkit) {
-    let reqFormatList = options.brokenWebkitFormats.split(','),
-      suppFormatList = speaker.getSupportedFormats().split(','),
-      reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
-      reqAndSuppFormats = reqAndSuppFormatList.join(',');
-
-    log('input format list is', reqFormatList, suppFormatList);
-    log('final support list is', reqAndSuppFormats);
-
-    if (reqAndSuppFormatList.length === 0) {
-      reqAndSuppFormats = speaker.getSupportedFormats();
-    }
-
-    session.setFormats(reqAndSuppFormats);
-
-  } else if (options.formats) {
-    let reqFormatList = options.formats.split(','),
-      suppFormatList = speaker.getSupportedFormats().split(','),
-      reqAndSuppFormatList = intersection(reqFormatList, suppFormatList),
-      reqAndSuppFormats = reqAndSuppFormatList.join(',');
-
-    if (reqAndSuppFormatList.length === 0) {
-      reqAndSuppFormats = speaker.getSupportedFormats();
-    }
-
-    log('input format list is', reqFormatList, suppFormatList);
-    log('final support list is', reqAndSuppFormats);
-
-    session.setFormats(reqAndSuppFormats);
-
-  } else {
-    session.setFormats(speaker.getSupportedFormats());
+Player.prototype._persist = function() {
+  const playerState = shallowCopy(this.state);
+  if (playerState.activePlay) {
+    // remove the 'sound' object
+    playerState.activePlay = shallowCopy(playerState.activePlay);
+    delete playerState.activePlay.sound;
   }
 
-  this.setMuted(this.isMuted());
+  const persisted = {
+    state: playerState,
+    options: this.options,
+    trimming: this.trimming,
+    normalizeVolume: this.normalizeVolume,
+    secondsOfCrossfade: this.secondsOfCrossfade,
+    crossfadeIn: this.crossfadeIn,
+    _station: this._station,
+    _stations: this._stations,
+    _placement: this._placement,
+    sessionConfig: this.session.config
+  };
+
+  return persisted;
+};
+
+Player.prototype._restore = function({ persisted, elapsed }) {
+  if (persisted.options.debug) {
+    log.enable();
+  }
+
+  log('restoring!');
+
+  // session will be initialized with no current play
+  const sessionConfig = persisted.sessionConfig;
+  const sessionCurrent = sessionConfig.current;
+
+  sessionConfig.current = null;
+  sessionConfig.pendingRequest = null;
+  sessionConfig.pendingPlay = null;
+
+  this.session = new Session();
+  this.session.config = sessionConfig;
+
+  this.speaker = new Speaker();
+
+  this.options = persisted.options;
+  
+  // start off in paused state
+  this.state = {
+    paused: true,
+    simulcast: this.options.simulcast
+  };
+
+  this.trimming = persisted.trimming;
+  this.normalizeVolume = persisted.normalizeVolume;
+  this.secondsOfCrossfade = persisted.secondsOfCrossfade;
+  this.crossfadeIn = persisted.crossfadeIn;
+
+  this._stationsPromise = new Promise((resolve, reject) => {
+    this._stationsResolve = resolve;
+    this._stationsReject = reject;
+  });
+
+  // at this point, we're in a state similar to a newly initialized player,
+  // but the session object has placement/station info
+
+  // swap out the default tune
+  this.tune = function() {
+    // on the next tick, throw out events to simulate a normal tune() call
+    Promise.resolve(true).then(() => {
+      this._station = persisted._station;
+      this._stations = persisted._stations;
+      this._placement = persisted._placement;
+
+      this._stationsResolve(persisted._stations);
+  
+      this.trigger('placement', this._placement);
+      this.trigger('station-changed', this._station);
+      this.trigger('stations', this._stations);
+
+      // stick the previously active song into the session
+      this.session.config.current = sessionCurrent;
+      this.session.config.current.started = false;
+
+      let play = this.session.config.current.play;
+
+      // get the player to create a sound object with the audio advanced to the
+      // old elapsed position
+      play.start_at = elapsed / 1000;
+      this.session.trigger('play-active', play);
+
+      this.session.config.current.started = true;
+
+      // pretend the song was started
+      this.state.paused = false;
+      this.session.trigger('play-started', play);
+
+      // announce that the song is paused
+      this.state.paused = true;
+      this.trigger('play-paused', play);
+
+      // now we're in the same spot we'd be if we played and paused.
+    });
+  };
 };
 
 Player.prototype.initializeAudio = function () {
@@ -293,15 +408,23 @@ Player.prototype._onSoundPlay = function (playId) {
   }
 
   this.state.paused = false;
+
+  const playerWasResumed = this.state.activePlay.playStarted;
+
   this.state.activePlay.playStarted = true;
 
   // on the first play, tell the server we're good to go
   if (!this.state.activePlay.startReportedToServer) {
+    // save the state so we can restore
+    persistState(this._persist());
+    
     return this.session.reportPlayStarted();
+  
+  } else if (!playerWasResumed) {
+    // subsequent plays are considered 'resumed' events
+    this.trigger('play-resumed', this.session.getActivePlay());
   }
-
-  // subsequent plays are considered 'resumed' events
-  this.trigger('play-resumed', this.session.getActivePlay());
+  
 };
 
 Player.prototype.getActivePlay = function () {
@@ -383,6 +506,8 @@ Player.prototype._onSoundElapse = function (playId) {
     interval = 30 * 1000,  // ping server every 30 seconds
     previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
     currentCount = Math.floor(position / interval);
+
+  persistElapsed(position);
 
   this.state.activePlay.previousPosition = position;
 
@@ -657,6 +782,8 @@ Player.prototype.skip = function () {
 Player.prototype.stop = function () {
   log('STOP');
 
+  clearPersistance();
+
   this.state.paused = true;
   
   var activePlay = this.state.activePlay;
@@ -696,10 +823,7 @@ Player.prototype.destroy = function () {
 };
 
 Player.prototype.getCurrentState = function () {
-  if (this.state.suspended) {
-    return 'suspended';
-
-  } else if (!this.session.hasActivePlayStarted()) {
+  if (!this.session.hasActivePlayStarted()) {
     // nothing started, so we're idle
     return 'idle';
 
@@ -786,10 +910,6 @@ Player.prototype.updateSimulcast = function() {
 
   let state = this.getCurrentState();
 
-  if (state === 'suspended') {
-    state = 'idle';
-  }
-
   getClientId().then((clientId) => {
     this.session._signedAjax(getBaseUrl() + `/api/v2/simulcast/${this.state.simulcast}/in-progress`, {
       method: 'POST',
@@ -803,5 +923,15 @@ Player.prototype.updateSimulcast = function() {
     });
   });
 };
+
+
+function shallowCopy(obj) {
+  if (obj === null) {
+    return null;
+  }
+
+  return Object.assign({}, obj);
+}
+
 
 export default Player;

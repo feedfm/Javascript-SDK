@@ -57,7 +57,7 @@
  *  rendered, then the formatPlay(play) method should be overridden.
  *
  *  The top level player element will have one of four classes set at
- *  all times: 'state-playing', 'state-idle', 'state-paused', or 'state-suspended'
+ *  all times: 'state-playing', 'state-idle', or 'state-paused'
  *
  */
 
@@ -389,13 +389,6 @@ PlayerView.prototype._enableButtonsBasedOnState = function () {
     }
     break;
 
-  case 'suspended':
-    toEnable = [];
-    toDisable = ['.play-button', '.resume-button', '.like-button', '.dislike-button', '.pause-button', '.start-button', '.skip-button'];
-
-    break;
-
-
   /* case 'idle': */
   default:
     toEnable = ['.play-button', '.start-button'];
@@ -423,7 +416,6 @@ PlayerView.prototype._enableButtonsBasedOnState = function () {
   classes.remove('state-playing');
   classes.remove('state-paused');
   classes.remove('state-idle');
-  classes.remove('state-suspended');
   classes.add('state-' + state);
 };
 

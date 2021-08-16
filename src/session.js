@@ -102,14 +102,25 @@
  *    simulcast: id of simulcast to broad
  */
 
-import log from './log';
-import Events from './events';
-import { getCookie, setCookie, removeCookie } from 'tiny-cookie';
-import { version as FEED_VERSION } from '../package.json';
 import { getBaseUrl, setBaseUrl } from './base-url';
 import { getClientId, getStoredClientId, setStoredClientId } from './client-id';
+import { getCookie, removeCookie, setCookie } from 'tiny-cookie';
+
+import Events from './events';
+import { version as FEED_VERSION } from '../package.json';
+import log from './log';
 
 var Session = function (token, secret, options) {
+  Object.assign(this, Events);
+
+  // No token/secret implies we're restoring from a saved state. It would
+  // be best if this class could suspend/restore itself, but things are 
+  // so poorly encapsulated now that it isn't worth putting the suspend/restore
+  // in multiple places.
+  if (!token || !secret) {
+    return;
+  }
+  
   options = options || {};
 
   if (options.baseUrl) {
@@ -157,8 +168,6 @@ var Session = function (token, secret, options) {
     //   sound 
   };
 
-  Object.assign(this, Events);
-
   if (token && secret) {
     this.setCredentials(token, secret);
   }
@@ -167,7 +176,6 @@ var Session = function (token, secret, options) {
     log('remote logging enabled', this.config);
     this._submitLogHistory();
   }
-
 };
 
 Session.prototype.setCredentials = function (token, secret) {
@@ -971,7 +979,7 @@ Session.prototype._submitLogHistory = function(count = 0) {
     headers: {
       'Content-Type': 'application/json'
     }
-  }).catch(function(err) {
+  }).catch(function() {
     if (count < 2) {
       setTimeout(() => {
         log.history = history.concat([ 'failed log report attempt, try #' + count ], log.history);
