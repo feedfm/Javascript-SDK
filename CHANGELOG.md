@@ -1,8 +1,9 @@
 # Changelog
 
-1.101.0
+1.101.1
 
 - new `Feed.resumable()` functionality, to allow resuming playback after a page refresh.
+- reduce verbosity on persistance debug log
 
 1.100.5
 

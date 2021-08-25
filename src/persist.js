@@ -45,8 +45,6 @@ export function persistState(state) {
 export function persistElapsed(milliseconds) {
   // save elapsed seconds in current song
   store(FEED_ELAPSED_TIME_KEY, milliseconds.toString());
-
-  log('persisted elapsed time', { milliseconds });
 }
 
 export function retrieveStateAndElapsed(maxAge) {
