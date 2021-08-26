@@ -657,9 +657,14 @@ Player.prototype.prepare = function () {
 
   this.speaker.initializeAudio();
 
+  return this._prepare();
+};
+
+Player.prototype._prepare = function() {
   let ap = this.state.activePlay;
   if (ap) {
-    let prepared = this.speaker.prepare(ap.sound.url, ap.sound.startPosition);
+    const url = ap.sound.url;
+    let prepared = this.speaker.prepare(url, ap.sound.startPosition);
 
     if (prepared) {
       return Promise.resolve(true).then(() => {
@@ -668,15 +673,47 @@ Player.prototype.prepare = function () {
       });
     } else {
       return new Promise((resolve) => {
-        log('waiting for prepared event');
-        this.speaker.on('prepared', () => resolve(true));
-      }).then(() => {
-        this.trigger('prepared');
+        log('waiting for un/prepared event');
+
+        const onPrepared = (preparedUrl) => {
+          console.log('DEV: prepared');
+
+          if (preparedUrl === url) {
+            this.speaker.off('unprepared', onUnprepared);
+            
+            this.trigger('prepared');
+
+            resolve(true);
+          }
+        };
+
+        const onUnprepared = (unpreparedUrl) => {
+          console.log('DEV: unprepared');
+
+          if (unpreparedUrl === url) {
+            this.speaker.off('prepared', onPrepared);
+
+            // invalidate the play, and request a new one
+            console.log('DEV: invalidating');
+            this.session.requestInvalidate();
+            
+            this.session.once('play-active', () => {
+              console.log('DEV: session play active');
+              this._prepare().then((val) => resolve(val));
+            });
+          }
+        };
+
+        this.speaker.once('prepared', onPrepared);
+        this.speaker.once('unprepared', onUnprepared);        
       });
     }
   } else {
     return new Promise((resolve) => {
-      this.session.once('play-active', (play) => {
+      this.session.once('play-active', (/* play */) => {
+        console.log('DEV: play-active');
+        this._prepare().then((val) => resolve(val));
+        /*
         log('play active');
         let startPosition;
 
@@ -697,16 +734,16 @@ Player.prototype.prepare = function () {
           log('song is prepared!');
           resolve(true);
         } else {
-          this.speaker.on('prepared', resolve);
+          this.speaker.once('prepared', resolve);
         }
+        */
       });
 
       if (!this.session.isTuned()) {
         log('tuning');
         this.session.tune();
       }
-
-    }).then(() => this.trigger('prepared'));
+    });
   }
 };
 

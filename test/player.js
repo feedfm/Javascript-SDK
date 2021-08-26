@@ -24,6 +24,12 @@ describe('Feed.Player integration tests', function () {
       console.log('REQUEST: ' + request.method + ' ' + request.url, request);
     });
 
+    server.respondWith('GET', /feedfm-audio/, function (response) {
+      console.log('retrieving song');
+      
+      response.respond(200, { 'Content-Type': 'audio/mpeg' }, SILENT_MP3);
+    });
+
     Feed.Session.prototype._getClientId = () => Promise.resolve('cookie-value');
   });
 
@@ -1034,6 +1040,51 @@ describe('Feed.Player integration tests', function () {
 
     player.stop();
   });
+
+
+  it.only('will invalidate play that does not prepare and advance to next play', async function () {
+    this.timeout(8000);
+
+    server.autoRespondAfter = 1;
+    server.autoRespond = true;
+
+    server.respondWith('POST', /session/, function (response) {
+      console.log('placement handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+    });
+
+    var playResponses = [];
+
+    let playRequestIndex = 0;
+    server.respondWith('POST', /play$/, function (response) {
+      var playResponse = validPlayResponse();
+
+      if (playRequestIndex++ < 2) {
+        // first play is bad
+        playResponse.play.audio_file.url = 'http://foo.bar';
+      }
+      
+      playResponses.push(playResponse);
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
+    });
+
+    server.respondWith('POST', /invalidate$/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
+    });
+
+    var player = new Feed.Player('demo', 'demo', { debug: true });
+    sinon.spy(player, 'trigger');
+
+    player.on('all', (event) => console.log('player event:', event));
+
+    player.prepare();
+
+    // despite first song being invalid, we should eventually become ready
+    await new Promise((resolve) => {
+      player.on('prepared', resolve);
+    });
+  });
+
 });
 
 
@@ -1095,3 +1146,5 @@ function validSessionResponse() {
     ]
   };
 }
+
+const SILENT_MP3 = atob('SUQzAwAAAAAAWFRBTEIAAAAMAAAAQmxhbmsgQXVkaW9USVQyAAAAHAAAADI1MCBNaWxsaXNlY29uZHMgb2YgU2lsZW5jZVRQRTEAAAASAAAAQW5hciBTb2Z0d2FyZSBMTEP/4xjEAAkzUfwIAE1NDwAzHwL+Y8gLIC/G5v+BEBSX///8bmN4Bjze/xjEAAg0ECEGaR+v///P////////+tk5/CLN2hyWE+D/4xjEFgkLZiQIAEdKDgZi0BBxxIIxYGALaBuq/+1/BSrxfylOzt5F7v///79f6+yGfIjsRzncM7CHmHFJcpIsUAi2Kh19f/7/4xjELAnTXhgAAEUt309f//////qq8zIhdkYopjjygKIZxYwnDwysg5EpI5HSYAJAlQ4f+an//D0ImhEa//////l6k4mYZCH/4xjEPwobYiQIAI1PMRo2HCoKhrRJMFEhYMof//8yL//MjP+Rf/+Z/5f/zVpZ9lkMjJlDBQYR1VUVP9pEVUxBTUUzLjk4LjL/4xjEUQjbVhgIAEdNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/4xjEaAiLJawIAEdJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/4xjEgAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=');
