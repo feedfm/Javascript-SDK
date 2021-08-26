@@ -101,7 +101,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -188,7 +188,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -277,7 +277,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -311,13 +311,13 @@ describe('Feed.Player integration tests', function () {
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
     });
 
-    server.respondWith('POST', /elapse$/, function(response) {
+    server.respondWith('POST', /elapse$/, function() {
       console.log('BAD ELAPSE!');
       throw new Error('should not elapse the unstarted play!');
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.tune();
 
@@ -414,7 +414,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -462,13 +462,12 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
 
     player.on('all', (event) => console.log('player event:', event));
 
     player.on('play-completed', () => {
-      console.error('completed a play???');
       throw new Error('should not have completed play!');
     });
 
@@ -514,12 +513,12 @@ describe('Feed.Player integration tests', function () {
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
     });
 
-    server.respondWith('POST', /invalidate$/, function (response) {
+    server.respondWith('POST', /invalidate$/, function () {
       throw new Error('invalidate called!');
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.on('all', (event) => console.log('player event:', event));
 
@@ -604,7 +603,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -660,7 +659,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -717,7 +716,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -772,7 +771,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -820,7 +819,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.play();
 
@@ -868,7 +867,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     var player = new Feed.Player('demo', 'demo', { debug: true });
-    var spy = sinon.spy(player, 'trigger');
+    sinon.spy(player, 'trigger');
 
     player.tune();
 
@@ -880,7 +879,7 @@ describe('Feed.Player integration tests', function () {
     });
 
     let startedCount = 0;
-    player.on('play-started', (play) => {
+    player.on('play-started', () => {
       startedCount++;
 
       expect(startedCount).to.below(2);
@@ -1037,16 +1036,6 @@ describe('Feed.Player integration tests', function () {
   });
 });
 
-
-function newSessionWithClientAndCredentials() {
-  var session = new Feed.Session();
-
-  session._getClientId = () => Promise.resolve('cookie-value');
-  
-  session.setCredentials('x', 'y');
-
-  return session;
-}
 
 const urls = [
   'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1543381635-50459.mp3',
