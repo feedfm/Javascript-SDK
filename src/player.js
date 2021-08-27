@@ -613,8 +613,15 @@ Player.prototype._onPlaysExhausted = function () {
 };
 
 Player.prototype._onPrepareSound = function (url, startPosition) {
-  log('preparing', url, startPosition);
+  log('preparing sound', url, startPosition);
   this.speaker.prepare(url, startPosition * 1000);
+  this.speaker.once('unprepared', (unpreparedUrl, headers) => {
+    if (url === unpreparedUrl) {
+      // TODO: log the headers
+      console.log('invalidating', headers);
+      this.session.requestInvalidate(url);
+    }
+  });
 };
 
 Player.prototype.isPaused = function () {
@@ -713,30 +720,6 @@ Player.prototype._prepare = function() {
       this.session.once('play-active', (/* play */) => {
         console.log('DEV: play-active');
         this._prepare().then((val) => resolve(val));
-        /*
-        log('play active');
-        let startPosition;
-
-        if (play.start_at) {
-          // when offsetting into a station, ignore the trim and honor the start_at
-          startPosition = play.start_at * 1000;
-      
-        } else {
-          if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_start) {
-            startPosition = play.audio_file.extra.trim_start * 1000;
-          }
-
-        }
-
-        let ready = this.speaker.prepare(play.audio_file.url, startPosition);
-
-        if (ready) {
-          log('song is prepared!');
-          resolve(true);
-        } else {
-          this.speaker.once('prepared', resolve);
-        }
-        */
       });
 
       if (!this.session.isTuned()) {

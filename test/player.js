@@ -5,6 +5,7 @@
   'initializeAudio()' method called in respond to a user tap.
 */
 
+const { default: Speaker } = require('../src/speaker');
 let initializeAudio = require('./initialize-audio');
 
 let expect = chai.expect;
@@ -27,7 +28,8 @@ describe('Feed.Player integration tests', function () {
     server.respondWith('GET', /feedfm-audio/, function (response) {
       console.log('retrieving song');
       
-      response.respond(200, { 'Content-Type': 'audio/mpeg' }, SILENT_MP3);
+      response.responseType = 'arraybuffer';
+      response.respond(200, { 'Content-Type': 'audio/mpeg' }, SILENT_MP3_ARRAY);
     });
 
     Feed.Session.prototype._getClientId = () => Promise.resolve('cookie-value');
@@ -1042,7 +1044,7 @@ describe('Feed.Player integration tests', function () {
   });
 
 
-  it.only('will invalidate play that does not prepare and advance to next play', async function () {
+  it('will invalidate play that does not prepare and advance to next play', async function () {
     this.timeout(8000);
 
     server.autoRespondAfter = 1;
@@ -1085,6 +1087,88 @@ describe('Feed.Player integration tests', function () {
     });
   });
 
+  it('will play our fake mp3 file', async function () {
+    let speaker = new Feed.Speaker();
+    speaker.initializeAudio();
+
+    const blob = new Blob([ SILENT_MP3_BLOB ], { type: 'audio/mpeg' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    let promise = new Promise((resolve) => {
+      let sound = speaker.create(blobUrl, {
+        finish: (err) => { if (!err) { resolve(); } }
+      });
+
+      sound.play();
+    });
+
+    await promise;
+  });
+
+  it.only('will invalidate incoming play that does not prepare while current play is active', async function () {
+    this.timeout(12000);
+
+    server.autoRespondAfter = 1;
+    server.autoRespond = true;
+
+    server.respondWith('POST', /session/, function (response) {
+      console.log('placement handler');
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(validSessionResponse()));
+    });
+
+    var playResponses = [];
+
+    let playRequestIndex = 0;
+    server.respondWith('POST', /play$/, function (response) {
+      var playResponse = validPlayResponse();
+
+      if (playRequestIndex === 0) {
+        // first play is 4 seconds long
+        playResponse.play.audio_file.url = 'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1625474777-10706.mp3';
+        playResponse.play.audio_file.duration_in_seconds = '4';
+
+      } else if (playRequestIndex === 1) {
+        // second play is bad
+        playResponse.play.audio_file.url = 'http://foo.bar';
+      
+      } // subsequent songs are silence mp3s
+      
+      playRequestIndex++;
+      
+      playResponses.push(playResponse);
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify(playResponse));
+    });
+
+    server.respondWith('POST', /start$/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true, can_skip: false }));
+    });
+
+    server.respondWith('POST', /invalidate$/, function (response) {
+      response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
+    });
+
+    var player = new Feed.Player('demo', 'demo', { debug: true });
+    sinon.spy(player, 'trigger');
+
+    player.on('all', (event) => console.log('player event:', event));
+
+    player.play();
+
+    // we're good once the player has started the second song
+    await new Promise((resolve) => {
+      let count = 0;
+      
+      player.on('play-started', () => {
+        count++;
+        if (count === 2) {
+          setTimeout(() => {
+            player.stop();
+            resolve();
+          }, 1000);
+        }
+      });
+    });
+  });
 });
 
 
@@ -1147,4 +1231,39 @@ function validSessionResponse() {
   };
 }
 
-const SILENT_MP3 = atob('SUQzAwAAAAAAWFRBTEIAAAAMAAAAQmxhbmsgQXVkaW9USVQyAAAAHAAAADI1MCBNaWxsaXNlY29uZHMgb2YgU2lsZW5jZVRQRTEAAAASAAAAQW5hciBTb2Z0d2FyZSBMTEP/4xjEAAkzUfwIAE1NDwAzHwL+Y8gLIC/G5v+BEBSX///8bmN4Bjze/xjEAAg0ECEGaR+v///P////////+tk5/CLN2hyWE+D/4xjEFgkLZiQIAEdKDgZi0BBxxIIxYGALaBuq/+1/BSrxfylOzt5F7v///79f6+yGfIjsRzncM7CHmHFJcpIsUAi2Kh19f/7/4xjELAnTXhgAAEUt309f//////qq8zIhdkYopjjygKIZxYwnDwysg5EpI5HSYAJAlQ4f+an//D0ImhEa//////l6k4mYZCH/4xjEPwobYiQIAI1PMRo2HCoKhrRJMFEhYMof//8yL//MjP+Rf/+Z/5f/zVpZ9lkMjJlDBQYR1VUVP9pEVUxBTUUzLjk4LjL/4xjEUQjbVhgIAEdNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/4xjEaAiLJawIAEdJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/4xjEgAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=');
+
+const silence = 'SUQzAwAAAAAAWFRBTEIAAAAMAAAAQmxhbmsgQXVkaW9USVQyAAAAHAAAADI1MCBNaWxsaXNlY29uZHMgb2YgU2lsZW5jZVRQRTEAAAASAAAAQW5hciBTb2Z0d2FyZSBMTEP/4xjEAAkzUfwIAE1NDwAzHwL+Y8gLIC/G5v+BEBSX///8bmN4Bjze/xjEAAg0ECEGaR+v///P////////+tk5/CLN2hyWE+D/4xjEFgkLZiQIAEdKDgZi0BBxxIIxYGALaBuq/+1/BSrxfylOzt5F7v///79f6+yGfIjsRzncM7CHmHFJcpIsUAi2Kh19f/7/4xjELAnTXhgAAEUt309f//////qq8zIhdkYopjjygKIZxYwnDwysg5EpI5HSYAJAlQ4f+an//D0ImhEa//////l6k4mYZCH/4xjEPwobYiQIAI1PMRo2HCoKhrRJMFEhYMof//8yL//MjP+Rf/+Z/5f/zVpZ9lkMjJlDBQYR1VUVP9pEVUxBTUUzLjk4LjL/4xjEUQjbVhgIAEdNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/4xjEaAiLJawIAEdJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/4xjEgAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=';
+
+const b64toBlob = (b64Data, contentType='', sliceSize=512) => {
+  const byteCharacters = atob(b64Data);
+  const byteArrays = [];
+
+  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+    const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    byteArrays.push(byteArray);
+  }
+
+  const blob = new Blob(byteArrays, {type: contentType});
+  return blob;
+};
+
+const SILENT_MP3_BLOB = b64toBlob(silence);
+
+function b64toArray(base64) {
+  var binary_string = window.atob(base64);
+  var len = binary_string.length;
+  var bytes = new Uint8Array(len);
+  for (var i = 0; i < len; i++) {
+    bytes[i] = binary_string.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+const SILENT_MP3_ARRAY = b64toArray(silence);

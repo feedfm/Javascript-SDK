@@ -455,12 +455,21 @@ Session.prototype.requestSkip = function () {
     .catch(this._failSkip.bind(this, this.config.current.play));
 };
 
-Session.prototype.requestInvalidate = function () {
-  if (!this.config.current) {
-    throw new Error('No active song to invalidate!');
-  }
+Session.prototype.requestInvalidate = function (url) {
+  if (!url) {
+    if (!this.config.current) {
+      throw new Error('No active song to invalidate!');
+    }
 
-  this._sendInvalidate(this.config.current.play);
+    this._sendInvalidate(this.config.current.play);
+
+  } else if (this.config.current && (this.config.current.play.audio_file.url === url)) {
+    this._sendInvalidate(this.config.current.play);
+
+  } else if (this.config.pendingPlay && (this.config.pendingPlay.audio_file.url === url)) {
+    this._sendInvalidate(this.config.pendingPlay);
+
+  }
 };
 
 Session.prototype._sendInvalidate = function (play, delay) {
@@ -498,13 +507,18 @@ Session.prototype._receiveInvalidate = function (play, response) {
     self._submitLogHistory();
   }, 5000);
 
-  if (!this.config.current || (this.config.current.play !== play)) {
-    // not holding this song any more - just ignore it
+  if (!response.success) {
+    log('failed invalidate! - technically this is impossible');
     return;
   }
 
-  if (!response.success) {
-    log('failed invalidate! - technically this is impossible');
+  if (!this.config.current || (this.config.current.play !== play)) {
+    if (play === this.config.pendingPlay) {
+      log('invalidated pending play, queueing up new pending play');
+      this.config.pendingPlay = null;
+      this._requestNextPlay();
+    }
+    
     return;
   }
 

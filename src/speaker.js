@@ -619,7 +619,7 @@ Speaker.prototype = {
     }
 
     // still loading primary audio - so hold off for now
-    log('still loading primary, so waiting to do active prepare', { activeUrl: this.active.audio.src });
+    log('still loading primary, so waiting to do active prepare', { activeUrl: this.active.audio.src, ranges });
     this.prepareWhenReady = { url, startPosition };
 
     return false;
