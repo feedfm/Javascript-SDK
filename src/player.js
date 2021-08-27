@@ -368,6 +368,9 @@ Player.prototype.setStationId = function (stationId, fadeOutOrAdvance) {
 
     log('SET STATION ID (WITH ADVANCE)', stationId, advance);
   
+  } else {
+
+    log('SET STATION ID', stationId);
   }
 
   if (fadeOut && this.state.activePlay) {
@@ -612,6 +615,10 @@ Player.prototype._onPlayCompleted = function (play) {
 };
 
 Player.prototype._onPlaysExhausted = function () {
+  if (this.state.paused) {
+    return;
+  }
+  
   this.state.paused = false;
 
   this.updateSimulcast();
