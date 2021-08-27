@@ -802,7 +802,7 @@ Session.prototype._receiveNextPlay = function (ajax, response) {
     this.config.pendingRequest = null;
 
     if (response.success) {
-      this.trigger('prepare-sound', response.play.audio_file.url, response.play.start_at);
+      this.trigger('prepare-sound', response.play.audio_file.url, response.play.start_at, response.play.id);
 
       if (this.config.current) {
         log('received play, but we\'re already playing, so queueing up', response.play);
@@ -1001,6 +1001,60 @@ Session.prototype._submitLogHistory = function(count = 0) {
       }, 5000);
     }
   });
+};
+
+Session.prototype._submitLogHistory = function(count = 0) {
+  let session = this;
+  let history = log.history;
+  log.history = [];
+
+  if (!this.config.remoteLogging) {
+    return;
+  }
+
+  return this._signedAjax(getBaseUrl() + '/api/v2/session/event', {
+    method: 'POST',
+    body: JSON.stringify({
+      event: 'playerHistory',
+      parameters: history
+    }),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }).catch(function() {
+    if (count < 2) {
+      setTimeout(() => {
+        log.history = history.concat([ 'failed log report attempt, try #' + count ], log.history);
+        session._submitLogHistory(count + 1);
+      }, 5000);
+    }
+  });
+};
+
+Session.prototype._submitEvent = function(name, parameters, count = 1) {
+  let session = this;
+
+  return this._getClientId()
+    .then((clientId) => { 
+      return this._signedAjax(getBaseUrl() + '/api/v2/session/event', {
+        method: 'POST',
+        body: JSON.stringify({
+          event: name,
+          client_id: clientId,
+          parameters: JSON.stringify(parameters)
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    }).catch(function() {
+      if (count < 2) {
+        setTimeout(() => {
+          log.history = history.concat([ 'failed event submission, try #' + count ], log.history);
+          session._submitLogHistory(count + 1);
+        }, 5000);
+      }
+    });
 };
 
 Session.prototype._getClientId = function() {

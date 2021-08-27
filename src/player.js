@@ -489,8 +489,12 @@ Player.prototype._onSoundFinish = function (playId, withError) {
     return;
   }
 
+  const sound = this.state.activePlay.sound;
+
   this.state.activePlay.soundCompleted = true;
   if (withError) {
+    this.session._submitEvent('playback-error', {  url: sound.url, responses: sound.responses, error: withError, play_id: playId });
+
     this.state.activePlay.soundCompletedWithError = true;
 
     if (withError.name === 'NotAllowedError') {
@@ -612,12 +616,20 @@ Player.prototype._onPlaysExhausted = function () {
   this.trigger('plays-exhausted');
 };
 
-Player.prototype._onPrepareSound = function (url, startPosition) {
+Player.prototype._onPrepareSound = function (url, startPosition, playId) {
   log('preparing sound', url, startPosition);
+
   this.speaker.prepare(url, startPosition * 1000);
-  this.speaker.once('unprepared', (unpreparedUrl, headers) => {
-    if (url === unpreparedUrl) {
-      // TODO: log the headers
+  this.speaker.once('prepared', (preparedUrl, success, headers) => {
+    if (url !== preparedUrl) {
+      return;
+    }
+
+    if (headers.length > 1) {
+      this.session._submitEvent('preload-error', { url, play_id: playId, responses: headers });
+    }
+
+    if (!success) {
       console.log('invalidating', headers);
       this.session.requestInvalidate(url);
     }
@@ -682,26 +694,24 @@ Player.prototype._prepare = function() {
       return new Promise((resolve) => {
         log('waiting for un/prepared event');
 
-        const onPrepared = (preparedUrl) => {
-          console.log('DEV: prepared');
+        this.speaker.once('prepared', (preparedUrl, success, headers) => {
 
-          if (preparedUrl === url) {
-            this.speaker.off('unprepared', onUnprepared);
-            
-            this.trigger('prepared');
-
-            resolve(true);
+          if (headers.length > 0) {
+            this.session._submitEvent('preload-error', { url: preparedUrl, play_id: ap.id, responses: headers });
           }
-        };
 
-        const onUnprepared = (unpreparedUrl) => {
-          console.log('DEV: unprepared');
+          if (preparedUrl !== url) {
+            return;
+          }
 
-          if (unpreparedUrl === url) {
-            this.speaker.off('prepared', onPrepared);
+          if (success) {
+            console.log('DEV: prepared', { success });
+            this.trigger('prepared');
+            resolve(true);
 
+          } else {
             // invalidate the play, and request a new one
-            console.log('DEV: invalidating');
+            console.log('DEV: failed prepare');
             this.session.requestInvalidate();
             
             this.session.once('play-active', () => {
@@ -709,10 +719,7 @@ Player.prototype._prepare = function() {
               this._prepare().then((val) => resolve(val));
             });
           }
-        };
-
-        this.speaker.once('prepared', onPrepared);
-        this.speaker.once('unprepared', onUnprepared);        
+        });
       });
     }
   } else {

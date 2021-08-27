@@ -243,6 +243,8 @@ Speaker.prototype = {
   fading: null, // fading audio element, sound, and gain node
   preparing: null, // preparing audio element, sound, and gain node
 
+  responses: null, // array of response headers from preloading
+
   // each of the above look like:
   // {
   //   audio: an HTML Audio element (created during initializeAudio() and reused)
@@ -376,7 +378,7 @@ Speaker.prototype = {
       log('preparing file can play through', audio.src);
 
       this.preparing.canplaythrough = true;
-      this.trigger('prepared', audio.src);
+      this.trigger('prepared', audio.src, true);
     }
   },
 
@@ -712,15 +714,16 @@ Speaker.prototype = {
 
     this.preloaded = {
       url,
-      blobUrl: null
+      blobUrl: null,
+      responses: []
     };
     
-    this._fetch(url);
+    this._fetch(url, this.preloaded.responses);
 
     return false;
   },
 
-  _fetch: function(url, attempt = 1, responses = []) {
+  _fetch: function(url, responses, attempt = 1) {
     log(`preload attempt #${attempt}`);
 
     const response = { start: new Date().toString() };
@@ -735,11 +738,11 @@ Speaker.prototype = {
       if (attempt > 2) {
         log('failed to fetch', { url, responses });
         this.preloaded = null;
-        this.trigger('unprepared', url, responses);
+        this.trigger('prepared', url, false, responses);
         return;
       } 
     
-      setTimeout(() => this._fetch(url, attempt + 1, responses), Math.min(Math.pow(10, attempt), 10000));
+      setTimeout(() => this._fetch(url, responses, attempt + 1), Math.min(Math.pow(10, attempt), 10000));
     };
     
     log('preloading', { url, responses });
@@ -777,7 +780,7 @@ Speaker.prototype = {
               const properMimeTypeBlob = new Blob([ blob ], { type: 'audio/mpeg' });
               this.preloaded.blobUrl = URL.createObjectURL(properMimeTypeBlob);
           
-              this.trigger('prepared', url, responses);
+              this.trigger('prepared', url, true, responses);
   
             } else {
               // finished retrieving file, but nobody cares any more
@@ -903,10 +906,11 @@ Speaker.prototype = {
       if (this.preparing.audio.playing) {
         this.preparing.audio.pause();
       }
+      
+      sound.responses = this.preloaded.responses;
 
       this.preparing.audio.src = this.preloaded.blobUrl;
       this.preparing.canplaythrough = true;
-
       this.preloaded = null;
 
     } else if (this.preparing.audio.src !== sound.url) {
