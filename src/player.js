@@ -20,6 +20,7 @@
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
  *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions
  *    simulcast: 'uuid'     // id to announce music playback on, for simulcast listeners
+ *    maxRetries: 6        // max number of times to retry retrieving a song before giving up
  *
  *  In response to a user-interaction event, and before you begin any
  *  music playback, be sure to call:
@@ -119,6 +120,7 @@ var Player = function (token, secret, options) {
 
   } else {
     options = options || {};
+    options.maxRetries = options.maxRetries || 10;
     this.options = options;
 
     this.state = {
@@ -144,7 +146,7 @@ var Player = function (token, secret, options) {
       this._stationsReject = reject;
     });
 
-    const speaker = this.speaker = new Speaker();
+    const speaker = this.speaker = new Speaker({ maxRetries: options.maxRetries });
     
     var session = this.session = new Session(token, secret, options);
 
@@ -247,9 +249,9 @@ Player.prototype._restore = function({ persisted, elapsed }) {
   this.session = new Session();
   this.session.config = sessionConfig;
 
-  this.speaker = new Speaker();
-
   this.options = persisted.options;
+
+  this.speaker = new Speaker({ maxRetries: this.options.maxRetries });
   
   // start off in paused state
   this.state = {
@@ -629,8 +631,7 @@ Player.prototype._onPrepareSound = function (url, startPosition, playId) {
       this.session._submitEvent('preload-error', { url, play_id: playId, responses: headers });
     }
 
-    if (!success) {
-      console.log('invalidating', headers);
+    if (!success && this.config.activePlay && this.config.activePlay.id !== playId) {
       this.session.requestInvalidate(url);
     }
   });
@@ -705,17 +706,14 @@ Player.prototype._prepare = function() {
           }
 
           if (success) {
-            console.log('DEV: prepared', { success });
             this.trigger('prepared');
             resolve(true);
 
           } else {
             // invalidate the play, and request a new one
-            console.log('DEV: failed prepare');
             this.session.requestInvalidate();
             
             this.session.once('play-active', () => {
-              console.log('DEV: session play active');
               this._prepare().then((val) => resolve(val));
             });
           }
@@ -725,7 +723,6 @@ Player.prototype._prepare = function() {
   } else {
     return new Promise((resolve) => {
       this.session.once('play-active', (/* play */) => {
-        console.log('DEV: play-active');
         this._prepare().then((val) => resolve(val));
       });
 

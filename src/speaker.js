@@ -195,7 +195,11 @@ Sound.prototype = {
  * @returns Speaker
  */
 
-let Speaker = function () {
+let Speaker = function (options) {
+  if (options.maxRetries) {
+    this.maxRetries = options.maxRetries;
+  }
+
   return Object.assign(this, Events);
 };
 
@@ -244,6 +248,8 @@ Speaker.prototype = {
 
   responses: null, // array of response headers from preloading
 
+  maxRetries: 10, // max number of times to retry preloading a song
+  
   // each of the above look like:
   // {
   //   audio: an HTML Audio element (created during initializeAudio() and reused)
@@ -604,7 +610,8 @@ Speaker.prototype = {
     }
 
     var ranges = this.active.audio.buffered;
-    if ((ranges.length > 0) && (ranges.end(ranges.length - 1) >= this.active.audio.duration)) {
+    var range = (ranges.length > 0) && ranges.end(ranges.length - 1);
+    if (range >= this.active.audio.duration) {
       log('active song has loaded enough, so preparing', url);
       if (hasBlobSupport()) {
         return this._preload(url);
@@ -622,7 +629,8 @@ Speaker.prototype = {
     }
 
     // still loading primary audio - so hold off for now
-    log('still loading primary, so waiting to do active prepare', { activeUrl: this.active.audio.src, ranges });
+
+    log('still loading primary, so waiting to do active prepare', { activeUrl: this.active.audio.src, range });
     this.prepareWhenReady = { url, startPosition };
 
     return false;
@@ -732,12 +740,12 @@ Speaker.prototype = {
 
     const retry = () => {
       if (!this.preloaded || (this.preloaded.url !== url)) {
-        log('abandoning retry because we have moved on', { url });
+        log('preload abandoning retry because we have moved on', { url });
         return;
       }
 
-      if (attempt > 2) {
-        log('failed to fetch', { url, responses });
+      if (attempt > this.maxRetries) {
+        log('preload failed to fetch', { url, responses });
         this.preloaded = null;
         this.trigger('prepared', url, false, responses);
         return;
@@ -748,9 +756,12 @@ Speaker.prototype = {
     
     log('preloading', { url, responses });
   
-    fetch(url)
+    // stress test:
+    // const extra = (Math.random() < 0.7) ? '-extrajunkj' : '';
+
+    fetch(url  /* + extra */)
       .then((res) => {
-        log('got response');
+        log('preload got response');
         response.end = new Date().toString();
         response.status = res.status;
         response.text = res.statusText;
@@ -758,7 +769,7 @@ Speaker.prototype = {
                   
         // if res.type == 'opaque', could cause problems
         if (res.type === 'opaque') {
-          log('opaque response, so retrying');
+          log('preload opaque response, so retrying');
           response.name = 'OpaqueResponse';
           response.message = 'Browser returned oaque response';
           retry();
@@ -766,7 +777,7 @@ Speaker.prototype = {
         }
         
         if (!res.ok) {
-          log('fetch error - retrying');
+          log('preload fetch error - retrying');
           retry();
           return;
         }
@@ -774,7 +785,7 @@ Speaker.prototype = {
         res
           .blob()
           .then((blob) => {
-            log('got blob');
+            log('preload got blob');
             
             if (this.preloaded && (this.preloaded.url === url)) {
               log('preloaded', { url });
@@ -785,11 +796,11 @@ Speaker.prototype = {
   
             } else {
               // finished retrieving file, but nobody cares any more
-              log('retrieved url, but nobody cares any more');
+              log('preload retrieved url, but nobody cares any more');
             }
           })
           .catch((err) => {
-            log('error blobbing', err, err.name, err.message);
+            log('preload error blobbing', err, err.name, err.message);
 
             response.name = err.name;
             response.message = err.message;
@@ -798,7 +809,7 @@ Speaker.prototype = {
           });
       })
       .catch((err) => {
-        log('error preloading', err, err.name, err.message);
+        log('preload error', err, err.name, err.message);
 
         // connectivity error 
         response.end = new Date().toString();
@@ -947,62 +958,74 @@ Speaker.prototype = {
       finishedSound.trigger('finish');
     }
 
-    log(sound.id + ' initiating play()');
-
     sound.awaitingPlayResponse = true;
     this.active.sound = sound;
 
     var me = this.active;
 
-    this.active.audio.play()
-      .then(function () {
-        delete sound.awaitingPlayResponse;
+    var attempt = 1;
+    
+    const play = () => {
+      log(sound.id + ' initiating play()', { attempt });
+
+      this.active.audio.play()
+        .then(function () {
+          delete sound.awaitingPlayResponse;
         
-        if (!speaker.outstandingSounds[sound.id]) {
-          log(sound.id + ' play() succeeded, but sound has been destroyed');
+          if (!speaker.outstandingSounds[sound.id]) {
+            log(sound.id + ' play() succeeded, but sound has been destroyed');
 
-          // this sound was killed before playback began - make sure to stop it
-          if (me.audio && (me.audio.src === sound.url)) {
-            log(sound.id + ' being paused and unloaded');
-            me.audio.pause();
+            // this sound was killed before playback began - make sure to stop it
+            if (me.audio && (me.audio.src === sound.url)) {
+              log(sound.id + ' being paused and unloaded');
+              me.audio.pause();
 
-            revoke(me.audio);
-            me.audio.src = SILENCE;
+              revoke(me.audio);
+              me.audio.src = SILENCE;
+            }
+
+            return;
           }
 
-          return;
-        }
-
-        log(sound.id + ' play() succeeded');
+          log(sound.id + ' play() succeeded');
         
-        // configure fade-out now that metadata is loaded
-        if (sound.fadeOutSeconds && (sound.fadeOutEnd === 0)) {
-          sound.fadeOutStart = me.audio.duration - sound.fadeOutSeconds;
-          sound.fadeOutEnd = me.audio.duration;
-        }
+          // configure fade-out now that metadata is loaded
+          if (sound.fadeOutSeconds && (sound.fadeOutEnd === 0)) {
+            sound.fadeOutStart = me.audio.duration - sound.fadeOutSeconds;
+            sound.fadeOutEnd = me.audio.duration;
+          }
 
-        if (sound.startPosition) {
-          log('updating start position');
-          me.audio.currentTime = sound.startPosition / 1000;
-          log('updated');
-        }
+          if (sound.startPosition) {
+            log('updating start position');
+            me.audio.currentTime = sound.startPosition / 1000;
+            log('updated');
+          }
 
-        var paused = me.audio.paused;
+          var paused = me.audio.paused;
 
-        sound.trigger('play');
+          sound.trigger('play');
 
-        if (me.pauseAfterPlay) {
-          me.audio.pause();
+          if (me.pauseAfterPlay) {
+            me.audio.pause();
 
-        } else if (paused) {
-          sound.trigger('pause');
-        }
+          } else if (paused) {
+            sound.trigger('pause');
+          }
 
-      })
-      .catch(function (error) {
-        log('error starting playback with sound ' + sound.id, error.name, error.message, error.stack);
-        sound.trigger('finish', error);
-      });
+        })
+        .catch(function (error) {
+          log('error starting playback with sound ' + sound.id, { name: error.name, message: error.message, attempt });
+
+          if (attempt < 4) {
+            attempt++;
+            setTimeout(play, 10);
+          } else {
+            sound.trigger('finish', error);            
+          }
+        });
+    };
+
+    play();
     
   },
 
