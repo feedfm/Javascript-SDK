@@ -56,12 +56,11 @@
  */
 
 import Events from './events';
+import hasBlobSupport from './blob-support';
 import log from './log';
 import { uniqueId } from './util';
 
 const DEFAULT_VOLUME = 1.0;
-
-const CAN_USE_OBJECT_URL = true;
 
 const IOS = [
   'iPad Simulator',
@@ -409,6 +408,7 @@ Speaker.prototype = {
     }
 
     if (audio === this.fading.audio) {
+      revoke(audio);
       audio.src = SILENCE;
       this.fading.sound = null;
       return;
@@ -439,6 +439,7 @@ Speaker.prototype = {
     if ((audio === this.fading.audio) && this.fading.sound) {
       if (this.fading.sound.endPosition && (audio.currentTime >= (this.fading.sound.endPosition / 1000))) {
         this.fading.sound = null;
+        revoke(this.fading.audio);
         this.fading.audio.src = SILENCE;
 
       } else {
@@ -462,7 +463,7 @@ Speaker.prototype = {
       var sound = this.active.sound;
 
       this.active.sound = null;
-
+      revoke(this.active.audio);
       this.active.audio.src = SILENCE;
 
       sound.trigger('finish');
@@ -590,7 +591,7 @@ Speaker.prototype = {
 
   prepare: function (url, startPosition = 0) {
     if (!this.active || !this.active.audio) {
-      if (CAN_USE_OBJECT_URL) {
+      if (hasBlobSupport()) {
         log('pre-loading audio', { url });
         return this._preload(url);
 
@@ -605,7 +606,7 @@ Speaker.prototype = {
     var ranges = this.active.audio.buffered;
     if ((ranges.length > 0) && (ranges.end(ranges.length - 1) >= this.active.audio.duration)) {
       log('active song has loaded enough, so preparing', url);
-      if (CAN_USE_OBJECT_URL) {
+      if (hasBlobSupport()) {
         return this._preload(url);
       } else {
         return this._prepare(url, startPosition);
@@ -613,7 +614,7 @@ Speaker.prototype = {
     
     } else if (this.active.audio.src === SILENCE) {
       log('preparing over silence');
-      if (CAN_USE_OBJECT_URL) {
+      if (hasBlobSupport()) {
         return this._preload(url);
       } else {
         return this._prepare(url, startPosition);
@@ -696,7 +697,7 @@ Speaker.prototype = {
     if (this.preloaded) {
       if (this.preloaded.url === url) {
         // true when already loaded up
-        const preloaded = !!this.preloaded.blob;
+        const preloaded = !!this.preloaded.blobUrl;
 
         log('preloading', { url, preloaded });
         
@@ -838,6 +839,8 @@ Speaker.prototype = {
       }
 
       this.preparing.canplaythrough = false;
+
+      revoke(this.preparing.audio);
       this.preparing.audio.src = url;
     }
 
@@ -887,7 +890,8 @@ Speaker.prototype = {
             })
             .catch(function (e) {
               log('error resuming fading playback', e.name, e.message, e.stack, sound.id);
-              speaker.fading.sound = null;
+              speaker.fading.sound = null;        
+              revoke(speaker.fading.audio);
               speaker.fading.audio.src = SILENCE;
             });
 
@@ -909,6 +913,7 @@ Speaker.prototype = {
       
       sound.responses = this.preloaded.responses;
 
+      revoke(this.preparing.audio);
       this.preparing.audio.src = this.preloaded.blobUrl;
       this.preparing.canplaythrough = true;
       this.preloaded = null;
@@ -928,11 +933,8 @@ Speaker.prototype = {
 
     this.preparing.canplaythrough = false;
 
-    const oldUrl = this.preparing.audio.src;
+    revoke(this.preparing.audio);
     this.preparing.audio.src = SILENCE;
-    if (oldUrl.slice(0, 4) === 'blob') {
-      URL.revokeObjectURL(oldUrl);
-    }
 
     // don't throw sound object in active until playback starts (below)
     this.active.sound = null;
@@ -963,6 +965,8 @@ Speaker.prototype = {
           if (me.audio && (me.audio.src === sound.url)) {
             log(sound.id + ' being paused and unloaded');
             me.audio.pause();
+
+            revoke(me.audio);
             me.audio.src = SILENCE;
           }
 
@@ -1010,6 +1014,8 @@ Speaker.prototype = {
       if (!fadeOut || !sound.fadeOutSeconds) {
         log('destroy triggered for current sound (no fadeout)', sound.id);
         this.active.audio.pause();
+
+        revoke(this.active.audio);
         this.active.audio.src = SILENCE;
 
       } else {
@@ -1116,6 +1122,13 @@ Speaker.prototype = {
   }
 
 };
+
+function revoke(audio) {
+  if (audio.src.slice(0, 4) === 'blob') {
+    log('revoking', { url: audio.src });
+    URL.revokeObjectURL(audio.src);
+  }
+}
 
 // add events to speaker class
 Object.assign(Speaker.prototype, Events);

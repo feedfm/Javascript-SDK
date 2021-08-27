@@ -625,7 +625,7 @@ Player.prototype._onPrepareSound = function (url, startPosition, playId) {
       return;
     }
 
-    if (headers.length > 1) {
+    if (headers && headers.length > 1) {
       this.session._submitEvent('preload-error', { url, play_id: playId, responses: headers });
     }
 
@@ -696,7 +696,7 @@ Player.prototype._prepare = function() {
 
         this.speaker.once('prepared', (preparedUrl, success, headers) => {
 
-          if (headers.length > 0) {
+          if (headers && (headers.length > 0)) {
             this.session._submitEvent('preload-error', { url: preparedUrl, play_id: ap.id, responses: headers });
           }
 
