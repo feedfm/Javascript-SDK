@@ -704,7 +704,7 @@ Player.prototype._prepare = function() {
 
         this.speaker.once('prepared', (preparedUrl, success, headers) => {
 
-          if (headers && (headers.length > 0)) {
+          if (headers && (headers.length > 1)) {
             this.session._submitEvent('preload-error', { url: preparedUrl, play_id: ap.id, responses: headers });
           }
 
