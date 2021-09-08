@@ -72,6 +72,8 @@ const IOS = [
   // iPad on iOS 13 detection
   || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
 
+const CHROMECAST = navigator.userAgent.includes('CrKey');
+
 const brokenWebkit = IOS && /OS 13_[543210]/i.test(navigator.userAgent);
 
 const SILENCE = IOS ?
@@ -81,6 +83,8 @@ const SILENCE = IOS ?
 //const SILENCE = 'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1573592316-88123.m4a';
 
 var Sound = function (speaker, options, id, url) {
+
+
   var obj = Object.assign(this, Events);
 
   obj.id = id;
@@ -90,6 +94,9 @@ var Sound = function (speaker, options, id, url) {
   obj.url = url;
   obj.speaker = speaker;
   obj.loaded = false;
+
+  obj.savedSrc = '';
+  obj.savedPos = 0;
 
   if (options) {
     this.startPosition = +options.startPosition;
@@ -144,7 +151,10 @@ Sound.prototype = {
   // pause playback of the current sound clip
   pause: function () {
     log('sound ' + this.id + ' pause');
+
     return this.speaker._pauseSound(this);
+    
+    
   },
 
   // resume playback of the current sound clip
@@ -275,10 +285,14 @@ Speaker.prototype = {
         log('initialize audio called from', e);
       }
 
+      if (!CHROMECAST){
+        this.fading = this._createAudio(SILENCE);
+        this.preparing = this._createAudio(this.prepareWhenReady ? this.prepareWhenReady : SILENCE);
+      }
+
       this.audioContext = createAudioContext();
 
       this.active = this._createAudio(SILENCE);
-      this.fading = this._createAudio(SILENCE);
 
       const pwr = this.prepareWhenReady;
       if (pwr) {
@@ -392,7 +406,7 @@ Speaker.prototype = {
       return;
     }
 
-    if (audio === this.fading.audio) {
+    if (!CHROMECAST && (audio === this.fading.audio)) {
       audio.src = SILENCE;
       this.fading.sound = null;
       return;
@@ -420,7 +434,7 @@ Speaker.prototype = {
       return;
     }
 
-    if ((audio === this.fading.audio) && this.fading.sound) {
+    if (!CHROMECAST && audio === this.fading.audio && this.fading.sound) {
       if (this.fading.sound.endPosition && (audio.currentTime >= (this.fading.sound.endPosition / 1000))) {
         this.fading.sound = null;
         this.fading.audio.src = SILENCE;
@@ -453,10 +467,9 @@ Speaker.prototype = {
       this.active.sound = null;
 
       this.active.audio.src = SILENCE;
-
       sound.trigger('finish');
 
-    } else if (this.active.sound.fadeOutEnd && (audio.currentTime >= this.active.sound.fadeOutStart)) {
+    } else if (!CHROMECAST && this.active.sound.fadeOutEnd && (audio.currentTime >= this.active.sound.fadeOutStart)) {
       // song hit start of fade out
       this._setVolume(this.active);
 
@@ -464,7 +477,6 @@ Speaker.prototype = {
       var fading = this.fading;
       this.fading = this.active;
       this.active = fading;
-
       this.active.sound = null; // not used any more
 
       // pretend the song finished
@@ -561,7 +573,14 @@ Speaker.prototype = {
     this.outstandingSounds[sound.id] = sound;
 
     // start loading sound, if we can
-    //this.prepare(url, optionsAndCallbacks.startPosition);
+    if (!this.active || !this.active.audio) {
+      log('no audio prepared yet, so preparing when ready');
+      this.prepareWhenReady = sound.url;
+
+    } else if (CHROMECAST || this.preparing.audio.src === SILENCE) {
+      log('preparing sound now');
+      this._prepare(sound.url, sound.startPosition);
+    }
 
     return sound;
   },
@@ -585,8 +604,8 @@ Speaker.prototype = {
     }
 
     var ranges = this.active.audio.buffered;
-    if ((ranges.length > 0) && (ranges.end(ranges.length - 1) >= this.active.audio.duration)) {
-      log('active song has loaded enough, so preparing', url);
+    if (!CHROMECAST && (ranges.length > 0) && (ranges.end(ranges.length - 1) >= this.active.audio.duration)) {
+      log('active song has loaded enough, to preparing', url);
       return this._prepare(url, startPosition);
     
     } else if (this.active.audio.src === SILENCE) {
@@ -665,18 +684,17 @@ Speaker.prototype = {
     // empty out any pending request
     this.prepareWhenReady = null;
 
-    if (!url) {
-      return false;
-    }
+    if (CHROMECAST){ 
+      log('preparing ' + url);
 
-    if (this.preparing && (this.preparing.audio.src === url) && this.preparing.canplaythrough) {
-      log('play already prepared!');
-      // song is already prepared!
-      return true;
-    }
+      if (this.active.audio.playing) {
+        this.active.audio.pause();
+      }
 
-    if (this.preparing.audio.src !== url) {
-      log('preparing', url);
+      this.active.audio.src = url;
+    } 
+    else if (this.preparing.audio.src !== url) {
+      log('preparing ' + url);
 
       if (this.preparing.audio.playing) {
         this.preparing.audio.pause();
@@ -686,7 +704,11 @@ Speaker.prototype = {
       this.preparing.audio.src = url;
     }
 
-    if (startPosition && (this.preparing.audio.currentTime !== startPosition)) {
+    if (CHROMECAST && (startPosition && this.active.audio.currentTime !== startPosition)) {
+      log('advancing preparing audio to', startPosition / 1000);
+      this.active.audio.currentTime = startPosition / 1000;
+    }
+    else if (startPosition && (this.preparing.audio.currentTime !== startPosition)) {
       log('advancing preparing audio to', startPosition / 1000);
       this.preparing.audio.currentTime = startPosition / 1000;
     }
@@ -708,9 +730,13 @@ Speaker.prototype = {
     }
 
     if (this.active.sound === sound) {
-      if (this.active.audio.paused) {
+      if (this.active.audio.paused || this.active.audio.src === 'not-a-real-file-paused' ) {
         log(sound.id + ' was paused, so resuming');
-
+        if (CHROMECAST)
+        {
+          this.active.audio.currentTime = sound.savedPos;
+          this.active.audio.src = sound.savedSrc;
+        }
         // resume playback
         this.active.audio.play()
           .then(function () {
@@ -724,7 +750,7 @@ Speaker.prototype = {
             sound.trigger('finish');
           });
 
-        if (this.fading.sound) {
+        if (!CHROMECAST && this.fading.sound) {
           this.fading.audio.play()
             .then(function () {
               log('resumed fading playback');
@@ -743,7 +769,7 @@ Speaker.prototype = {
       }
 
     } else {
-      if (this.preparing.audio.src !== sound.url) {
+      if (!CHROMECAST && this.preparing.audio.src !== sound.url) {
         // hopefully, by this time, any sound that was destroyed before its
         // play() call completed has actually completed its play call. Otherwise
         // this will trigger an exception in the play preparation.
@@ -758,8 +784,10 @@ Speaker.prototype = {
 
       // swap prepared -> active
       var active = this.active;
-      this.active = this.preparing;
-      this.preparing = active;
+      if (!CHROMECAST){
+        this.active = this.preparing;
+        this.preparing = active; // don't throw sound object in active until playback starts (below)
+      }
 
       this.preparing.canplaythrough = false;
       this.preparing.audio.src = SILENCE;
@@ -769,7 +797,9 @@ Speaker.prototype = {
       this._setVolume(this.active, sound);
 
       // notify clients that whatever was previously playing has finished
-      if (this.preparing.sound) {
+      if (!CHROMECAST && this.preparing.sound) {
+        this.preparing.audio.src = SILENCE;
+
         var finishedSound = this.preparing.sound;
         this.preparing.sound = null;
         finishedSound.trigger('finish');
@@ -857,11 +887,13 @@ Speaker.prototype = {
         this._setVolume(this.active);
 
         // active becomes fading, and fading becomes active
-        var fading = this.fading;
-        this.fading = this.active;
-        this.active = fading;
-
-        this.active.sound = null; // not used any more 
+        if (!CHROMECAST)
+        {        
+          var fading = this.fading;
+          this.fading = this.active;
+          this.active = fading;
+          this.active.sound = null;
+        } // not used any more 
       }
 
     } else {
@@ -888,7 +920,18 @@ Speaker.prototype = {
   _pauseSound: function (sound) {
     if (this.active && (sound.url === this.active.audio.src)) {
       if (this.active.sound === sound) {
-        this.active.audio.pause();
+        if (CHROMECAST)
+        {
+          sound.savedPos = this.active.audio.currentTime;
+          sound.savedSrc =this.active.audio.src;
+          this.active.audio.src = 'not-a-real-file-paused';
+        }
+        else
+        {
+          this.active.audio.pause();
+        }
+
+        // 
       } else {
         // if active.sound isn't assigned, then the song is still being loaded.
         // if we try to pause() right now, it will cause the play() to throw an
@@ -897,7 +940,7 @@ Speaker.prototype = {
       }
     }
 
-    if (this.fading && this.fading.audio) {
+    if (!CHROMECAST && this.fading && this.fading.audio) {
       this.fading.audio.pause();
     }
   },
