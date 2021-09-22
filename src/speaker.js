@@ -318,7 +318,7 @@ Speaker.prototype = {
 
   getSupportedFormats: function () {
     if (document.createElement('audio').canPlayType('audio/aac')) {
-      return 'aac,mp3';
+      return 'mp3,aac';
     } else {
       return 'mp3';
     }
