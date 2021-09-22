@@ -1,5 +1,11 @@
 # Changelog
 
+1.102.0
+
+- Prioritize mp3 over m4a.
+- Use fetch() to pre-load audio, rather than relying on browser, to get past
+  CDN problems.
+
 1.101.1
 
 - new `Feed.resumable()` functionality, to allow resuming playback after a page refresh.
