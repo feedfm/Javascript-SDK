@@ -1,5 +1,9 @@
 # Changelog
 
+1.102.1
+
+- 'resumable' option for Player() creation, to disable storing state in local storage
+
 1.102.0
 
 - Prioritize mp3 over m4a.
