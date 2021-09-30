@@ -34,12 +34,14 @@ function get(key) {
 export function persistState(state) {
   const timestamp = Date.now();
   const asString = JSON.stringify({ state, timestamp });
+  const stringTimestamp = Date.now();
 
   // update timestamp and store in local storage
   store(FEED_STATE_KEY, asString);
+  const stateTimestamp = Date.now();
   store(FEED_ELAPSED_TIME_KEY, '0');
 
-  log('persisted state', { timestamp, state });
+  log('persisted state', { timestamp, encodingTime: stringTimestamp - timestamp, storageTime: stateTimestamp - stringTimestamp, state });
 }
 
 export function persistElapsed(milliseconds) {

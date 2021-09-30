@@ -20,7 +20,8 @@
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
  *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions
  *    simulcast: 'uuid'     // id to announce music playback on, for simulcast listeners
- *    maxRetries: 6        // max number of times to retry retrieving a song before giving up
+ *    maxRetries: 6         // max number of times to retry retrieving a song before giving up
+ *    resumable: true       // when true, playback can be resumed after a page refresh with Feed.resumable();
  *
  *  In response to a user-interaction event, and before you begin any
  *  music playback, be sure to call:
@@ -139,6 +140,7 @@ var Player = function (token, secret, options) {
 
     this.trimming = (options.trimming === false) ? false : true;
     this.normalizeVolume = ('normalizeVolume' in options) ? options.normalizeVolume : true;
+    this.resumable = ('resumable' in options) ? options.resumable : true;
     this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
     this.crossfadeIn = !!options.crossfadeIn;
     this._stationsPromise = new Promise((resolve, reject) => {
@@ -222,9 +224,6 @@ Player.prototype._persist = function() {
     normalizeVolume: this.normalizeVolume,
     secondsOfCrossfade: this.secondsOfCrossfade,
     crossfadeIn: this.crossfadeIn,
-    _station: this._station,
-    _stations: this._stations,
-    _placement: this._placement,
     sessionConfig: this.session.config
   };
 
@@ -261,6 +260,7 @@ Player.prototype._restore = function({ persisted, elapsed }) {
 
   this.trimming = persisted.trimming;
   this.normalizeVolume = persisted.normalizeVolume;
+  this.resumable = true;
   this.secondsOfCrossfade = persisted.secondsOfCrossfade;
   this.crossfadeIn = persisted.crossfadeIn;
 
@@ -278,9 +278,9 @@ Player.prototype._restore = function({ persisted, elapsed }) {
     return Promise
       .resolve(true)
       .then(() => {
-        this._station = persisted._station;
-        this._stations = persisted._stations;
-        this._placement = persisted._placement;
+        this._station =   persisted.sessionConfig.station;
+        this._stations =  persisted.sessionConfig.stations;
+        this._placement = persisted.sessionConfig.placement;
 
         this._stationsResolve(persisted._stations);
   
@@ -453,7 +453,9 @@ Player.prototype._onSoundPlay = function (playId) {
   // on the first play, tell the server we're good to go
   if (!this.state.activePlay.startReportedToServer) {
     // save the state so we can restore
-    persistState(this._persist());
+    if (this.resumable) {
+      persistState(this._persist());
+    }
     
     return this.session.reportPlayStarted();
   
@@ -548,7 +550,9 @@ Player.prototype._onSoundElapse = function (playId) {
     previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
     currentCount = Math.floor(position / interval);
 
-  persistElapsed(position);
+  if (this.resumable) {
+    persistElapsed(position);
+  }
 
   this.state.activePlay.previousPosition = position;
 
