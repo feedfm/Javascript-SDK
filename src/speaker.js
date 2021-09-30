@@ -196,7 +196,7 @@ Sound.prototype = {
  */
 
 let Speaker = function (options) {
-  if (options.maxRetries) {
+  if (options && options.maxRetries) {
     this.maxRetries = options.maxRetries;
   }
 
