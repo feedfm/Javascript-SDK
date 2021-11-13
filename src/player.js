@@ -18,7 +18,8 @@
  *    trimming: true,       // when true, song start/end trims will be honored
  *    crossfadeIn: false,   // when true, songs do not fade in - they start at full volume
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
- *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions
+ *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions (note: this might be
+ *                          // overidden by the server)
  *    simulcast: 'uuid'     // id to announce music playback on, for simulcast listeners
  *    maxRetries: 6         // max number of times to retry retrieving a song before giving up
  *    resumable: true       // when true, playback can be resumed after a page refresh with Feed.resumable();
@@ -143,6 +144,7 @@ var Player = function (token, secret, options) {
     this.resumable = ('resumable' in options) ? options.resumable : true;
     this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
     this.crossfadeIn = !!options.crossfadeIn;
+    this.serverAssignedCrossfade = false;
     this._stationsPromise = new Promise((resolve, reject) => {
       this._stationsResolve = resolve;
       this._stationsReject = reject;
@@ -223,6 +225,7 @@ Player.prototype._persist = function() {
     trimming: this.trimming,
     normalizeVolume: this.normalizeVolume,
     secondsOfCrossfade: this.secondsOfCrossfade,
+    serverAssignedCrossfade: this.serverAssignedCrossfade,
     crossfadeIn: this.crossfadeIn,
     sessionConfig: this.session.config
   };
@@ -262,6 +265,7 @@ Player.prototype._restore = function({ persisted, elapsed }) {
   this.normalizeVolume = persisted.normalizeVolume;
   this.resumable = true;
   this.secondsOfCrossfade = persisted.secondsOfCrossfade;
+  this.serverAssignedCrossfade = persisted.serverAssignedCrossfade;
   this.crossfadeIn = persisted.crossfadeIn;
 
   this._stationsPromise = new Promise((resolve, reject) => {
@@ -325,6 +329,7 @@ Player.prototype._onPlacement = function(placement) {
 
   if (placement.options && placement.options.crossfade_seconds) {
     this.secondsOfCrossfade = placement.options.crossfade_seconds;
+    this.serverAssignedCrossfade = true;
   }
 
   this.trigger('placement', placement);
@@ -341,11 +346,11 @@ Player.prototype._onStations = function(stations) {
 Player.prototype._onStationChanged = function(stationId, station) {
   this._station = station;
 
-  if (station.options && ('crossfade_seconds' in station.options)) {
+  if (this.serverAssignedCrossfade && station.options && ('crossfade_seconds' in station.options)) {
     // apply station level crossfade, if available
     this.secondsOfCrossfade = station.options.crossfade_seconds;
     
-  } else if (this._placement.options && ('crossfade_seconds' in this._placement.options)) {
+  } else if (this.serverAssignedCrossfade && this._placement.options && ('crossfade_seconds' in this._placement.options)) {
     // revert to placement level crossfade, if available
     this.secondsOfCrossfade = this._placement.options.crossfade_seconds;
 
