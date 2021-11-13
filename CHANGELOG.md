@@ -1,5 +1,13 @@
 # Changelog
 
+1.102.2
+
+- SDK was automatically applying station-level crossfade values, but this differs from
+  the logic in the native SDKs, which require a placement level crossfade value to be set in
+  order for the SDK to automtically assign crossfade values. With this fix, crossfade values
+  sent by the server will only be automatically applied if a placement level crossfade value
+  is assigned by the server.
+
 1.102.1
 
 - 'resumable' option for Player() creation, to disable storing state in local storage
