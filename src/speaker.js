@@ -196,7 +196,7 @@ Sound.prototype = {
  */
 
 let Speaker = function (options) {
-  if (options.maxRetries) {
+  if (options && options.maxRetries) {
     this.maxRetries = options.maxRetries;
   }
 
@@ -364,9 +364,11 @@ Speaker.prototype = {
   _addEventListeners: function (audio) {
     audio.addEventListener('pause', this._onAudioPauseEvent.bind(this));
     audio.addEventListener('ended', this._onAudioEndedEvent.bind(this));
+    audio.addEventListener('error', this._onAudioErroredEvent.bind(this));
     audio.addEventListener('timeupdate', this._onAudioTimeUpdateEvent.bind(this));
     audio.addEventListener('canplaythrough', this._onAudioCanPlay.bind(this));
     audio.addEventListener('canplay', (event) => { log('can play!', event.currentTarget.src); });
+
     //this._debugAudioObject(audio);
   },
 
@@ -433,6 +435,35 @@ Speaker.prototype = {
     var sound = this.active.sound;
     this.active.sound = null;
     sound.trigger('finish');
+  },
+
+  _onAudioErroredEvent: function (event) {
+    var audio = event.currentTarget;
+
+    if (audio.src === SILENCE) {
+      return;
+    }
+
+    if (audio === this.fading.audio) {
+      revoke(audio);
+      audio.src = SILENCE;
+      this.fading.sound = null;
+      return;
+    }
+
+    if (audio !== this.active.audio) {
+      return;
+    }
+
+    if (!this.active.sound) {
+      log('active audio errored, but no matching sound', audio.src);
+      return;
+    }
+
+    log('active audio errored', event.error);
+    var sound = this.active.sound;
+    this.active.sound = null;
+    sound.trigger('finish', event.error);
   },
 
   _onAudioTimeUpdateEvent: function (event) {
@@ -546,7 +577,7 @@ Speaker.prototype = {
   },
 
   _debugAudioObject: function (object) {
-    var events = ['abort', 'load', 'loadend', 'loadstart', 'loadeddata', 'loadedmetadata', 'canplay', 'canplaythrough', 'seeked', 'seeking', 'stalled', 'timeupdate', 'volumechange', 'waiting', 'durationchange', 'progress', 'emptied', 'ended', 'play', 'pause'];
+    var events = ['abort', 'load', 'loadend', 'loadstart', 'loadeddata', 'loadedmetadata', 'canplay', 'canplaythrough', 'seeked', 'seeking', 'stalled', 'timeupdate', 'volumechange', 'waiting', 'durationchange', 'progress', 'emptied', 'ended', 'play', 'pause', 'error'];
     var speaker = this;
 
     for (var i = 0; i < events.length; i++) {
@@ -733,7 +764,7 @@ Speaker.prototype = {
   },
 
   _fetch: function(url, responses, attempt = 1) {
-    log(`preload attempt #${attempt}`);
+    log(`preload attempt #${attempt}`, { url });
 
     const response = { start: new Date().toString() };
     responses.push(response);

@@ -377,7 +377,8 @@ Session.prototype.reportPlayElapsed = function (seconds) {
     headers: {
       'Content-Type': 'application/json'
     }
-  });
+  })
+    .catch((e) => log('server returned error on elapse call. ignoring', e));
 };
 
 Session.prototype.reportPlayCompleted = function () {
@@ -386,7 +387,10 @@ Session.prototype.reportPlayCompleted = function () {
   if (this.config.current && (this.config.current.started)) {
     this._signedAjax(getBaseUrl() + '/api/v2/play/' + this.config.current.play.id + '/complete', {
       method: 'POST'
-    }).finally(self._receivePlayCompleted.bind(self));
+    })
+      .then((response) => response.json())
+      .catch((err) => { log('play completed returned error - ignoring', err); })
+      .finally(self._receivePlayCompleted.bind(self));
 
   } else {
     log('finish on non-active or playing song');
@@ -422,7 +426,9 @@ Session.prototype.reportPlayStopped = function (seconds) {
       headers: {
         'Content-Type': 'application/json'
       }
-    });
+    })
+      .then((response) => response.json())
+      .catch((e) => log('server returned error on elapse call. ignoring', e));
   }
 
   // dump any future plays queued up
@@ -638,7 +644,7 @@ Session.prototype._failStartPlay = function (play, response) {
   // only process if we're still actually waiting for this
   if (this.config.current && (this.config.current.play === play)) {
 
-    if (response.status === 403) {
+    if (response && (response.status === 403)) {
       try {
         var fullResponse = JSON.parse(response.responseText);
 
@@ -855,7 +861,7 @@ Session.prototype._failedNextPlay = function (delay, ajax, response) {
   // only process if we're still actually waiting for this
   if (this.config.pendingRequest && (this.config.pendingRequest.ajax === ajax)) {
 
-    if (response.status === 403) {
+    if (response && response.status === 403) {
       try {
         var fullResponse = JSON.parse(response.responseText);
 
@@ -892,7 +898,9 @@ Session.prototype.maybeCanSkip = function () {
 Session.prototype.likePlay = function (playId) {
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/like', {
     method: 'POST'
-  });
+  })
+    .then((response) => response.json())
+    .catch((e) => log('server returned error on like call. ignoring', e));
 
   if (this.config.current && (this.config.current.play.id === playId)) {
     this.config.current.play.liked = true;
@@ -902,7 +910,9 @@ Session.prototype.likePlay = function (playId) {
 Session.prototype.unlikePlay = function (playId) {
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/like', {
     method: 'DELETE'
-  });
+  })
+    .then((response) => response.json())
+    .catch((e) => log('server returned error on unlike call. ignoring', e));
 
   if (this.config.current && (this.config.current.play.id === playId)) {
     delete this.config.current.play['liked'];
@@ -912,7 +922,9 @@ Session.prototype.unlikePlay = function (playId) {
 Session.prototype.dislikePlay = function (playId) {
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/dislike', {
     method: 'POST'
-  });
+  })    
+    .then((response) => response.json())
+    .catch((e) => log('server returned error on invalidate call. ignoring', e));
 
   if (this.config.current && (this.config.current.play.id === playId)) {
     this.config.current.play.liked = false;
@@ -968,7 +980,13 @@ Session.prototype._sign = function (request) {
 Session.prototype._signedAjax = function (url, request) {
   var self = this;
 
-  return self._ajax(url, self._sign(request));
+  return self._ajax(url, self._sign(request)).then((response) => {
+    if (!response.ok) {
+      throw new Error('server returned error ' + response.status + ': ' + response.statusText);
+    } 
+
+    return response;
+  });
 };
 
 Session.prototype._ajax = function (url, request) {
@@ -993,14 +1011,16 @@ Session.prototype._submitLogHistory = function(count = 0) {
     headers: {
       'Content-Type': 'application/json'
     }
-  }).catch(function() {
-    if (count < 2) {
-      setTimeout(() => {
-        log.history = history.concat([ 'failed log report attempt, try #' + count ], log.history);
-        session._submitLogHistory(count + 1);
-      }, 5000);
-    }
-  });
+  })
+    .then((response) => response.json())
+    .catch(function() {
+      if (count < 2) {
+        setTimeout(() => {
+          log.history = history.concat([ 'failed log report attempt, try #' + count ], log.history);
+          session._submitLogHistory(count + 1);
+        }, 5000);
+      }
+    });
 };
 
 Session.prototype._submitLogHistory = function(count = 0) {
