@@ -1,5 +1,11 @@
 # Changelog
 
+1.102.3
+
+- Improved handling of non-200 HTTP errors
+- song preparation bugfix
+- more property checks
+
 1.102.2
 
 - SDK was automatically applying station-level crossfade values, but this differs from
