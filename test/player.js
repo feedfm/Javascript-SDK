@@ -5,7 +5,6 @@
   'initializeAudio()' method called in respond to a user tap.
 */
 
-const { default: Speaker } = require('../src/speaker');
 let initializeAudio = require('./initialize-audio');
 
 let expect = chai.expect;
@@ -1074,7 +1073,7 @@ describe('Feed.Player integration tests', function () {
       response.respond(200, { 'Content-Type': 'application/json' }, JSON.stringify({ success: true }));
     });
 
-    var player = new Feed.Player('demo', 'demo', { debug: true });
+    var player = new Feed.Player('demo', 'demo', { debug: true, maxRetries: 2 });
     sinon.spy(player, 'trigger');
 
     player.on('all', (event) => console.log('player event:', event));
@@ -1105,7 +1104,7 @@ describe('Feed.Player integration tests', function () {
     await promise;
   });
 
-  it.only('will invalidate incoming play that does not prepare while current play is active', async function () {
+  it('will invalidate incoming play that does not prepare while current play is active', async function () {
     this.timeout(12000);
 
     server.autoRespondAfter = 1;
