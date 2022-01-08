@@ -647,7 +647,8 @@ Player.prototype._onPrepareSound = function (url, startPosition, playId) {
       this.session._submitEvent('preload-error', { url, play_id: playId, responses: headers });
     }
 
-    if (!success && this.config.activePlay && this.config.activePlay.id !== playId) {
+    const activePlay = this.session.getActivePlay();
+    if (!success && (!activePlay || (activePlay.id !== playId))) {  
       this.session.requestInvalidate(url);
     }
   });
