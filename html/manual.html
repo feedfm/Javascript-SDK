@@ -42,22 +42,43 @@
     <div class="status"></div>
   </div>
 
+  <div>
+    <select id="ip">
+      <option value="US" selected>US</option>
+      <option value="CA">CA</option>
+    </select>
+  </div>
+
 
   <script>
     console.log('**** PAGE RELOAD ******');
+
+    const ips = {
+      US: '75.37.70.130',
+      CA: '192.206.151.131'
+    };
+
+    const country = this.location.search ? this.location.search.slice(1) : 'US';
+    const ip = ips[country];
+
+    $('#ip').val(country);
+
+    $('#ip').on('change', function() {
+      window.location.search = $(this).val();
+    });
+
     var simulcast = 'nGwPEXk4js9V4Yp3HcyM2i';
 
     // Create basic player.
-    console.log('pre');
     var player =  Feed.resumable(60000) ||
-        new Feed.Player('demo', 'demo', {
+        new Feed.Player('country', 'country', {
           baseUrl: 'https://stage.feed.fm',
           debug: true,
           simulcast: simulcast,
           remoteLogging: true
         });
-    console.log("post!");
-
+    player.session.extraHeaders = { 'X-Streaming-For': ips[country] };
+    
     console.log('state', player.getCurrentState());
 
     // Display all the events the player triggers
