@@ -1,5 +1,10 @@
 # Changelog
 
+1.103.0
+
+- Support for station level like/skip adjustments
+- Bugfix for 'play-resumed' event not being triggered
+
 1.102.3
 
 - Improved handling of non-200 HTTP errors
