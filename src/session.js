@@ -913,7 +913,9 @@ Session.prototype.canSkip = function () {
  */
 
 Session.prototype.canLike = function() {
-  return !(this.station && this.station.can_like === false);
+  const response =  !(this.config.station && this.config.station.can_like === false);
+
+  return response;
 };
 
 Session.prototype.likePlay = function (playId) {
