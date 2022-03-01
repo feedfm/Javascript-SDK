@@ -17,6 +17,8 @@
     <button class="pause-button">pause</button>
     <button class="skip-button">skip</button>
     <button class="stop-button">stop</button>
+    <button class="like-button">like</button>
+    <button class="dislike-button">dislike</button>
     <button class="initialize-audio">initializeAudio</button>
   </div>
 
@@ -49,7 +51,7 @@
     console.log('pre');
     var player =  Feed.resumable(60000) ||
         new Feed.Player('demo', 'demo', {
-          baseUrl: 'https://feed.fm',
+          baseUrl: 'https://stage.feed.fm',
           debug: true,
           simulcast: simulcast,
           remoteLogging: true
@@ -62,8 +64,7 @@
     player.on('all', function (event) {
       console.log('EVENT: \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
       console.log('  state', player.getCurrentState());
-      console.log('  ', JSON.stringify(player._persist(), null, 2));
-
+      console.log('  ', player._persist());
     });
 
     player.on('stations', function (stations) {
