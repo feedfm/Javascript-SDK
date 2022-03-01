@@ -84,9 +84,8 @@
  *  session.isTuned(): true if the session has active plays available or is awaiting
  *    plays from the server
  *  session.hasActivePlayStarted(): returns true if the active play is playing now
- *  session.maybeCanSkip(): returns true if there is a song being played now and 
- *    we believe we can skip it (this might not hold true, and the server can
- *    override this)
+ *  session.canSkip(): returns true if there is a song being played now and 
+ *    we believe we can skip it.
  *
  *  Other misc calls:
  *  
@@ -440,12 +439,8 @@ Session.prototype.reportPlayStopped = function (seconds) {
 };
 
 Session.prototype.requestSkip = function () {
-  if (!this.config.current) {
-    throw new Error('No song being played');
-  }
-
-  if (!this.config.current.started) {
-    throw new Error('No song has been started');
+  if (!this.hasActivePlayStarted()) {
+    throw new Error('No song playing or started');
   }
 
   if (!this.config.current.canSkip) {
@@ -891,11 +886,45 @@ Session.prototype._failedNextPlay = function (delay, ajax, response) {
   }
 };
 
+Session.prototype.canSkipInStation = function() {
+  return !(this.config.station && this.config.station.can_skip === false);
+};
+
+/**
+ * @returns {boolean} true if the user can skip the current song
+ */
 Session.prototype.maybeCanSkip = function () {
-  return this.config.current && this.config.current.started && this.config.current.canSkip;
+  return this.canSkip();
+};
+
+/**
+ * @returns {boolean} true if the user can skip the current song
+ */
+
+Session.prototype.canSkip = function () {
+  // you can probably skip unless we've explicitly disallowed it at the station or current song level
+  const can = this.canSkipInStation() && this.config.current && this.config.current.started && this.config.current.canSkip;
+
+  return !!can;
+};
+
+/**
+ * @returns {boolean} true if the user can like the current song
+ */
+
+Session.prototype.canLike = function() {
+  const response =  !(this.config.station && this.config.station.can_like === false);
+
+  return response;
 };
 
 Session.prototype.likePlay = function (playId) {
+  if (!this.canLike()) {
+    // technically, this play could be from a different station, but we're not tracking
+    // that right now... so let's just assume it is in the current station.
+    return;
+  }
+  
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/like', {
     method: 'POST'
   })
@@ -908,6 +937,12 @@ Session.prototype.likePlay = function (playId) {
 };
 
 Session.prototype.unlikePlay = function (playId) {
+  if (!this.canLike()) {
+    // technically, this play could be from a different station, but we're not tracking
+    // that right now... so let's just assume it is in the current station.
+    return;
+  }
+  
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/like', {
     method: 'DELETE'
   })
@@ -920,6 +955,12 @@ Session.prototype.unlikePlay = function (playId) {
 };
 
 Session.prototype.dislikePlay = function (playId) {
+  if (!this.canLike()) {
+    // technically, this play could be from a different station, but we're not tracking
+    // that right now... so let's just assume it is in the current station.
+    return;
+  }
+  
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/dislike', {
     method: 'POST'
   })    

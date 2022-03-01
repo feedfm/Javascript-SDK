@@ -90,6 +90,7 @@ var PlayerView = function (id, player) {
   this.player.on('play-liked', this._onPlayLiked, this);
   this.player.on('play-unliked', this._onPlayUnliked, this);
   this.player.on('play-disliked', this._onPlayDisliked, this);
+  this.player.on('station-changed', this._onStationChanged, this);
   this.player.on('plays-exhausted', this._onPlaysExhausted, this);
   this.player.on('skip-denied', this._onSkipDenied, this);
   this.player.on('suspend', this._onSuspend, this);
@@ -186,6 +187,10 @@ PlayerView.prototype._onPlayStarted = function (play) {
   this._enableButtonsBasedOnState();
   this._setLikeStatus(play.liked);
   this._enablePositionTracker();
+};
+
+PlayerView.prototype._onStationChanged = function () {
+  this._enableButtonsBasedOnState();
 };
 
 PlayerView.prototype._enablePositionTracker = function () {
@@ -368,10 +373,16 @@ PlayerView.prototype._enableButtonsBasedOnState = function () {
 
   switch (state) {
   case 'playing':
-    toEnable = ['.pause-button', '.like-button', '.dislike-button'];
+    toEnable = ['.pause-button'];
     toDisable = ['.play-button', '.start-button', '.resume-button'];
 
-    if (this.player.maybeCanSkip()) {
+    if (this.player.canLike()) {
+      toEnable.push('.dislike-button', '.like-button');
+    } else {
+      toDisable.push('.dislike-button', '.like-button');
+    }
+
+    if (this.player.canSkip()) {
       toEnable.push('.skip-button');
     } else {
       toDisable.push('.skip-button');
@@ -379,10 +390,16 @@ PlayerView.prototype._enableButtonsBasedOnState = function () {
     break;
 
   case 'paused':
-    toEnable = ['.play-button', '.resume-button', '.like-button', '.dislike-button'];
+    toEnable = ['.play-button', '.resume-button'];
     toDisable = ['.pause-button', '.start-button'];
 
-    if (this.player.maybeCanSkip()) {
+    if (this.player.canLike()) {
+      toEnable.push('.dislike-button', '.like-button');
+    } else {
+      toDisable.push('.dislike-button', '.like-button');
+    }
+    
+    if (this.player.canSkip()) {
       toEnable.push('.skip-button');
     } else {
       toDisable.push('.skip-button');
@@ -395,7 +412,7 @@ PlayerView.prototype._enableButtonsBasedOnState = function () {
     toDisable = ['.resume-button', '.pause-button', '.like-button', '.dislike-button', '.skip-button'];
     break;
   }
-
+  
   for (let item of toDisable) {
     this.$el.querySelectorAll(item).forEach((element) => {
       element.classList.remove('button-enabled');

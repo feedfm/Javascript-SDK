@@ -94,6 +94,9 @@
  *  Some misc methods:
  *
  *    setMuted(muted)
+ *    canLike() - returns true if the current song may be liked/unliked/disliked
+ *    canSkip() - returns true if the current song may be skipped (some stations have
+ *        skip frequency limits or disable skipping entirely)
  *
  */
 
@@ -464,7 +467,7 @@ Player.prototype._onSoundPlay = function (playId) {
     
     return this.session.reportPlayStarted();
   
-  } else if (!playerWasResumed) {
+  } else if (playerWasResumed) {
     // subsequent plays are considered 'resumed' events
     this.trigger('play-resumed', this.session.getActivePlay());
   }
@@ -658,10 +661,6 @@ Player.prototype.isPaused = function () {
   return this.session.isTuned() && this.state.paused;
 };
 
-Player.prototype.getStationInformation = function (stationInformationCallback) {
-  return this.session.getStationInformation(stationInformationCallback);
-};
-
 Player.prototype.tune = function () {
   log('TUNE');
 
@@ -801,10 +800,26 @@ Player.prototype.pause = function () {
   this.updateSimulcast();
 };
 
+/**
+ * Some regions disallow 'like'ing of songs (e.g. Canada). Check this after
+ * changing the active station or when a new song starts to know if the current
+ * song may be liked/disliked/unliked.
+ * 
+ * @returns {boolean} true if we can 'like' songs in the currently active station
+ */
+
+Player.prototype.canLike = function() {
+  return this.session.canLike();
+};
+
 Player.prototype.like = function () {
   log('LIKE');
 
   if (!this.session.hasActivePlayStarted()) {
+    return;
+  }
+  
+  if (!this.session.canLike()) {
     return;
   }
 
@@ -820,6 +835,10 @@ Player.prototype.unlike = function () {
     return;
   }
 
+  if (!this.session.canLike()) {
+    return;
+  }
+
   this.session.unlikePlay(this.state.activePlay.id);
 
   this.trigger('play-unliked');
@@ -829,6 +848,10 @@ Player.prototype.dislike = function () {
   log('DISLIKE');
 
   if (!this.session.hasActivePlayStarted()) {
+    return;
+  }
+
+  if (!this.session.canLike()) {
     return;
   }
 
@@ -846,6 +869,11 @@ Player.prototype.skip = function () {
 
   if (!this.session.hasActivePlayStarted()) {
     // can't skip non-playing song
+    return;
+  }
+
+  // cannot skip in station with skipping disabled
+  if (!this.session.canSkipInStation()) {
     return;
   }
 
@@ -930,8 +958,25 @@ Player.prototype.getDuration = function () {
   }
 };
 
+/**
+ * Return true if the user may skip the current song.
+ * 
+ * @returns {boolean}
+ */
+
+Player.prototype.canSkip = function() {
+  return this.session.canSkip();
+};
+
+/**
+ * Technically, you might not be able to skip a song at the time it starts, but
+ * eventually enough time might pass that you can skip the song. Hence, we
+ * had 'maybeCanSkip'. However, nobody is repeatedly checking for skippability
+ * while playing a song, so this method is deprecated.
+ */
+
 Player.prototype.maybeCanSkip = function () {
-  return !!this.session.maybeCanSkip();
+  return this.canSkip();
 };
 
 var mutedKey = 'muted';
