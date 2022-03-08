@@ -55,8 +55,9 @@
  *   audio can be started while the fadeout is happening.
  */
 
-import log from './log';
 import Events from './events';
+import hasBlobSupport from './blob-support';
+import log from './log';
 import { uniqueId } from './util';
 
 const DEFAULT_VOLUME = 1.0;
@@ -204,7 +205,11 @@ Sound.prototype = {
  * @returns Speaker
  */
 
-let Speaker = function () {
+let Speaker = function (options) {
+  if (options && options.maxRetries) {
+    this.maxRetries = options.maxRetries;
+  }
+
   return Object.assign(this, Events);
 };
 
@@ -251,6 +256,10 @@ Speaker.prototype = {
   fading: null, // fading audio element, sound, and gain node
   preparing: null, // preparing audio element, sound, and gain node
 
+  responses: null, // array of response headers from preloading
+
+  maxRetries: 10, // max number of times to retry preloading a song
+  
   // each of the above look like:
   // {
   //   audio: an HTML Audio element (created during initializeAudio() and reused)
@@ -272,6 +281,18 @@ Speaker.prototype = {
   // When a sound has completed playback or been destroyed, the sound property is set
   // to null, the audio is paused, and audio.src is set to SILENCE.
 
+  // If the browser supports URL.objectToURL(), we try to load audio with fetch and
+  // then pass the blob URL to the audio element.
+  preloaded: null, 
+
+  /*
+  { 
+    url,             // url we are trying to load manually (will not be null)
+    blobUrl: null  // blob url for URL above, or null if not loaded yet
+  },
+  */
+
+  // Fallback for preloading if the browser does not support URL.objectToURL()
   prepareWhenReady: null, // { url, start }
 
   initializeAudio: function () {
@@ -311,7 +332,7 @@ Speaker.prototype = {
 
   getSupportedFormats: function () {
     if (document.createElement('audio').canPlayType('audio/aac')) {
-      return 'aac,mp3';
+      return 'mp3,aac';
     } else {
       return 'mp3';
     }
@@ -357,9 +378,11 @@ Speaker.prototype = {
   _addEventListeners: function (audio) {
     audio.addEventListener('pause', this._onAudioPauseEvent.bind(this));
     audio.addEventListener('ended', this._onAudioEndedEvent.bind(this));
+    audio.addEventListener('error', this._onAudioErroredEvent.bind(this));
     audio.addEventListener('timeupdate', this._onAudioTimeUpdateEvent.bind(this));
     audio.addEventListener('canplaythrough', this._onAudioCanPlay.bind(this));
     audio.addEventListener('canplay', (event) => { log('can play!', event.currentTarget.src); });
+
     //this._debugAudioObject(audio);
   },
 
@@ -376,7 +399,7 @@ Speaker.prototype = {
       log('preparing file can play through', audio.src);
 
       this.preparing.canplaythrough = true;
-      this.trigger('prepared', audio.src);
+      this.trigger('prepared', audio.src, true);
     }
   },
 
@@ -391,7 +414,7 @@ Speaker.prototype = {
       return;
     }
 
-    if (!this.active.sound || (this.active.sound.url !== audio.src)) {
+    if (!this.active.sound) {
       log('active audio pause, but no matching sound');
       return;
     }
@@ -407,6 +430,7 @@ Speaker.prototype = {
     }
 
     if (!CHROMECAST && (audio === this.fading.audio)) {
+      revoke(audio);
       audio.src = SILENCE;
       this.fading.sound = null;
       return;
@@ -416,7 +440,7 @@ Speaker.prototype = {
       return;
     }
 
-    if (!this.active.sound || (this.active.sound.url !== audio.src)) {
+    if (!this.active.sound) {
       log('active audio ended, but no matching sound', audio.src);
       return;
     }
@@ -425,6 +449,35 @@ Speaker.prototype = {
     var sound = this.active.sound;
     this.active.sound = null;
     sound.trigger('finish');
+  },
+
+  _onAudioErroredEvent: function (event) {
+    var audio = event.currentTarget;
+
+    if (audio.src === SILENCE) {
+      return;
+    }
+
+    if (audio === this.fading.audio) {
+      revoke(audio);
+      audio.src = SILENCE;
+      this.fading.sound = null;
+      return;
+    }
+
+    if (audio !== this.active.audio) {
+      return;
+    }
+
+    if (!this.active.sound) {
+      log('active audio errored, but no matching sound', audio.src);
+      return;
+    }
+
+    log('active audio errored', event.error);
+    var sound = this.active.sound;
+    this.active.sound = null;
+    sound.trigger('finish', event.error);
   },
 
   _onAudioTimeUpdateEvent: function (event) {
@@ -437,6 +490,7 @@ Speaker.prototype = {
     if (!CHROMECAST && audio === this.fading.audio && this.fading.sound) {
       if (this.fading.sound.endPosition && (audio.currentTime >= (this.fading.sound.endPosition / 1000))) {
         this.fading.sound = null;
+        revoke(this.fading.audio);
         this.fading.audio.src = SILENCE;
 
       } else {
@@ -450,13 +504,8 @@ Speaker.prototype = {
       return;
     }
 
-    if (!this.active.sound) {
+    if (!this.active.sound || this.active.sound.awaitingPlayResponse) {
       // got an elapse event before the play() succeeded
-      return;
-    }
-
-    if (this.active.sound.url !== audio.src) {
-      log('active audio elapsed, but no matching sound, so ignoring', audio.src);
       return;
     }
 
@@ -465,7 +514,7 @@ Speaker.prototype = {
       var sound = this.active.sound;
 
       this.active.sound = null;
-
+      revoke(this.active.audio);
       this.active.audio.src = SILENCE;
       sound.trigger('finish');
 
@@ -540,7 +589,7 @@ Speaker.prototype = {
   },
 
   _debugAudioObject: function (object) {
-    var events = ['abort', 'load', 'loadend', 'loadstart', 'loadeddata', 'loadedmetadata', 'canplay', 'canplaythrough', 'seeked', 'seeking', 'stalled', 'timeupdate', 'volumechange', 'waiting', 'durationchange', 'progress', 'emptied', 'ended', 'play', 'pause'];
+    var events = ['abort', 'load', 'loadend', 'loadstart', 'loadeddata', 'loadedmetadata', 'canplay', 'canplaythrough', 'seeked', 'seeking', 'stalled', 'timeupdate', 'volumechange', 'waiting', 'durationchange', 'progress', 'emptied', 'ended', 'play', 'pause', 'error'];
     var speaker = this;
 
     for (var i = 0; i < events.length; i++) {
@@ -598,23 +647,42 @@ Speaker.prototype = {
 
   prepare: function (url, startPosition = 0) {
     if (!this.active || !this.active.audio) {
-      log('saving url to prepare when audio is initialized', { url, startPosition });
-      this.prepareWhenReady = { url, startPosition };
-      return false;
+      if (hasBlobSupport()) {
+        log('pre-loading audio', { url });
+        return this._preload(url);
+
+      } else {
+        log('saving url to prepare when audio is initialized', { url, startPosition });
+        this.prepareWhenReady = { url, startPosition };
+        return false;
+
+      }
     }
 
     var ranges = this.active.audio.buffered;
+ 
+
+    var range = (ranges.length > 0) && ranges.end(ranges.length - 1);
     if (!CHROMECAST && (ranges.length > 0) && (ranges.end(ranges.length - 1) >= this.active.audio.duration)) {
-      log('active song has loaded enough, to preparing', url);
-      return this._prepare(url, startPosition);
+      log('active song has loaded enough, so preparing', url);
+      if (hasBlobSupport()) {
+        return this._preload(url);
+      } else {
+        return this._prepare(url, startPosition);
+      }
     
     } else if (this.active.audio.src === SILENCE) {
       log('preparing over silence');
-      return this._prepare(url, startPosition);
+      if (hasBlobSupport()) {
+        return this._preload(url);
+      } else {
+        return this._prepare(url, startPosition);
+      }
     }
 
     // still loading primary audio - so hold off for now
-    log('still loading primary, so waiting to do active prepare', { activeUrl: this.active.audio.src });
+
+    log('still loading primary, so waiting to do active prepare', { activeUrl: this.active.audio.src, range });
     this.prepareWhenReady = { url, startPosition };
 
     return false;
@@ -672,6 +740,138 @@ Speaker.prototype = {
     console.groupEnd();
   },
 
+  /** 
+   * This function tries to fetch the given URL and convert it
+   * into a blob url. If the URL is already loaded up, this
+   * returns true.
+   * 
+   * @param {string} url url to load into memory
+   * @returns true if the url is already loaded up
+   **/
+
+  _preload: function(url) {
+    log('preloading!');
+    
+    this.prepareWhenReady = null;
+
+    if (this.preloaded) {
+      if (this.preloaded.url === url) {
+        // true when already loaded up
+        const preloaded = !!this.preloaded.blobUrl;
+
+        log('preloading', { url, preloaded });
+        
+        return preloaded;
+      }
+
+      if (this.preloaded.blobUrl) {
+        log('revoking previously loaded url', { url: this.preloaded.url });
+
+        // unload previous blob
+        URL.revokeObjectURL(this.preloaded.blobUrl);
+        this.preloaded = null;
+      }
+    }
+
+    this.preloaded = {
+      url,
+      blobUrl: null,
+      responses: []
+    };
+    
+    this._fetch(url, this.preloaded.responses);
+
+    return false;
+  },
+
+  _fetch: function(url, responses, attempt = 1) {
+    log(`preload attempt #${attempt}`, { url });
+
+    const response = { start: new Date().toString() };
+    responses.push(response);
+
+    const retry = () => {
+      if (!this.preloaded || (this.preloaded.url !== url)) {
+        log('preload abandoning retry because we have moved on', { url });
+        return;
+      }
+
+      if (attempt > this.maxRetries) {
+        log('preload failed to fetch', { url, responses });
+        this.preloaded = null;
+        this.trigger('prepared', url, false, responses);
+        return;
+      } 
+    
+      setTimeout(() => this._fetch(url, responses, attempt + 1), Math.min(Math.pow(10, attempt), 10000));
+    };
+    
+    log('preloading', { url, responses });
+  
+    // stress test:
+    // const extra = (Math.random() < 0.7) ? '-extrajunkj' : '';
+
+    fetch(url  /* + extra */)
+      .then((res) => {
+        log('preload got response');
+        response.end = new Date().toString();
+        response.status = res.status;
+        response.text = res.statusText;
+        response.headers = [ ...res.headers.entries() ];
+                  
+        // if res.type == 'opaque', could cause problems
+        if (res.type === 'opaque') {
+          log('preload opaque response, so retrying');
+          response.name = 'OpaqueResponse';
+          response.message = 'Browser returned oaque response';
+          retry();
+          return;
+        }
+        
+        if (!res.ok) {
+          log('preload fetch error - retrying');
+          retry();
+          return;
+        }
+
+        res
+          .blob()
+          .then((blob) => {
+            log('preload got blob');
+            
+            if (this.preloaded && (this.preloaded.url === url)) {
+              log('preloaded', { url });
+              const properMimeTypeBlob = new Blob([ blob ], { type: 'audio/mpeg' });
+              this.preloaded.blobUrl = URL.createObjectURL(properMimeTypeBlob);
+          
+              this.trigger('prepared', url, true, responses);
+  
+            } else {
+              // finished retrieving file, but nobody cares any more
+              log('preload retrieved url, but nobody cares any more');
+            }
+          })
+          .catch((err) => {
+            log('preload error blobbing', err, err.name, err.message);
+
+            response.name = err.name;
+            response.message = err.message;
+
+            retry();
+          });
+      })
+      .catch((err) => {
+        log('preload error', err, err.name, err.message);
+
+        // connectivity error 
+        response.end = new Date().toString();
+        response.name = err.name;
+        response.message = err.message;
+        
+        retry();
+      });
+  },
+
   /**
  * This function puts the given URL into the prepared audio element and tells
  * the browser to advance to the given start position.
@@ -701,6 +901,8 @@ Speaker.prototype = {
       }
 
       this.preparing.canplaythrough = false;
+
+      revoke(this.preparing.audio);
       this.preparing.audio.src = url;
     }
 
@@ -758,7 +960,8 @@ Speaker.prototype = {
             })
             .catch(function (e) {
               log('error resuming fading playback', e.name, e.message, e.stack, sound.id);
-              speaker.fading.sound = null;
+              speaker.fading.sound = null;        
+              revoke(speaker.fading.audio);
               speaker.fading.audio.src = SILENCE;
             });
 
@@ -768,33 +971,37 @@ Speaker.prototype = {
         log(sound.id + ' is already playing');
       }
 
-    } else {
-      if (!CHROMECAST && this.preparing.audio.src !== sound.url) {
-        // hopefully, by this time, any sound that was destroyed before its
-        // play() call completed has actually completed its play call. Otherwise
-        // this will trigger an exception in the play preparation.
-        this._prepare(sound.url, sound.startPosition);
-
-        /*
-              } else if (sound.startPosition && (this.preparing.audio.currentTime !== sound.startPosition)) {
-                log('advancing prepared audio to', sound.startPosition / 1000);
-                this.preparing.audio.currentTime = sound.startPosition / 1000;
-                */
+      return;
+    } 
+    
+    if (!CHROMECAST && this.preloaded && (this.preloaded.url === sound.url) && this.preloaded.blobUrl) {
+      log(sound.id + ' using preloaded audio', this.preloaded);
+      
+      if (this.preparing.audio.playing) {
+        this.preparing.audio.pause();
       }
+      
+      sound.responses = this.preloaded.responses;
 
-      // swap prepared -> active
-      var active = this.active;
-      if (!CHROMECAST){
-        this.active = this.preparing;
-        this.preparing = active; // don't throw sound object in active until playback starts (below)
-      }
+      revoke(this.preparing.audio);
+      this.preparing.audio.src = this.preloaded.blobUrl;
+      this.preparing.canplaythrough = true;
+      this.preloaded = null;
 
-      this.preparing.canplaythrough = false;
-      this.preparing.audio.src = SILENCE;
+    } else if (this.preparing.audio.src !== sound.url) {
+      // hopefully, by this time, any sound that was destroyed before its
+      // play() call completed has actually completed its play call. Otherwise
+      // this will trigger an exception in the play preparation.
+      this._prepare(sound.url, sound.startPosition);
 
-      // don't throw sound object in active until playback starts (below)
-      this.active.sound = null;
-      this._setVolume(this.active, sound);
+    }
+
+    // swap prepared -> active
+    var active = this.active;
+    if (!CHROMECAST){
+      this.active = this.preparing;
+      this.preparing = active; // don't throw sound object in active until playback starts (below)
+    }
 
       // notify clients that whatever was previously playing has finished
       if (!CHROMECAST && this.preparing.sound) {
@@ -804,13 +1011,36 @@ Speaker.prototype = {
         this.preparing.sound = null;
         finishedSound.trigger('finish');
       }
+    this.preparing.canplaythrough = false;
 
-      log(sound.id + ' initiating play()');
+    revoke(this.preparing.audio);
+    this.preparing.audio.src = SILENCE;
 
-      var me = this.active;
+    // don't throw sound object in active until playback starts (below)
+    this.active.sound = null;
+    this._setVolume(this.active, sound);
+
+    // notify clients that whatever was previously playing has finished
+    if (this.preparing.sound) {
+      var finishedSound = this.preparing.sound;
+      this.preparing.sound = null;
+      finishedSound.trigger('finish');
+    }
+
+    sound.awaitingPlayResponse = true;
+    this.active.sound = sound;
+
+    var me = this.active;
+
+    var attempt = 1;
+    
+    const play = () => {
+      log(sound.id + ' initiating play()', { attempt });
 
       this.active.audio.play()
         .then(function () {
+          delete sound.awaitingPlayResponse;
+        
           if (!speaker.outstandingSounds[sound.id]) {
             log(sound.id + ' play() succeeded, but sound has been destroyed');
 
@@ -818,6 +1048,8 @@ Speaker.prototype = {
             if (me.audio && (me.audio.src === sound.url)) {
               log(sound.id + ' being paused and unloaded');
               me.audio.pause();
+
+              revoke(me.audio);
               me.audio.src = SILENCE;
             }
 
@@ -825,8 +1057,7 @@ Speaker.prototype = {
           }
 
           log(sound.id + ' play() succeeded');
-          me.sound = sound;
-
+        
           // configure fade-out now that metadata is loaded
           if (sound.fadeOutSeconds && (sound.fadeOutEnd === 0)) {
             sound.fadeOutStart = me.audio.duration - sound.fadeOutSeconds;
@@ -852,10 +1083,19 @@ Speaker.prototype = {
 
         })
         .catch(function (error) {
-          log('error starting playback with sound ' + sound.id, error.name, error.message, error.stack);
-          sound.trigger('finish', error);
+          log('error starting playback with sound ' + sound.id, { name: error.name, message: error.message, attempt });
+
+          if (attempt < 4) {
+            attempt++;
+            setTimeout(play, 10);
+          } else {
+            sound.trigger('finish', error);            
+          }
         });
-    }
+    };
+
+    play();
+    
   },
 
   _destroySound: function (sound, fadeOut = false) {
@@ -866,6 +1106,8 @@ Speaker.prototype = {
       if (!fadeOut || !sound.fadeOutSeconds) {
         log('destroy triggered for current sound (no fadeout)', sound.id);
         this.active.audio.pause();
+
+        revoke(this.active.audio);
         this.active.audio.src = SILENCE;
 
       } else {
@@ -899,7 +1141,7 @@ Speaker.prototype = {
     } else {
       log('destroy triggered for inactive sound', sound.id);
 
-      // if (this.active && (this.active.audio.src === sound.url)) {
+      // if (this.active && (this.active.audio.sound === sound)) {
       //   We're destroying the active sound, but it hasn't completed its play()
       //   yet (indicated by this.active.sound === sound), so we can't pause it
       //   here. When the play does complete, it will notice it isn't in the 
@@ -937,7 +1179,9 @@ Speaker.prototype = {
         // if we try to pause() right now, it will cause the play() to throw an
         // exception... so just throw up a flag for this
         this.active.pauseAfterPlay = true;
-      }
+      } 
+      this.active.audio.pause();
+      
     }
 
     if (!CHROMECAST && this.fading && this.fading.audio) {
@@ -947,10 +1191,6 @@ Speaker.prototype = {
 
   _position: function (sound) {
     if (this.active && (sound === this.active.sound)) {
-      if (sound.url !== this.active.audio.src) {
-        log('trying to get current song position, but it is not in the active audio player');
-      }
-
       return Math.floor(this.active.audio.currentTime * 1000);
 
     } else {
@@ -961,9 +1201,6 @@ Speaker.prototype = {
 
   _duration: function (sound) {
     if (sound === this.active.sound) {
-      if (sound.url !== this.active.audio.src) {
-        log('trying to get current song duration, but it is not in the active audio player');
-      }
       var d = this.active.audio.duration;
       return isNaN(d) ? 0 : Math.floor(d * 1000);
 
@@ -993,6 +1230,13 @@ Speaker.prototype = {
   }
 
 };
+
+function revoke(audio) {
+  if (audio.src.slice(0, 4) === 'blob') {
+    log('revoking', { url: audio.src });
+    URL.revokeObjectURL(audio.src);
+  }
+}
 
 // add events to speaker class
 Object.assign(Speaker.prototype, Events);

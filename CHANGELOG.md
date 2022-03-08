@@ -1,5 +1,34 @@
 # Changelog
 
+1.103.0
+
+- Support for station level like/skip adjustments
+- Bugfix for 'play-resumed' event not being triggered
+
+1.102.3
+
+- Improved handling of non-200 HTTP errors
+- song preparation bugfix
+- more property checks
+
+1.102.2
+
+- SDK was automatically applying station-level crossfade values, but this differs from
+  the logic in the native SDKs, which require a placement level crossfade value to be set in
+  order for the SDK to automtically assign crossfade values. With this fix, crossfade values
+  sent by the server will only be automatically applied if a placement level crossfade value
+  is assigned by the server.
+
+1.102.1
+
+- 'resumable' option for Player() creation, to disable storing state in local storage
+
+1.102.0
+
+- Prioritize mp3 over m4a.
+- Use fetch() to pre-load audio, rather than relying on browser, to get past
+  CDN problems.
+
 1.101.1
 
 - new `Feed.resumable()` functionality, to allow resuming playback after a page refresh.

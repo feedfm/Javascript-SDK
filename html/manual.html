@@ -17,6 +17,8 @@
     <button class="pause-button">pause</button>
     <button class="skip-button">skip</button>
     <button class="stop-button">stop</button>
+    <button class="like-button">like</button>
+    <button class="dislike-button">dislike</button>
     <button class="initialize-audio">initializeAudio</button>
   </div>
 
@@ -40,29 +42,50 @@
     <div class="status"></div>
   </div>
 
+  <div>
+    <select id="ip">
+      <option value="US" selected>US</option>
+      <option value="CA">CA</option>
+    </select>
+  </div>
+
 
   <script>
     console.log('**** PAGE RELOAD ******');
+
+    const ips = {
+      US: '75.37.70.130',
+      CA: '192.206.151.131'
+    };
+
+    const country = this.location.search ? this.location.search.slice(1) : 'US';
+    const ip = ips[country];
+
+    $('#ip').val(country);
+
+    $('#ip').on('change', function() {
+      window.location.search = $(this).val();
+    });
+
     var simulcast = 'nGwPEXk4js9V4Yp3HcyM2i';
 
     // Create basic player.
-    console.log('pre');
     var player =  Feed.resumable(60000) ||
-        new Feed.Player('d9b27a6b64f25ee6de295c3d2bb7da1204ccf7a8', 'dad9db7eafb29fcd6dc7f8022489cb79c7009798', {
+        new Feed.Player('country', 'country', {
           baseUrl: 'https://stage.feed.fm',
           debug: true,
+          simulcast: simulcast,
           remoteLogging: true
         });
-    console.log("post!");
-
+    player.session.extraHeaders = { 'X-Streaming-For': ips[country] };
+    
     console.log('state', player.getCurrentState());
 
     // Display all the events the player triggers
     player.on('all', function (event) {
       console.log('EVENT: \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
       console.log('  state', player.getCurrentState());
-      console.log('  ', JSON.stringify(player._persist(), null, 2));
-
+      console.log('  ', player._persist());
     });
 
     player.on('stations', function (stations) {
@@ -73,7 +96,7 @@
           var id = $(this).data('id');
           var crossfade = $('#crossfade').is(':checked');
 
-          player.setStationId(id, 300);
+          player.setStationId(id, crossfade);
         });
         $('.stations').append($button);
       }

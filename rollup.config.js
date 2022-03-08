@@ -1,10 +1,10 @@
-import resolve from '@rollup/plugin-node-resolve';
 import babel from 'rollup-plugin-babel';
+import bundleSize from 'rollup-plugin-bundle-size';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
-import bundleSize from 'rollup-plugin-bundle-size';
-import visualizer from 'rollup-plugin-visualizer';
+import resolve from '@rollup/plugin-node-resolve';
 import { terser } from 'rollup-plugin-terser';
+import visualizer from 'rollup-plugin-visualizer';
 
 export default [
   // production IIFE release

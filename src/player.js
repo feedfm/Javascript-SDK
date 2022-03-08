@@ -18,8 +18,11 @@
  *    trimming: true,       // when true, song start/end trims will be honored
  *    crossfadeIn: false,   // when true, songs do not fade in - they start at full volume
  *    normalizeVolume: true, // automatically adjust volume of songs in station to be at same approx loudness
- *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions
+ *    secondsOfCrossfade: 0 // number of seconds to crossfade songs during song transitions (note: this might be
+ *                          // overidden by the server)
  *    simulcast: 'uuid'     // id to announce music playback on, for simulcast listeners
+ *    maxRetries: 6         // max number of times to retry retrieving a song before giving up
+ *    resumable: true       // when true, playback can be resumed after a page refresh with Feed.resumable();
  *
  *  In response to a user-interaction event, and before you begin any
  *  music playback, be sure to call:
@@ -91,6 +94,9 @@
  *  Some misc methods:
  *
  *    setMuted(muted)
+ *    canLike() - returns true if the current song may be liked/unliked/disliked
+ *    canSkip() - returns true if the current song may be skipped (some stations have
+ *        skip frequency limits or disable skipping entirely)
  *
  */
 
@@ -119,6 +125,7 @@ var Player = function (token, secret, options) {
     console.log("^^^ this was messing up chromecast");
   } else {
     options = options || {};
+    options.maxRetries = options.maxRetries || 10;
     this.options = options;
 
     this.state = {
@@ -137,14 +144,16 @@ var Player = function (token, secret, options) {
 
     this.trimming = (options.trimming === false) ? false : true;
     this.normalizeVolume = ('normalizeVolume' in options) ? options.normalizeVolume : true;
+    this.resumable = ('resumable' in options) ? options.resumable : true;
     this.secondsOfCrossfade = options.secondsOfCrossfade || 0;
     this.crossfadeIn = !!options.crossfadeIn;
+    this.serverAssignedCrossfade = false;
     this._stationsPromise = new Promise((resolve, reject) => {
       this._stationsResolve = resolve;
       this._stationsReject = reject;
     });
 
-    const speaker = this.speaker = new Speaker();
+    const speaker = this.speaker = new Speaker({ maxRetries: options.maxRetries });
     
     var session = this.session = new Session(token, secret, options);
 
@@ -219,10 +228,8 @@ Player.prototype._persist = function() {
     trimming: this.trimming,
     normalizeVolume: this.normalizeVolume,
     secondsOfCrossfade: this.secondsOfCrossfade,
+    serverAssignedCrossfade: this.serverAssignedCrossfade,
     crossfadeIn: this.crossfadeIn,
-    _station: this._station,
-    _stations: this._stations,
-    _placement: this._placement,
     sessionConfig: this.session.config
   };
 
@@ -247,9 +254,9 @@ Player.prototype._restore = function({ persisted, elapsed }) {
   this.session = new Session();
   this.session.config = sessionConfig;
 
-  this.speaker = new Speaker();
-
   this.options = persisted.options;
+
+  this.speaker = new Speaker({ maxRetries: this.options.maxRetries });
   
   // start off in paused state
   this.state = {
@@ -259,7 +266,9 @@ Player.prototype._restore = function({ persisted, elapsed }) {
 
   this.trimming = persisted.trimming;
   this.normalizeVolume = persisted.normalizeVolume;
+  this.resumable = true;
   this.secondsOfCrossfade = persisted.secondsOfCrossfade;
+  this.serverAssignedCrossfade = persisted.serverAssignedCrossfade;
   this.crossfadeIn = persisted.crossfadeIn;
 
   this._stationsPromise = new Promise((resolve, reject) => {
@@ -276,9 +285,9 @@ Player.prototype._restore = function({ persisted, elapsed }) {
     return Promise
       .resolve(true)
       .then(() => {
-        this._station = persisted._station;
-        this._stations = persisted._stations;
-        this._placement = persisted._placement;
+        this._station =   persisted.sessionConfig.station;
+        this._stations =  persisted.sessionConfig.stations;
+        this._placement = persisted.sessionConfig.placement;
 
         this._stationsResolve(persisted._stations);
   
@@ -323,6 +332,7 @@ Player.prototype._onPlacement = function(placement) {
 
   if (placement.options && placement.options.crossfade_seconds) {
     this.secondsOfCrossfade = placement.options.crossfade_seconds;
+    this.serverAssignedCrossfade = true;
   }
 
   this.trigger('placement', placement);
@@ -339,11 +349,11 @@ Player.prototype._onStations = function(stations) {
 Player.prototype._onStationChanged = function(stationId, station) {
   this._station = station;
 
-  if (station.options && ('crossfade_seconds' in station.options)) {
+  if (this.serverAssignedCrossfade && station.options && ('crossfade_seconds' in station.options)) {
     // apply station level crossfade, if available
     this.secondsOfCrossfade = station.options.crossfade_seconds;
     
-  } else if (this._placement.options && ('crossfade_seconds' in this._placement.options)) {
+  } else if (this.serverAssignedCrossfade && this._placement.options && ('crossfade_seconds' in this._placement.options)) {
     // revert to placement level crossfade, if available
     this.secondsOfCrossfade = this._placement.options.crossfade_seconds;
 
@@ -366,6 +376,9 @@ Player.prototype.setStationId = function (stationId, fadeOutOrAdvance) {
 
     log('SET STATION ID (WITH ADVANCE)', stationId, advance);
   
+  } else {
+
+    log('SET STATION ID', stationId);
   }
 
   if (fadeOut && this.state.activePlay) {
@@ -448,11 +461,13 @@ Player.prototype._onSoundPlay = function (playId) {
   // on the first play, tell the server we're good to go
   if (!this.state.activePlay.startReportedToServer) {
     // save the state so we can restore
-    persistState(this._persist());
+    if (this.resumable) {
+      persistState(this._persist());
+    }
     
     return this.session.reportPlayStarted();
   
-  } else if (!playerWasResumed) {
+  } else if (playerWasResumed) {
     // subsequent plays are considered 'resumed' events
     this.trigger('play-resumed', this.session.getActivePlay());
   }
@@ -490,8 +505,12 @@ Player.prototype._onSoundFinish = function (playId, withError) {
     return;
   }
 
+  const sound = this.state.activePlay.sound;
+
   this.state.activePlay.soundCompleted = true;
   if (withError) {
+    this.session._submitEvent('playback-error', {  url: sound.url, responses: sound.responses, error: withError, play_id: playId });
+
     this.state.activePlay.soundCompletedWithError = true;
 
     if (withError.name === 'NotAllowedError') {
@@ -540,7 +559,9 @@ Player.prototype._onSoundElapse = function (playId) {
     previousCount = Math.floor(this.state.activePlay.previousPosition / interval),
     currentCount = Math.floor(position / interval);
 
-  persistElapsed(position);
+  if (this.resumable) {
+    persistElapsed(position);
+  }
 
   this.state.activePlay.previousPosition = position;
 
@@ -607,23 +628,38 @@ Player.prototype._onPlayCompleted = function (play) {
 };
 
 Player.prototype._onPlaysExhausted = function () {
+  if (this.state.paused) {
+    return;
+  }
+  
   this.state.paused = false;
 
   this.updateSimulcast();
   this.trigger('plays-exhausted');
 };
 
-Player.prototype._onPrepareSound = function (url, startPosition) {
-  log('preparing', url, startPosition);
+Player.prototype._onPrepareSound = function (url, startPosition, playId) {
+  log('preparing sound', url, startPosition);
+
   this.speaker.prepare(url, startPosition * 1000);
+  this.speaker.once('prepared', (preparedUrl, success, headers) => {
+    if (url !== preparedUrl) {
+      return;
+    }
+
+    if (headers && headers.length > 1) {
+      this.session._submitEvent('preload-error', { url, play_id: playId, responses: headers });
+    }
+
+    const activePlay = this.session.getActivePlay();
+    if (!success && (!activePlay || (activePlay.id !== playId))) {  
+      this.session.requestInvalidate(url);
+    }
+  });
 };
 
 Player.prototype.isPaused = function () {
   return this.session.isTuned() && this.state.paused;
-};
-
-Player.prototype.getStationInformation = function (stationInformationCallback) {
-  return this.session.getStationInformation(stationInformationCallback);
 };
 
 Player.prototype.tune = function () {
@@ -658,9 +694,14 @@ Player.prototype.prepare = function () {
 
   this.speaker.initializeAudio();
 
+  return this._prepare();
+};
+
+Player.prototype._prepare = function() {
   let ap = this.state.activePlay;
   if (ap) {
-    let prepared = this.speaker.prepare(ap.sound.url, ap.sound.startPosition);
+    const url = ap.sound.url;
+    let prepared = this.speaker.prepare(url, ap.sound.startPosition);
 
     if (prepared) {
       return Promise.resolve(true).then(() => {
@@ -669,45 +710,44 @@ Player.prototype.prepare = function () {
       });
     } else {
       return new Promise((resolve) => {
-        log('waiting for prepared event');
-        this.speaker.on('prepared', () => resolve(true));
-      }).then(() => {
-        this.trigger('prepared');
+        log('waiting for un/prepared event');
+
+        this.speaker.once('prepared', (preparedUrl, success, headers) => {
+
+          if (headers && (headers.length > 1)) {
+            this.session._submitEvent('preload-error', { url: preparedUrl, play_id: ap.id, responses: headers });
+          }
+
+          if (preparedUrl !== url) {
+            return;
+          }
+
+          if (success) {
+            this.trigger('prepared');
+            resolve(true);
+
+          } else {
+            // invalidate the play, and request a new one
+            this.session.requestInvalidate();
+            
+            this.session.once('play-active', () => {
+              this._prepare().then((val) => resolve(val));
+            });
+          }
+        });
       });
     }
   } else {
     return new Promise((resolve) => {
-      this.session.once('play-active', (play) => {
-        log('play active');
-        let startPosition;
-
-        if (play.start_at) {
-          // when offsetting into a station, ignore the trim and honor the start_at
-          startPosition = play.start_at * 1000;
-      
-        } else {
-          if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_start) {
-            startPosition = play.audio_file.extra.trim_start * 1000;
-          }
-
-        }
-
-        let ready = this.speaker.prepare(play.audio_file.url, startPosition);
-
-        if (ready) {
-          log('song is prepared!');
-          resolve(true);
-        } else {
-          this.speaker.on('prepared', resolve);
-        }
+      this.session.once('play-active', (/* play */) => {
+        this._prepare().then((val) => resolve(val));
       });
 
       if (!this.session.isTuned()) {
         log('tuning');
         this.session.tune();
       }
-
-    }).then(() => this.trigger('prepared'));
+    });
   }
 };
 
@@ -761,10 +801,26 @@ Player.prototype.pause = function () {
   this.updateSimulcast();
 };
 
+/**
+ * Some regions disallow 'like'ing of songs (e.g. Canada). Check this after
+ * changing the active station or when a new song starts to know if the current
+ * song may be liked/disliked/unliked.
+ * 
+ * @returns {boolean} true if we can 'like' songs in the currently active station
+ */
+
+Player.prototype.canLike = function() {
+  return this.session.canLike();
+};
+
 Player.prototype.like = function () {
   log('LIKE');
 
   if (!this.session.hasActivePlayStarted()) {
+    return;
+  }
+  
+  if (!this.session.canLike()) {
     return;
   }
 
@@ -780,6 +836,10 @@ Player.prototype.unlike = function () {
     return;
   }
 
+  if (!this.session.canLike()) {
+    return;
+  }
+
   this.session.unlikePlay(this.state.activePlay.id);
 
   this.trigger('play-unliked');
@@ -789,6 +849,10 @@ Player.prototype.dislike = function () {
   log('DISLIKE');
 
   if (!this.session.hasActivePlayStarted()) {
+    return;
+  }
+
+  if (!this.session.canLike()) {
     return;
   }
 
@@ -806,6 +870,11 @@ Player.prototype.skip = function () {
 
   if (!this.session.hasActivePlayStarted()) {
     // can't skip non-playing song
+    return;
+  }
+
+  // cannot skip in station with skipping disabled
+  if (!this.session.canSkipInStation()) {
     return;
   }
 
@@ -890,8 +959,25 @@ Player.prototype.getDuration = function () {
   }
 };
 
+/**
+ * Return true if the user may skip the current song.
+ * 
+ * @returns {boolean}
+ */
+
+Player.prototype.canSkip = function() {
+  return this.session.canSkip();
+};
+
+/**
+ * Technically, you might not be able to skip a song at the time it starts, but
+ * eventually enough time might pass that you can skip the song. Hence, we
+ * had 'maybeCanSkip'. However, nobody is repeatedly checking for skippability
+ * while playing a song, so this method is deprecated.
+ */
+
 Player.prototype.maybeCanSkip = function () {
-  return !!this.session.maybeCanSkip();
+  return this.canSkip();
 };
 
 var mutedKey = 'muted';

@@ -84,9 +84,8 @@
  *  session.isTuned(): true if the session has active plays available or is awaiting
  *    plays from the server
  *  session.hasActivePlayStarted(): returns true if the active play is playing now
- *  session.maybeCanSkip(): returns true if there is a song being played now and 
- *    we believe we can skip it (this might not hold true, and the server can
- *    override this)
+ *  session.canSkip(): returns true if there is a song being played now and 
+ *    we believe we can skip it.
  *
  *  Other misc calls:
  *  
@@ -377,7 +376,8 @@ Session.prototype.reportPlayElapsed = function (seconds) {
     headers: {
       'Content-Type': 'application/json'
     }
-  });
+  })
+    .catch((e) => log('server returned error on elapse call. ignoring', e));
 };
 
 Session.prototype.reportPlayCompleted = function () {
@@ -386,7 +386,10 @@ Session.prototype.reportPlayCompleted = function () {
   if (this.config.current && (this.config.current.started)) {
     this._signedAjax(getBaseUrl() + '/api/v2/play/' + this.config.current.play.id + '/complete', {
       method: 'POST'
-    }).finally(self._receivePlayCompleted.bind(self));
+    })
+      .then((response) => response.json())
+      .catch((err) => { log('play completed returned error - ignoring', err); })
+      .finally(self._receivePlayCompleted.bind(self));
 
   } else {
     log('finish on non-active or playing song');
@@ -422,7 +425,9 @@ Session.prototype.reportPlayStopped = function (seconds) {
       headers: {
         'Content-Type': 'application/json'
       }
-    });
+    })
+      .then((response) => response.json())
+      .catch((e) => log('server returned error on elapse call. ignoring', e));
   }
 
   // dump any future plays queued up
@@ -434,12 +439,8 @@ Session.prototype.reportPlayStopped = function (seconds) {
 };
 
 Session.prototype.requestSkip = function () {
-  if (!this.config.current) {
-    throw new Error('No song being played');
-  }
-
-  if (!this.config.current.started) {
-    throw new Error('No song has been started');
+  if (!this.hasActivePlayStarted()) {
+    throw new Error('No song playing or started');
   }
 
   if (!this.config.current.canSkip) {
@@ -455,12 +456,21 @@ Session.prototype.requestSkip = function () {
     .catch(this._failSkip.bind(this, this.config.current.play));
 };
 
-Session.prototype.requestInvalidate = function () {
-  if (!this.config.current) {
-    throw new Error('No active song to invalidate!');
-  }
+Session.prototype.requestInvalidate = function (url) {
+  if (!url) {
+    if (!this.config.current) {
+      throw new Error('No active song to invalidate!');
+    }
 
-  this._sendInvalidate(this.config.current.play);
+    this._sendInvalidate(this.config.current.play);
+
+  } else if (this.config.current && (this.config.current.play.audio_file.url === url)) {
+    this._sendInvalidate(this.config.current.play);
+
+  } else if (this.config.pendingPlay && (this.config.pendingPlay.audio_file.url === url)) {
+    this._sendInvalidate(this.config.pendingPlay);
+
+  }
 };
 
 Session.prototype._sendInvalidate = function (play, delay) {
@@ -498,13 +508,18 @@ Session.prototype._receiveInvalidate = function (play, response) {
     self._submitLogHistory();
   }, 5000);
 
-  if (!this.config.current || (this.config.current.play !== play)) {
-    // not holding this song any more - just ignore it
+  if (!response.success) {
+    log('failed invalidate! - technically this is impossible');
     return;
   }
 
-  if (!response.success) {
-    log('failed invalidate! - technically this is impossible');
+  if (!this.config.current || (this.config.current.play !== play)) {
+    if (play === this.config.pendingPlay) {
+      log('invalidated pending play, queueing up new pending play');
+      this.config.pendingPlay = null;
+      this._requestNextPlay();
+    }
+    
     return;
   }
 
@@ -624,7 +639,7 @@ Session.prototype._failStartPlay = function (play, response) {
   // only process if we're still actually waiting for this
   if (this.config.current && (this.config.current.play === play)) {
 
-    if (response.status === 403) {
+    if (response && (response.status === 403)) {
       try {
         var fullResponse = JSON.parse(response.responseText);
 
@@ -788,7 +803,7 @@ Session.prototype._receiveNextPlay = function (ajax, response) {
     this.config.pendingRequest = null;
 
     if (response.success) {
-      this.trigger('prepare-sound', response.play.audio_file.url, response.play.start_at);
+      this.trigger('prepare-sound', response.play.audio_file.url, response.play.start_at, response.play.id);
 
       if (this.config.current) {
         log('received play, but we\'re already playing, so queueing up', response.play);
@@ -841,7 +856,7 @@ Session.prototype._failedNextPlay = function (delay, ajax, response) {
   // only process if we're still actually waiting for this
   if (this.config.pendingRequest && (this.config.pendingRequest.ajax === ajax)) {
 
-    if (response.status === 403) {
+    if (response && response.status === 403) {
       try {
         var fullResponse = JSON.parse(response.responseText);
 
@@ -871,14 +886,50 @@ Session.prototype._failedNextPlay = function (delay, ajax, response) {
   }
 };
 
+Session.prototype.canSkipInStation = function() {
+  return !(this.config.station && this.config.station.can_skip === false);
+};
+
+/**
+ * @returns {boolean} true if the user can skip the current song
+ */
 Session.prototype.maybeCanSkip = function () {
-  return this.config.current && this.config.current.started && this.config.current.canSkip;
+  return this.canSkip();
+};
+
+/**
+ * @returns {boolean} true if the user can skip the current song
+ */
+
+Session.prototype.canSkip = function () {
+  // you can probably skip unless we've explicitly disallowed it at the station or current song level
+  const can = this.canSkipInStation() && this.config.current && this.config.current.started && this.config.current.canSkip;
+
+  return !!can;
+};
+
+/**
+ * @returns {boolean} true if the user can like the current song
+ */
+
+Session.prototype.canLike = function() {
+  const response =  !(this.config.station && this.config.station.can_like === false);
+
+  return response;
 };
 
 Session.prototype.likePlay = function (playId) {
+  if (!this.canLike()) {
+    // technically, this play could be from a different station, but we're not tracking
+    // that right now... so let's just assume it is in the current station.
+    return;
+  }
+  
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/like', {
     method: 'POST'
-  });
+  })
+    .then((response) => response.json())
+    .catch((e) => log('server returned error on like call. ignoring', e));
 
   if (this.config.current && (this.config.current.play.id === playId)) {
     this.config.current.play.liked = true;
@@ -886,9 +937,17 @@ Session.prototype.likePlay = function (playId) {
 };
 
 Session.prototype.unlikePlay = function (playId) {
+  if (!this.canLike()) {
+    // technically, this play could be from a different station, but we're not tracking
+    // that right now... so let's just assume it is in the current station.
+    return;
+  }
+  
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/like', {
     method: 'DELETE'
-  });
+  })
+    .then((response) => response.json())
+    .catch((e) => log('server returned error on unlike call. ignoring', e));
 
   if (this.config.current && (this.config.current.play.id === playId)) {
     delete this.config.current.play['liked'];
@@ -896,9 +955,17 @@ Session.prototype.unlikePlay = function (playId) {
 };
 
 Session.prototype.dislikePlay = function (playId) {
+  if (!this.canLike()) {
+    // technically, this play could be from a different station, but we're not tracking
+    // that right now... so let's just assume it is in the current station.
+    return;
+  }
+  
   this._signedAjax(getBaseUrl() + '/api/v2/play/' + playId + '/dislike', {
     method: 'POST'
-  });
+  })    
+    .then((response) => response.json())
+    .catch((e) => log('server returned error on invalidate call. ignoring', e));
 
   if (this.config.current && (this.config.current.play.id === playId)) {
     this.config.current.play.liked = false;
@@ -954,11 +1021,47 @@ Session.prototype._sign = function (request) {
 Session.prototype._signedAjax = function (url, request) {
   var self = this;
 
-  return self._ajax(url, self._sign(request));
+  return self._ajax(url, self._sign(request)).then((response) => {
+    if (!response.ok) {
+      throw new Error('server returned error ' + response.status + ': ' + response.statusText);
+    } 
+
+    return response;
+  });
 };
 
 Session.prototype._ajax = function (url, request) {
   return fetch(url, request);
+};
+
+Session.prototype._submitLogHistory = function(count = 0) {
+  let session = this;
+  let history = log.history;
+  log.history = [];
+
+  if (!this.config.remoteLogging) {
+    return;
+  }
+
+  return this._signedAjax(getBaseUrl() + '/api/v2/session/event', {
+    method: 'POST',
+    body: JSON.stringify({
+      event: 'playerHistory',
+      parameters: history
+    }),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+    .then((response) => response.json())
+    .catch(function() {
+      if (count < 2) {
+        setTimeout(() => {
+          log.history = history.concat([ 'failed log report attempt, try #' + count ], log.history);
+          session._submitLogHistory(count + 1);
+        }, 5000);
+      }
+    });
 };
 
 Session.prototype._submitLogHistory = function(count = 0) {
@@ -987,6 +1090,32 @@ Session.prototype._submitLogHistory = function(count = 0) {
       }, 5000);
     }
   });
+};
+
+Session.prototype._submitEvent = function(name, parameters, count = 1) {
+  let session = this;
+
+  return this._getClientId()
+    .then((clientId) => { 
+      return this._signedAjax(getBaseUrl() + '/api/v2/session/event', {
+        method: 'POST',
+        body: JSON.stringify({
+          event: name,
+          client_id: clientId,
+          parameters: JSON.stringify(parameters)
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    }).catch(function() {
+      if (count < 2) {
+        setTimeout(() => {
+          log.history = history.concat([ 'failed event submission, try #' + count ], log.history);
+          session._submitLogHistory(count + 1);
+        }, 5000);
+      }
+    });
 };
 
 Session.prototype._getClientId = function() {
