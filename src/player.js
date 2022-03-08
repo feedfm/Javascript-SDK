@@ -115,8 +115,8 @@ function supports_html5_storage() {
 var Player = function (token, secret, options) {
   if (!secret) {
     // restore from saved state
-    this._restore(token);
-
+    // this._restore(token);
+    console.log("^^^ this was messing up chromecast");
   } else {
     options = options || {};
     this.options = options;
