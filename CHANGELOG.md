@@ -1,5 +1,10 @@
 # Changelog
 
+1.103.1
+
+- Track duration is now rounded with `Math.round`, where it was previously truncated with
+  `Math.floor`.
+
 1.103.0
 
 - Support for station level like/skip adjustments
