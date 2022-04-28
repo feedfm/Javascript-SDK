@@ -1147,12 +1147,10 @@ Speaker.prototype = {
 
   _duration: function (sound) {
     if (sound === this.active.sound) {
-      var d = this.active.audio.duration;
-      return isNaN(d) ? 0 : Math.round(d * 1000);
-
+      var durationRounded = isNaN(this.active.audio.duration) ? 0 : Math.round(this.active.audio.duration);
+      return durationRounded * 1000;
     } else {
       return 0;
-
     }
   },
 
