@@ -21,6 +21,8 @@ applications which can utilize our iOS SDK and Android SDK.
 This library will work with the default demo credentials built into it, but you will
 need to get a set of production credentials from your contact at Feed.fm.
 
+For bug reporting or questions, please send an email to support@feed.fm.
+
 ## Installation
 
 ### Via npm
