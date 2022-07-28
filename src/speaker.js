@@ -76,7 +76,7 @@ const IOS = [
 const brokenWebkit = IOS && /OS 13_[543210]/i.test(navigator.userAgent);
 
 const SILENCE = IOS ?
-  'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
+  'https://s3.amazonaws.com/feedfm-audio/250-milliseconds-of-silence.mp3' :
   'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
 //const SILENCE = 'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1573592316-88123.m4a';
