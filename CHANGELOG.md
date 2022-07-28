@@ -1,5 +1,9 @@
 # Changelog
 
+1.103.2
+
+- Updated the URL to the silence audio file
+
 1.103.1
 
 - Track duration is now rounded with `Math.round`, where it was previously truncated with
