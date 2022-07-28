@@ -1,6 +1,6 @@
 # Changelog
 
-1.103.2
+1.103.3
 
 - Updated the URL to the silence audio file
 

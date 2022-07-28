@@ -2,7 +2,7 @@
 
 const iOSp = /(iPhone|iPad)/i.test(navigator.userAgent);
 const SILENCE = iOSp ?
-  'https://u9e9h7z5.map2.ssl.hwcdn.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
+  'https://s3.amazonaws.com/feedfm-audio/250-milliseconds-of-silence.mp3' :
   'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
   
