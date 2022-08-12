@@ -384,12 +384,28 @@ Session.prototype.reportPlayCompleted = function () {
   var self = this;
 
   if (this.config.current && (this.config.current.started)) {
-    this._signedAjax(getBaseUrl() + '/api/v2/play/' + this.config.current.play.id + '/complete', {
+    this.pendingComplete = this._signedAjax(getBaseUrl() + '/api/v2/play/' + this.config.current.play.id + '/complete', {
       method: 'POST'
-    })
-      .then((response) => response.json())
-      .catch((err) => { log('play completed returned error - ignoring', err); })
-      .finally(self._receivePlayCompleted.bind(self));
+    }).catch((err) => { log('play completed returned error - ignoring', err); })
+      .finally(() => { log('play completed response sent'); });
+
+    // queue up the next song 
+    if (!this.config.pendingRequest) {
+      log('song finished, and no outstanding request, so playing pendingPlay');
+      // if we're not waiting for an incoming request, then we must
+      // have the next play queued up, so play it:
+      var pendingPlay = this.config.pendingPlay;
+      this.config.pendingPlay = null;
+
+      this._assignCurrentPlay(pendingPlay);
+
+    } else {
+      log('song finished, but we\'re still waiting for next one to return');
+
+      // we're waiting for a request to come in, so kill the current
+      // song and announce that we're waiting
+      this._assignCurrentPlay(null, true);
+    }
 
   } else {
     log('finish on non-active or playing song');
@@ -593,11 +609,25 @@ Session.prototype._startPlay = function (play) {
   } else {
     log('telling server we\'re starting the play', play);
 
-    // tell the server that we're going to start this song
-    this._signedAjax(getBaseUrl() + '/api/v2/play/' + play.id + '/start', {
-      method: 'POST'
-      // TODO: add timeout!
-    })
+    let request;
+    if (this.pendingComplete) {
+      request = this.pendingComplete
+        .then(() => {
+          return this._signedAjax(getBaseUrl() + '/api/v2/play/' + play.id + '/start', {
+            method: 'POST'
+            // TODO: add timeout!
+          })
+        });
+
+    } else {
+      // tell the server that we're going to start this song
+      request = this._signedAjax(getBaseUrl() + '/api/v2/play/' + play.id + '/start', {
+        method: 'POST'
+        // TODO: add timeout!
+      })
+    }
+
+    request
       .then((response) => response.json())
       .then(this._receiveStartPlay.bind(this, play))
       .catch(this._failStartPlay.bind(this, play));
