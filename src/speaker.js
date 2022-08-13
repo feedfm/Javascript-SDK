@@ -76,10 +76,12 @@ const IOS = [
 const brokenWebkit = IOS && /OS 13_[543210]/i.test(navigator.userAgent);
 
 const SILENCE = IOS ?
-  'https://s3.amazonaws.com/feedfm-audio/250-milliseconds-of-silence.mp3' :
+  'https://dgase5ckewowv.cloudfront.net/feedfm-audio/250-milliseconds-of-silence.mp3' :
   'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
 //const SILENCE = 'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1573592316-88123.m4a';
+
+const TIMEUPDATE_PERIOD = window.requestAnimationFrame ? 1.0 : 0;
 
 var Sound = function (speaker, options, id, url) {
   var obj = Object.assign(this, Events);
@@ -495,7 +497,16 @@ Speaker.prototype = {
       return;
     }
 
-    if (this.active.sound.endPosition && ((this.active.sound.endPosition / 1000) <= audio.currentTime)) {
+    const currentTime = audio.currentTime;
+
+    const endPositionSeconds = this.active.sound.endPosition / 1000;
+    if (this.active.sound.endPosition && (currentTime >= (endPositionSeconds - TIMEUPDATE_PERIOD))) {
+      if (currentTime < endPositionSeconds && !this.active.audio.paused) {
+        // we're not quite there yet - use requestAnimationFrame to get as close as possible
+        window.requestAnimationFrame(() => this._onAudioTimeUpdateEvent({ currentTarget: audio }));
+        return;
+      }
+
       // song reached end of play
       var sound = this.active.sound;
 
@@ -505,7 +516,13 @@ Speaker.prototype = {
 
       sound.trigger('finish');
 
-    } else if (this.active.sound.fadeOutEnd && (audio.currentTime >= this.active.sound.fadeOutStart)) {
+    } else if (this.active.sound.fadeOutEnd && (currentTime >= (this.active.sound.fadeOutStart - TIMEUPDATE_PERIOD))) {
+      if (currentTime < this.active.sound.fadeOutStart && !this.active.audio.paused) {
+        // we're not quite there yet - use requestAnimationFrame to get as close as possible
+        window.requestAnimationFrame(() => this._onAudioTimeUpdateEvent({ currentTarget: audio }));
+        return;
+      }
+
       // song hit start of fade out
       this._setVolume(this.active);
 
