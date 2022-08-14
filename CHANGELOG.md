@@ -1,5 +1,10 @@
 # Changelog
 
+1.103.5
+
+- Start subsequent song before response to '/play/id/complete'
+- Use requestAnimationFrame to increase accuracy of trims and crossfades
+
 1.103.3
 
 - Updated the URL to the silence audio file
