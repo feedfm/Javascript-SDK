@@ -244,6 +244,13 @@ Speaker.prototype = {
 
   audioContext: null, // for mobile safari volume adjustment
 
+  startTime: null, // the date object for the start time in order to calc elaps
+  elapsedMilliseconds: 0, // elapsed milliseconds of play
+  startNextMS: null, // when the next song should play
+  songCount: 0, // for debugging
+  // drifts: [], // for debugging
+  // songDurations: [], // for debugging
+
   active: null, // active audio element, sound, and gain node
   fading: null, // fading audio element, sound, and gain node
   preparing: null, // preparing audio element, sound, and gain node
@@ -471,6 +478,11 @@ Speaker.prototype = {
   _onAudioTimeUpdateEvent: function (event) {
     var audio = event.currentTarget;
 
+    if (this.startTime) {
+      this.elapsedMilliseconds += ( performance.now() - this.startTime );
+      this.startTime = performance.now();
+    }
+
     if (audio.src === SILENCE) {
       return;
     }
@@ -497,11 +509,12 @@ Speaker.prototype = {
       return;
     }
 
-    const currentTime = audio.currentTime;
+    // const currentTime = audio.currentTime;
 
-    const endPositionSeconds = this.active.sound.endPosition / 1000;
-    if (this.active.sound.endPosition && (currentTime >= (endPositionSeconds - TIMEUPDATE_PERIOD))) {
-      if (currentTime < endPositionSeconds && !this.active.audio.paused) {
+    // const endPositionSeconds = this.active.sound.endPosition / 1000;
+    
+    if (this.startNextMS && (this.elapsedMilliseconds >= (this.startNextMS - (TIMEUPDATE_PERIOD*1000)))) {
+      if (this.elapsedMilliseconds < (this.startNextMS) && !this.active.audio.paused) {
         // we're not quite there yet - use requestAnimationFrame to get as close as possible
         window.requestAnimationFrame(() => this._onAudioTimeUpdateEvent({ currentTarget: audio }));
         return;
@@ -516,8 +529,8 @@ Speaker.prototype = {
 
       sound.trigger('finish');
 
-    } else if (this.active.sound.fadeOutEnd && (currentTime >= (this.active.sound.fadeOutStart - TIMEUPDATE_PERIOD))) {
-      if (currentTime < this.active.sound.fadeOutStart && !this.active.audio.paused) {
+    } else if (this.startNextMS && this.active.sound.fadeOutEnd && (this.elapsedMilliseconds >= (this.startNextMS - (TIMEUPDATE_PERIOD*1000)))) {
+      if (this.elapsedMilliseconds < (this.startNextMS) && !this.active.audio.paused) {
         // we're not quite there yet - use requestAnimationFrame to get as close as possible
         window.requestAnimationFrame(() => this._onAudioTimeUpdateEvent({ currentTarget: audio }));
         return;
@@ -557,25 +570,25 @@ Speaker.prototype = {
 
     var calculatedVolume = sound.gainAdjustedVolume(this.vol);
 
-    if ((sound.fadeInStart !== sound.fadeInEnd) && (currentTime < sound.fadeInStart)) {
+    if (this.startNextMS && (sound.fadeInStart !== sound.fadeInEnd) && (this.elapsedMilliseconds < (this.startNextMS + (sound.fadeInStart * 1000.00)))) {
       calculatedVolume = 0;
 
       log('pre-fade-in volume is 0');
 
-    } else if ((sound.fadeInStart !== sound.fadeInEnd) && (currentTime >= sound.fadeInStart) && (currentTime <= sound.fadeInEnd)) {
+    } else if (this.startNextMS && (sound.fadeInStart !== sound.fadeInEnd) && (this.elapsedMilliseconds >=  (this.startNextMS + (sound.fadeInStart * 1000.00))) && (this.elapsedMilliseconds <= (this.startNextMS + (sound.fadeInEnd * 1000.00)))) {
       // ramp up from 0 - 100%
-      calculatedVolume = (currentTime - sound.fadeInStart) / (sound.fadeInEnd - sound.fadeInStart) * calculatedVolume;
+      calculatedVolume = (this.elapsedMilliseconds - (this.startNextMS + (sound.fadeInStart * 1000.00))) / ((sound.fadeInEnd - sound.fadeInStart)*1000.00) * calculatedVolume;
 
       log('ramping ▲ volume', { currentTime: currentTime, currentVolume: currentVolume, calculatedVolume: calculatedVolume, sound: sound });
 
-    } else if ((sound.fadeOutStart !== sound.fadeOutEnd) && (currentTime > sound.fadeOutEnd)) {
+    } else if (this.startNextMS && (sound.fadeOutStart !== sound.fadeOutEnd) && (this.elapsedMilliseconds > (this.startNextMS + (sound.fadeOutEnd * 1000.00)))) {
       calculatedVolume = 0;
 
       log('post-fade-out volume is 0');
 
-    } else if ((sound.fadeOutStart !== sound.fadeOutEnd) && (currentTime >= sound.fadeOutStart) && (currentTime <= sound.fadeOutEnd)) {
+    } else if (this.startNextMS && (sound.fadeOutStart !== sound.fadeOutEnd) && (this.elapsedMilliseconds >=  (this.startNextMS)) && (this.elapsedMilliseconds <=  (this.startNextMS + (sound.fadeOutEnd*1000.00)))) {
       // ramp down from 100% to 0
-      calculatedVolume = (1 - (currentTime - sound.fadeOutStart) / (sound.fadeOutEnd - sound.fadeOutStart)) * calculatedVolume;
+      calculatedVolume = (1 - (this.elapsedMilliseconds -  (this.startNextMS)) / ((sound.fadeOutEnd - sound.fadeOutStart) * 1000.00)) * calculatedVolume;
 
       log('ramping ▼ volume', { currentTime: currentTime, currentVolume: currentVolume, calculatedVolume: calculatedVolume, sound: sound });
 
@@ -918,6 +931,16 @@ Speaker.prototype = {
   _playSound: function (sound) {
     var speaker = this;
 
+    // console.log('elapsed: ',this.elapsedMilliseconds);
+    // console.log('count: ',this.songCount);
+    // let ideal = this.songDurations.reduce((a,b) => a+b, 0);
+    // console.log('ideal: ', ideal);
+    // console.log('drift: ',this.elapsedMilliseconds - ideal);
+    // this.drifts.push(this.elapsedMilliseconds - ideal);
+    // console.log('total adj drift: ',(this.elapsedMilliseconds - ideal) / this.songCount);
+    // console.log('avg drift: ',(this.drifts.reduce((a,b) => a + b, 0) / this.drifts.length));
+    // this.songCount++;
+    if (!this.startTime){this.startTime = performance.now();}
     if (!this.active || !this.active.audio) {
       // eslint-disable-next-line
       console.error('**** player.initializeAudio() *** not called before playback!');
@@ -1036,11 +1059,17 @@ Speaker.prototype = {
           }
 
           log(sound.id + ' play() succeeded');
-        
           // configure fade-out now that metadata is loaded
           if (sound.fadeOutSeconds && (sound.fadeOutEnd === 0)) {
             sound.fadeOutStart = me.audio.duration - sound.fadeOutSeconds;
             sound.fadeOutEnd = me.audio.duration;
+            speaker.startNextMS += (sound.fadeOutStart * 1000.00);
+            // speaker.songDurations.push(sound.fadeOutStart * 1000.00);
+            
+          }
+          else{
+            speaker.startNextMS += ((sound.endPosition - (sound.startPosition||0)) || (me.audio.duration*1000));
+            // speaker.songDurations.push((sound.endPosition - (sound.startPosition||0)) || (me.audio.duration*1000));
           }
 
           if (sound.startPosition) {
@@ -1137,6 +1166,7 @@ Speaker.prototype = {
   },
 
   _pauseSound: function (sound) {
+    this.startTime = null;
     if (this.active && (sound === this.active.sound)) {
       if (sound.awaitingPlayResponse) {
         // wait for the play() call to complete before pausing, otherwise
