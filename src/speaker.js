@@ -247,9 +247,6 @@ Speaker.prototype = {
   startTime: null, // the date object for the start time in order to calc elaps
   elapsedMilliseconds: 0, // elapsed milliseconds of play
   startNextMS: null, // when the next song should play
-  songCount: 0, // for debugging
-  // drifts: [], // for debugging
-  // songDurations: [], // for debugging
 
   active: null, // active audio element, sound, and gain node
   fading: null, // fading audio element, sound, and gain node
@@ -510,7 +507,6 @@ Speaker.prototype = {
     }
 
     // const currentTime = audio.currentTime;
-
     // const endPositionSeconds = this.active.sound.endPosition / 1000;
     
     if (this.startNextMS && (this.elapsedMilliseconds >= (this.startNextMS - (TIMEUPDATE_PERIOD*1000)))) {
@@ -931,15 +927,6 @@ Speaker.prototype = {
   _playSound: function (sound) {
     var speaker = this;
 
-    // console.log('elapsed: ',this.elapsedMilliseconds);
-    // console.log('count: ',this.songCount);
-    // let ideal = this.songDurations.reduce((a,b) => a+b, 0);
-    // console.log('ideal: ', ideal);
-    // console.log('drift: ',this.elapsedMilliseconds - ideal);
-    // this.drifts.push(this.elapsedMilliseconds - ideal);
-    // console.log('total adj drift: ',(this.elapsedMilliseconds - ideal) / this.songCount);
-    // console.log('avg drift: ',(this.drifts.reduce((a,b) => a + b, 0) / this.drifts.length));
-    // this.songCount++;
     if (!this.startTime){this.startTime = performance.now();}
     if (!this.active || !this.active.audio) {
       // eslint-disable-next-line
@@ -1063,13 +1050,10 @@ Speaker.prototype = {
           if (sound.fadeOutSeconds && (sound.fadeOutEnd === 0)) {
             sound.fadeOutStart = me.audio.duration - sound.fadeOutSeconds;
             sound.fadeOutEnd = me.audio.duration;
-            speaker.startNextMS += (sound.fadeOutStart * 1000.00);
-            // speaker.songDurations.push(sound.fadeOutStart * 1000.00);
-            
+            speaker.startNextMS += (sound.fadeOutStart * 1000.00);            
           }
           else{
             speaker.startNextMS += ((sound.endPosition - (sound.startPosition||0)) || (me.audio.duration*1000));
-            // speaker.songDurations.push((sound.endPosition - (sound.startPosition||0)) || (me.audio.duration*1000));
           }
 
           if (sound.startPosition) {
