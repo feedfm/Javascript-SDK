@@ -53,6 +53,15 @@
  *   Fade-outs are handled by reporting the audio as complete when the fade-out
  *   begins, but the sound continues playback until it has fully faded out. New
  *   audio can be started while the fadeout is happening.
+ * 
+ *   Absolute timing: when a play starts, we start adding the differential of time between updates to the elapsed seconds. 
+ *   When we pause, we stop adding to the elapsed seconds. When we resume, we start adding again.
+ *   We also have a running total of how much duration we have queued up, and the next song is supposed to start
+ *   at the end of that duration. So when we first start playing, elapsed is 0, and the next (the second song to play) song will start
+ *   at the end of the duration of the first song, no matter what. The next song to queue up, will start at the end of that
+ *   duration, and the third will start at the sum of the first two songs, and so on. A song should always start at
+ *   the duration of all the previous songs before it (in a non-skipping first play world where we care about songs being on time
+ *   and not drifting out of sync )  Elapsed seconds are counted as when you click play, and only stop counting for a pause break.
  */
 
 import Events from './events';
