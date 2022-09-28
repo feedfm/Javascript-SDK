@@ -413,6 +413,9 @@ Player.prototype._onPlayActive = function (play) {
 
   }
 
+  options.endPosition = play.audio_file.duration_in_seconds * 1000;
+  options.firstPlay = this.session.config.station.single_play;
+  
   if (this.trimming && play.audio_file.extra && play.audio_file.extra.trim_end && play.audio_file.duration_in_seconds) {
     options.endPosition = (play.audio_file.duration_in_seconds - play.audio_file.extra.trim_end) * 1000;
   }
