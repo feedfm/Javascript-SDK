@@ -446,36 +446,40 @@ Speaker.prototype = {
   _onAudioEndedEvent: function (event) {
     var audio = event.currentTarget;
 
-    if (this.active.sound.firstPlay) {
+    if (audio.src === SILENCE) {
+      return;
+    }
+
+    if (this.active.sound.firstPlay && audio === this.active.audio) {
       audio.currentTime = 0;
       audio.play();
       audio.volume = 0;
-    } else {
-      if (audio.src === SILENCE) {
-        return;
-      }
 
-      if (audio === this.fading.audio) {
-        revoke(audio);
-        audio.src = SILENCE;
-        this.fading.sound = null;
-        return;
-      }
-
-      if (audio !== this.active.audio) {
-        return;
-      }
-
-      if (!this.active.sound) {
-        log('active audio ended, but no matching sound', audio.src);
-        return;
-      }
-
-      log('active audio ended');
-      var sound = this.active.sound;
-      this.active.sound = null;
-      sound.trigger('finish');
+      // trigger a pseudo-timeupdate event, just in case we ended exactly where we wanted to
+      this._onAudioTimeUpdateEvent({ currentTarget: audio });
+      return;
     }
+
+    if (audio === this.fading.audio) {
+      revoke(audio);
+      audio.src = SILENCE;
+      this.fading.sound = null;
+      return;
+    }
+
+    if (audio !== this.active.audio) {
+      return;
+    }
+
+    if (!this.active.sound) {
+      log('active audio ended, but no matching sound', audio.src);
+      return;
+    }
+
+    log('active audio ended');
+    var sound = this.active.sound;
+    this.active.sound = null;
+    sound.trigger('finish');
   },
 
   _onAudioErroredEvent: function (event) {
