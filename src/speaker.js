@@ -444,14 +444,13 @@ Speaker.prototype = {
   },
 
   _onAudioEndedEvent: function (event) {
+    var audio = event.currentTarget;
+
     if (this.active.sound.firstPlay) {
-      var audio = event.currentTarget;
       audio.currentTime = 0;
       audio.play();
       audio.volume = 0;
     } else {
-      var audio = event.currentTarget;
-
       if (audio.src === SILENCE) {
         return;
       }
