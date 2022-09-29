@@ -103,6 +103,7 @@ var Sound = function (speaker, options, id, url) {
   obj.url = url;
   obj.speaker = speaker;
   obj.loaded = false;
+  obj.looping = false; // true when we're looping at volume 0 to extend the song
 
   if (options) {
     this.startPosition = +options.startPosition || 0;
@@ -454,6 +455,7 @@ Speaker.prototype = {
       audio.currentTime = 0;
       audio.play();
       audio.volume = 0;
+      this.active.sound.looping = true;
 
       // trigger a pseudo-timeupdate event, just in case we ended exactly where we wanted to
       this._onAudioTimeUpdateEvent({ currentTarget: audio });
@@ -602,7 +604,9 @@ Speaker.prototype = {
       // pretend the song finished
       this.fading.sound.trigger('finish');
     } else {
-      this._setVolume(this.active);
+      if (!this.active.sound.looping) {
+        this._setVolume(this.active);
+      }
 
       this.active.sound.trigger('elapse');
     }
