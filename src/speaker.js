@@ -554,36 +554,7 @@ Speaker.prototype = {
     // const endPositionSeconds = this.active.sound.endPosition / 1000;
 
     // first play sound playback
-    if (this.active.sound.firstPlay && this.startNextMS) {
-      if (
-        this.active.sound.fadeOutStart &&
-        this.elapsedMilliseconds >= this.startNextMS - this.active.sound.fadeOutStart * 1000 - TIMEUPDATE_PERIOD * 1000
-      ) {
-        if (
-          this.elapsedMilliseconds >= this.startNextMS - this.active.sound.fadeOutStart * 1000 &&
-          !this.active.audio.paused
-        ) {
-        // we're not quite there yet - use requestAnimationFrame to get as close as possible
-          window.requestAnimationFrame(() =>
-            this._onAudioTimeUpdateEvent({ currentTarget: audio })
-          );
-          return;
-        }
-
-        // song hit start of fade out
-        this._setVolume(this.active);
-
-        // active becomes fading, and fading becomes active
-        let fading = this.fading;
-        this.fading = this.active;
-        this.active = fading;
-
-        this.active.sound = null; // not used any more
-
-        // pretend the song finished
-        this.fading.sound.trigger('finish');
-
-      } else if (
+    if (
         this.elapsedMilliseconds >= this.startNextMS - ( TIMEUPDATE_PERIOD * 1000 )
       ) {
         if (
@@ -597,14 +568,31 @@ Speaker.prototype = {
           return;
         }
 
+        if (this.active.sound.fadeOutSeconds) {
+          // song hit start of fade out
+          this._setVolume(this.active);
+
+          // active becomes fading, and fading becomes active
+          let fading = this.fading;
+          this.fading = this.active;
+          this.active = fading;
+
+          this.active.sound = null; // not used any more
+
+          // pretend the song finished
+          this.fading.sound.trigger('finish');
+
+        } else {
         // song reached end of play
-        let sound = this.active.sound;
+          let sound = this.active.sound;
 
-        this.active.sound = null;
-        revoke(this.active.audio);
-        this.active.audio.src = SILENCE;
+          this.active.sound = null;
+          revoke(this.active.audio);
+          this.active.audio.src = SILENCE;
 
-        sound.trigger('finish');
+          sound.trigger('finish');
+        }
+
       } else  {
         if (!this.active.sound.looping) {
           this._setVolume(this.active);
