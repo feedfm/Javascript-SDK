@@ -559,8 +559,7 @@ Speaker.prototype = {
         this.elapsedMilliseconds >= this.startNextMS - ( TIMEUPDATE_PERIOD * 1000 )
       ) {
         if (
-          this.elapsedMilliseconds < this.startNextMS &&
-          !this.active.audio.paused
+          this.elapsedMilliseconds < this.startNextMS
         ) {
         // we're not quite there yet - use requestAnimationFrame to get as close as possible
           window.requestAnimationFrame(() =>
