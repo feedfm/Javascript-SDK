@@ -554,7 +554,8 @@ Speaker.prototype = {
     // const endPositionSeconds = this.active.sound.endPosition / 1000;
 
     // first play sound playback
-    if (
+    if (this.active.sound.firstPlay && this.startNextMS) {
+      if (
         this.elapsedMilliseconds >= this.startNextMS - ( TIMEUPDATE_PERIOD * 1000 )
       ) {
         if (
@@ -569,7 +570,7 @@ Speaker.prototype = {
         }
 
         if (this.active.sound.fadeOutSeconds) {
-          // song hit start of fade out
+        // song hit start of fade out
           this._setVolume(this.active);
 
           // active becomes fading, and fading becomes active
