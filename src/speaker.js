@@ -268,9 +268,9 @@ Speaker.prototype = {
 
   audioContext: null, // for mobile safari volume adjustment
 
-  startTime: null, // timestamp when playback should have started
-  elapsedMilliseconds: 0, // elapsed milliseconds of playback, since construction of speaker instance
-  startNextMS: null, // when the next song should start playback, as measured by elapsedMilliseconds
+  startTime: 0, // timestamp when playback should have started
+  elapsedMilliseconds: 0, // elapsed milliseconds of measured playback time
+  startNextMS: 0, // when the next song should start playback, as measured by elapsedMilliseconds
 
   active: null, // active audio element, sound, and gain node
   fading: null, // fading audio element, sound, and gain node
@@ -452,12 +452,13 @@ Speaker.prototype = {
     }
 
     if (this.active.sound.firstPlay && audio === this.active.audio) {
+      // when doing first play, ignore 'end' events from the media player
       audio.currentTime = 0;
       audio.play();
       audio.volume = 0;
       this.active.sound.looping = true;
 
-      // trigger a pseudo-timeupdate event, just in case we ended exactly where we wanted to
+      // trigger a fake 'timeupdate' event, to see if we really want to stop here
       this._onAudioTimeUpdateEvent({ currentTarget: audio });
       return;
     }
@@ -552,63 +553,130 @@ Speaker.prototype = {
     // const currentTime = audio.currentTime;
     // const endPositionSeconds = this.active.sound.endPosition / 1000;
 
-    if (
-      this.startNextMS &&
-      this.elapsedMilliseconds >= this.startNextMS - ( TIMEUPDATE_PERIOD * 1000 )
-    ) {
+    // first play sound playback
+    if (this.active.sound.firstPlay && this.startNextMS) {
       if (
-        this.elapsedMilliseconds < this.startNextMS &&
-        !this.active.audio.paused
+        this.active.sound.fadeOutStart &&
+        this.elapsedMilliseconds >= this.startNextMS - this.active.sound.fadeOutStart * 1000 - TIMEUPDATE_PERIOD * 1000
       ) {
+        if (
+          this.elapsedMilliseconds >= this.startNextMS - this.active.sound.fadeOutStart * 1000 &&
+          !this.active.audio.paused
+        ) {
         // we're not quite there yet - use requestAnimationFrame to get as close as possible
-        window.requestAnimationFrame(() =>
-          this._onAudioTimeUpdateEvent({ currentTarget: audio })
-        );
-        return;
-      }
+          window.requestAnimationFrame(() =>
+            this._onAudioTimeUpdateEvent({ currentTarget: audio })
+          );
+          return;
+        }
 
-      // song reached end of play
-      var sound = this.active.sound;
-
-      this.active.sound = null;
-      revoke(this.active.audio);
-      this.active.audio.src = SILENCE;
-
-      sound.trigger('finish');
-    } else if (
-      this.startNextMS &&
-      this.active.sound.fadeOutEnd &&
-      this.elapsedMilliseconds >= this.startNextMS - TIMEUPDATE_PERIOD * 1000
-    ) {
-      if (
-        this.elapsedMilliseconds < this.startNextMS &&
-        !this.active.audio.paused
-      ) {
-        // we're not quite there yet - use requestAnimationFrame to get as close as possible
-        window.requestAnimationFrame(() =>
-          this._onAudioTimeUpdateEvent({ currentTarget: audio })
-        );
-        return;
-      }
-
-      // song hit start of fade out
-      this._setVolume(this.active);
-
-      // active becomes fading, and fading becomes active
-      var fading = this.fading;
-      this.fading = this.active;
-      this.active = fading;
-
-      this.active.sound = null; // not used any more
-
-      // pretend the song finished
-      this.fading.sound.trigger('finish');
-    } else {
-      if (!this.active.sound.looping) {
+        // song hit start of fade out
         this._setVolume(this.active);
-      }
 
-      this.active.sound.trigger('elapse');
+        // active becomes fading, and fading becomes active
+        let fading = this.fading;
+        this.fading = this.active;
+        this.active = fading;
+
+        this.active.sound = null; // not used any more
+
+        // pretend the song finished
+        this.fading.sound.trigger('finish');
+
+      } else if (
+        this.elapsedMilliseconds >= this.startNextMS - ( TIMEUPDATE_PERIOD * 1000 )
+      ) {
+        if (
+          this.elapsedMilliseconds < this.startNextMS &&
+          !this.active.audio.paused
+        ) {
+        // we're not quite there yet - use requestAnimationFrame to get as close as possible
+          window.requestAnimationFrame(() =>
+            this._onAudioTimeUpdateEvent({ currentTarget: audio })
+          );
+          return;
+        }
+
+        // song reached end of play
+        let sound = this.active.sound;
+
+        this.active.sound = null;
+        revoke(this.active.audio);
+        this.active.audio.src = SILENCE;
+
+        sound.trigger('finish');
+      } else  {
+        if (!this.active.sound.looping) {
+          this._setVolume(this.active);
+        }
+
+        this.active.sound.trigger('elapse');
+      }
+    
+    //
+    // regular boring non-firstplay playback
+    //
+    } else {
+
+      const currentTime = audio.currentTime; // seconds
+      const endPositionSeconds = this.active.sound.endPosition / 1000; // seconds
+
+      if (
+        this.active.sound.fadeOutStart &&
+        currentTime >= this.active.sound.fadeOutStart - TIMEUPDATE_PERIOD
+      ) {
+        if (
+          currentTime < this.sound.fadeOutStart &&
+          !this.active.audio.paused
+        ) {
+          // we're not quite there yet - use requestAnimationFrame to get as close as possible
+          window.requestAnimationFrame(() =>
+            this._onAudioTimeUpdateEvent({ currentTarget: audio })
+          );
+          return;
+        }
+
+        // song hit start of fade out
+        this._setVolume(this.active);
+
+        // active becomes fading, and fading becomes active
+        let fading = this.fading;
+        this.fading = this.active;
+        this.active = fading;
+
+        this.active.sound = null; // not used any more
+
+        // pretend the song finished
+        this.fading.sound.trigger('finish');
+
+      } else if (
+        currentTime >= endPositionSeconds - TIMEUPDATE_PERIOD
+      ) {
+        if (
+          currentTime < endPositionSeconds &&
+          !this.active.audio.paused
+        ) {
+        // we're not quite there yet - use requestAnimationFrame to get as close as possible
+          window.requestAnimationFrame(() =>
+            this._onAudioTimeUpdateEvent({ currentTarget: audio })
+          );
+          return;
+        }
+
+        // song reached end of play
+        let sound = this.active.sound;
+
+        this.active.sound = null;
+        revoke(this.active.audio);
+        this.active.audio.src = SILENCE;
+
+        sound.trigger('finish');
+
+      } else {
+        this._setVolume(this.active);
+
+        this.active.sound.trigger('elapse');
+      }
     }
 
     if (this.prepareWhenReady) {
@@ -1274,12 +1342,21 @@ Speaker.prototype = {
     sound.off();
 
     if (this.active && this.active.sound === sound) {
+      // If this firstplay song was destroyed before its scheduled time, then
+      // startNextMS isn't valid any more. Reset all the elapsed measuring timers
+      if (sound.firstPlay && this.elapsedMilliseconds < this.startNextMS) {
+        this.startTime = 0;
+        this.elapsedMilliseconds = 0;
+        this.startNextMS = 0;
+      }
+
       if (!fadeOut || !sound.fadeOutSeconds) {
         log('destroy triggered for current sound (no fadeout)', sound.id);
         this.active.audio.pause();
 
         revoke(this.active.audio);
         this.active.audio.src = SILENCE;
+
       } else {
         log('destroy triggered for current sound (with fadeout)', sound.id);
 
@@ -1350,6 +1427,7 @@ Speaker.prototype = {
 
   _position: function (sound) {
     if (this.active && sound === this.active.sound) {
+      // TODO: modify for firstPlay
       return Math.floor(this.active.audio.currentTime * 1000);
     } else {
       return 0;
