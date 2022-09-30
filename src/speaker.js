@@ -268,9 +268,9 @@ Speaker.prototype = {
 
   audioContext: null, // for mobile safari volume adjustment
 
-  startTime: null, // the date object for the start time in order to calc elaps
-  elapsedMilliseconds: 0, // elapsed milliseconds of play
-  startNextMS: null, // when the next song should play, in milliseconds past calling play()
+  startTime: null, // timestamp when playback should have started
+  elapsedMilliseconds: 0, // elapsed milliseconds of playback, since construction of speaker instance
+  startNextMS: null, // when the next song should start playback, as measured by elapsedMilliseconds
 
   active: null, // active audio element, sound, and gain node
   fading: null, // fading audio element, sound, and gain node
@@ -1222,7 +1222,7 @@ Speaker.prototype = {
               me.sound.endPosition / 1000.0 - sound.fadeOutSeconds;
             sound.fadeOutEnd = me.sound.endPosition / 1000.0;
             if (sound.firstPlay) {
-              speaker.startNextMS = sound.fadeOutStart * 1000.0;
+              speaker.startNextMS += sound.fadeOutStart * 1000.0;
               // speaker.songDurations.push(sound.fadeOutStart * 1000.0); for debugging, matt
             }
           } else if (sound.firstPlay) {
@@ -1230,7 +1230,7 @@ Speaker.prototype = {
             //   sound.endPosition - (sound.startPosition || 0) ||
             //     me.audio.duration * 1000
             // ); for debugging, matt
-            speaker.startNextMS =
+            speaker.startNextMS +=
               sound.endPosition - (sound.startPosition || 0) ||
               me.sound.endPosition;
           }
