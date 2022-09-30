@@ -270,7 +270,7 @@ Speaker.prototype = {
 
   startTime: null, // the date object for the start time in order to calc elaps
   elapsedMilliseconds: 0, // elapsed milliseconds of play
-  startNextMS: null, // when the next song should play
+  startNextMS: null, // when the next song should play, in milliseconds past calling play()
 
   active: null, // active audio element, sound, and gain node
   fading: null, // fading audio element, sound, and gain node
@@ -1222,19 +1222,17 @@ Speaker.prototype = {
               me.sound.endPosition / 1000.0 - sound.fadeOutSeconds;
             sound.fadeOutEnd = me.sound.endPosition / 1000.0;
             if (sound.firstPlay) {
-              speaker.startNextMS += sound.fadeOutStart * 1000.0;
+              speaker.startNextMS = sound.fadeOutStart * 1000.0;
               // speaker.songDurations.push(sound.fadeOutStart * 1000.0); for debugging, matt
             }
-          } else {
-            if (sound.firstPlay) {
-              // speaker.songDurations.push(
-              //   sound.endPosition - (sound.startPosition || 0) ||
-              //     me.audio.duration * 1000
-              // ); for debugging, matt
-              speaker.startNextMS +=
-                sound.endPosition - (sound.startPosition || 0) ||
-                me.sound.endPosition;
-            }
+          } else if (sound.firstPlay) {
+            // speaker.songDurations.push(
+            //   sound.endPosition - (sound.startPosition || 0) ||
+            //     me.audio.duration * 1000
+            // ); for debugging, matt
+            speaker.startNextMS =
+              sound.endPosition - (sound.startPosition || 0) ||
+              me.sound.endPosition;
           }
 
           if (sound.startPosition) {
