@@ -290,6 +290,16 @@ function createAudioContext() {
   return context;
 }
 
+function setVolumeForAudioGroup(audioGroup, volume) {
+  if (Speaker.IOS) {
+    if (!brokenWebkit) {
+      return audioGroup.gain.volume = volume;
+    }
+  } else {
+    return audioGroup.audio.volume = volume;
+  }
+}
+
 Speaker.prototype = {
   vol: 100, // 0..100
   outstandingSounds: {}, // Sound instances that have not yet been destroyed
@@ -486,8 +496,8 @@ Speaker.prototype = {
       // when doing first play, ignore 'end' events from the media player
       audio.currentTime = 0;
       audio.play();
-      audio.volume = 0;
       console.log(`Silencing #${audio.id}`);
+      setVolumeForAudioGroup(this.active, 0);
       this.active.sound.looping = true;
 
       // trigger a fake 'timeupdate' event, to see if we really want to stop here
@@ -715,7 +725,6 @@ Speaker.prototype = {
     }
 
     var currentTime = audioGroup.audio.currentTime;
-    var currentVolume = audioGroup.volume;
 
     var calculatedVolume = sound.gainAdjustedVolume(this.vol);
     console.log(`Setting volume on audio#${audioGroup.audio.id} to ${this.vol} (${calculatedVolume}) from ${audioGroup.audio.volume} (${audioGroup.volume})`);
@@ -744,7 +753,7 @@ Speaker.prototype = {
 
       log('ramping ▲ volume', {
         currentTime: currentTime,
-        currentVolume: currentVolume,
+        currentVolume: audioGroup.audio.volume,
         calculatedVolume: calculatedVolume,
         sound: sound,
       });
@@ -771,22 +780,13 @@ Speaker.prototype = {
 
       log('ramping ▼ volume', {
         currentTime: currentTime,
-        currentVolume: currentVolume,
+        currentVolume: audioGroup.audio.volume,
         calculatedVolume: calculatedVolume,
         sound: sound,
       });
     }
 
-    if (currentVolume !== calculatedVolume) {
-      if (Speaker.IOS) {
-        if (!brokenWebkit) {
-          audioGroup.gain.value = calculatedVolume;
-        }
-      } else {
-        audioGroup.audio.volume = calculatedVolume;
-      }
-      audioGroup.volume = calculatedVolume;
-    }
+    setVolumeForAudioGroup(audioGroup, calculatedVolume);
   },
 
   _debugAudioObject: function (object) {
