@@ -93,6 +93,32 @@ const SILENCE = IOS
 
 const TIMEUPDATE_PERIOD = window.requestAnimationFrame ? 1.0 : 0;
 
+window.allAudios = {};
+window.speaker = null;
+window.loggingProxy = {
+  set(obj, prop, value) {
+    console.log('set', {prop, id: `${obj.tagName}#${obj.id}`, value});
+    return Reflect.set(obj, prop, value);
+  }
+};
+
+window.loggingElement = (el) => new Proxy(el, window.loggingProxy);
+window.report = () => {
+  const details = {
+    active: window.allAudios && window.allAudios.active ? window.allAudios.active.volume : null,
+    preparing: window.allAudios && window.allAudios.preparing ? window.allAudios.preparing.volume : null,
+    fading: window.allAudios && window.allAudios.fading ? window.allAudios.fading.volume : null,
+    activeId: window.speaker && window.speaker.active ? window.speaker.active.audio.id : null
+  };
+
+  const debug = document.querySelector('#debug');
+  if (debug) {
+    debug.innerHTML = JSON.stringify(details, undefined, 2);
+  }
+};
+
+setInterval(window.report, 500);
+
 var Sound = function (speaker, options, id, url) {
   var obj = Object.assign(this, Events);
 
@@ -226,6 +252,8 @@ let Speaker = function (options) {
     this.maxRetries = options.maxRetries;
   }
 
+  window.speaker = this;
+
   return Object.assign(this, Events);
 };
 
@@ -332,15 +360,15 @@ Speaker.prototype = {
 
       this.audioContext = createAudioContext();
 
-      this.active = this._createAudio(SILENCE);
-      this.fading = this._createAudio(SILENCE);
+      this.active = this._createAudio(SILENCE, 'active');
+      this.fading = this._createAudio(SILENCE, 'fading');
 
       const pwr = this.prepareWhenReady;
       if (pwr) {
-        this.preparing = this._createAudio(pwr.url);
+        this.preparing = this._createAudio(pwr.url, 'preparing');
         this._prepare(pwr.url, pwr.startPosition);
       } else {
-        this.preparing = this._createAudio(SILENCE);
+        this.preparing = this._createAudio(SILENCE, 'preparing');
       }
     } else {
       log('mobile already initialized');
@@ -366,10 +394,13 @@ Speaker.prototype = {
     return gainNode.gain;
   },
 
-  _createAudio: function (url) {
+  _createAudio: function (url, id = Math.random()) {
     var DEFAULT_VOLUME = 1.0;
 
+    // var audio = loggingElement(new Audio(url));
     var audio = new Audio(url);
+    audio.id = id;
+    window.allAudios[id] = audio;
     audio.crossOrigin = 'anonymous';
     audio.loop = false;
     audio.preload = 'auto';
@@ -456,6 +487,7 @@ Speaker.prototype = {
       audio.currentTime = 0;
       audio.play();
       audio.volume = 0;
+      console.log(`Silencing #${audio.id}`);
       this.active.sound.looping = true;
 
       // trigger a fake 'timeupdate' event, to see if we really want to stop here
@@ -686,6 +718,7 @@ Speaker.prototype = {
     var currentVolume = audioGroup.volume;
 
     var calculatedVolume = sound.gainAdjustedVolume(this.vol);
+    console.log(`Setting volume on audio#${audioGroup.audio.id} to ${this.vol} (${calculatedVolume}) from ${audioGroup.audio.volume} (${audioGroup.volume})`);
 
     if (
       this.startNextMS &&
@@ -1437,6 +1470,7 @@ Speaker.prototype = {
   // set the volume (0-100)
   setVolume: function (value) {
     if (typeof value !== 'undefined') {
+      console.trace('VOLUME:', value);
       this.vol = value;
 
       if (this.active && this.active.sound) {
