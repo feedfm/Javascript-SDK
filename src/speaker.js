@@ -1251,6 +1251,7 @@ Speaker.prototype = {
 
     const play = () => {
       log(sound.id + ' initiating play()', { attempt });
+      this._setVolume(this.active);
 
       this.active.audio
         .play()
