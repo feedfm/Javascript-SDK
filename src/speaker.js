@@ -92,33 +92,6 @@ const SILENCE = IOS
 //const SILENCE = 'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1573592316-88123.m4a';
 
 const TIMEUPDATE_PERIOD = window.requestAnimationFrame ? 1.0 : 0;
-
-window.allAudios = {};
-window.speaker = null;
-window.loggingProxy = {
-  set(obj, prop, value) {
-    console.log('set', {prop, id: `${obj.tagName}#${obj.id}`, value});
-    return Reflect.set(obj, prop, value);
-  }
-};
-
-window.loggingElement = (el) => new Proxy(el, window.loggingProxy);
-window.report = () => {
-  const details = {
-    active: window.allAudios && window.allAudios.active ? window.allAudios.active.volume : null,
-    preparing: window.allAudios && window.allAudios.preparing ? window.allAudios.preparing.volume : null,
-    fading: window.allAudios && window.allAudios.fading ? window.allAudios.fading.volume : null,
-    activeId: window.speaker && window.speaker.active ? window.speaker.active.audio.id : null
-  };
-
-  const debug = document.querySelector('#debug');
-  if (debug) {
-    debug.innerHTML = JSON.stringify(details, undefined, 2);
-  }
-};
-
-setInterval(window.report, 500);
-
 var Sound = function (speaker, options, id, url) {
   var obj = Object.assign(this, Events);
 
@@ -251,8 +224,6 @@ let Speaker = function (options) {
   if (options && options.maxRetries) {
     this.maxRetries = options.maxRetries;
   }
-
-  window.speaker = this;
 
   return Object.assign(this, Events);
 };
@@ -407,10 +378,8 @@ Speaker.prototype = {
   _createAudio: function (url, id = Math.random()) {
     var DEFAULT_VOLUME = 1.0;
 
-    // var audio = loggingElement(new Audio(url));
     var audio = new Audio(url);
     audio.id = id;
-    window.allAudios[id] = audio;
     audio.crossOrigin = 'anonymous';
     audio.loop = false;
     audio.preload = 'auto';
@@ -496,7 +465,6 @@ Speaker.prototype = {
       // when doing first play, ignore 'end' events from the media player
       audio.currentTime = 0;
       audio.play();
-      console.log(`Silencing #${audio.id}`);
       setVolumeForAudioGroup(this.active, 0);
       this.active.sound.looping = true;
 
@@ -727,7 +695,6 @@ Speaker.prototype = {
     var currentTime = audioGroup.audio.currentTime;
 
     var calculatedVolume = sound.gainAdjustedVolume(this.vol);
-    console.log(`Setting volume on audio#${audioGroup.audio.id} to ${this.vol} (${calculatedVolume}) from ${audioGroup.audio.volume} (${audioGroup.volume})`);
 
     if (
       this.startNextMS &&
