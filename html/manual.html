@@ -6,6 +6,16 @@
   <title>JS Bin</title>
   <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
   <script src="../build/feed.js"></script>
+  <style>
+    #diagnostics {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background-color: #f0f0f0;
+      min-width: 10em;
+      min-height: 10em;
+    }
+  </style>
 </head>
 
 <body>
@@ -34,7 +44,7 @@
   </ul>
 
   <div>
-    <label><input type="checkbox" id="crossfade"> crossfade</label>
+    <label><input type="checkbox" id="crossfade"> enable crossfade between stations</label>
   </div>
 
   <div id="listener">
@@ -42,33 +52,109 @@
     <div class="status"></div>
   </div>
 
+  <pre id="diagnostics">
+  </pre>
+
 
   <script>
-    console.log('**** PAGE RELOAD ******');
+    window.logEnabled = false;
+
+    function log(...args) {
+      if (window.logEnabled) {
+        console.log(...args);
+      }
+    }
+
+    function audioGroupSlot(player, audioGroup) {
+      switch(audioGroup) {
+        case player.speaker.active:
+          return `active (volume=${audioGroup.audio.volume}, ${audioGroup.audio?.paused ? 'paused' : 'playing'})`;
+        case player.speaker.preparing:
+          return `preparing (volume=${audioGroup.audio.volume}, ${audioGroup.audio?.paused ? 'paused' : 'playing'})`;
+        case player.speaker.fading:
+          return `fading (volume=${audioGroup.audio.volume}, ${audioGroup.audio?.paused ? 'paused' : 'playing'})`;
+        default:
+          return `disconnected (volume=${audioGroup.audio.volume}, ${audioGroup.audio?.paused ? 'paused' : 'playing'})`;
+      }
+    }
+
+    function describeAudioGroup(player, audioGroup) {
+      if (!audioGroup) {
+        return '';
+      }
+
+      return !audioGroup.sound ? audioGroupSlot(player, audioGroup) : {
+        slot: audioGroupSlot(player, audioGroup),
+        startPosition: audioGroup.sound?.startPosition,
+        endPosition: audioGroup.sound?.endPosition,
+        currentTime: audioGroup.audio?.currentTime,
+        gain: audioGroup.sound?.gain,
+        calculatedVolume: audioGroup.calculatedVolume,
+        fadeInSeconds: audioGroup.sound?.fadeInSeconds,
+        fadeInStart: audioGroup.sound?.fadeInStart,
+        fadeInEnd: audioGroup.sound?.fadeInEnd,
+        fadeOutSeconds: audioGroup.sound?.fadeOutSeconds,
+        fadeOutStart: audioGroup.sound?.fadeOutStart,
+        fadeOutEnd: audioGroup.sound?.fadeOutEnd,
+        paused: audioGroup.audio?.paused,
+      }
+    }
+
+    function updateDiagnostics(player) {
+      const el = document.getElementById('diagnostics');
+
+      if (!el) {
+        return;
+      }
+
+      const diagnostics = {
+        player: {
+          secondsOfCrossfade: player.secondsOfCrossfade,
+          crossfadeIn: player.crossfadeIn,
+        },
+        audioGroups: {
+          group1: describeAudioGroup(player, player.speaker.audioGroups[0]),
+          group2: describeAudioGroup(player, player.speaker.audioGroups[1]),
+          group3: describeAudioGroup(player, player.speaker.audioGroups[2]),
+        },
+        speaker: {
+          elapsedMilliseconds: Math.round(player.speaker.elapsedMilliseconds * 100) / 100,
+          startTime: Math.round(player.speaker.startTime * 100) / 100,
+          startNextMS: Math.round(player.speaker.startNextMS * 100) / 100,
+        },
+      };
+      el.innerText = JSON.stringify(diagnostics, undefined, 2);
+    }
+
+    log('**** PAGE RELOAD ******');
     var simulcast = 'nGwPEXk4js9V4Yp3HcyM2i';
 
     // Create basic player.
-    console.log('pre');
+    log('pre');
+
     var player =  Feed.resumable(60000) ||
         new Feed.Player('demo', 'demo', {
           baseUrl: 'https://stage.feed.fm',
-          debug: true,
+          // debug: true,
           simulcast: simulcast,
           remoteLogging: true
         });
-    console.log("post!");
 
-    console.log('state', player.getCurrentState());
+    setInterval(() => updateDiagnostics(player), 500);
+
+    log("post!");
+
+    log('state', player.getCurrentState());
 
     // Display all the events the player triggers
     player.on('all', function (event) {
-      console.log('EVENT: \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
-      console.log('  state', player.getCurrentState());
-      console.log('  ', player._persist());
+      log('EVENT: \'' + event + '\' with arguments:', Array.prototype.splice.call(arguments, 1));
+      log('  state', player.getCurrentState());
+      log('  ', player._persist());
     });
 
     player.on('stations', function (stations) {
-      console.log('stations', stations);
+      log('stations', stations);
       for (var i = 0; i < stations.length; i++) {
         var $button = $('<button>' + stations[i].name + '</button>').data('id', stations[i].id);
         $button.on('click', function () {
@@ -86,7 +172,7 @@
           var crossfade = $('#crossfade').is(':checked');
 
           player.setStationId(id, crossfade);
-          player.prepare().then(() => console.log('READY!'));
+          player.prepare().then(() => log('READY!'));
         });
         $('.stations').append($button);
       }
@@ -129,7 +215,7 @@
 
     player.tune();
 
-    player.prepare().then(() => { console.log('READY!'); });
+    player.prepare().then(() => { log('READY!'); });
 
     /*
     setInterval(function() {
