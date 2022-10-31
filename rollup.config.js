@@ -15,6 +15,9 @@ export default [
       format: 'iife',
       name: 'Feed'
     },
+    watch: {
+      clearScreen: false
+    },
     plugins: [
       json({ // so we can get version
         include: 'package.json',
@@ -42,6 +45,9 @@ export default [
       file: 'lib/index.js',
       format: 'cjs',
     },
+    watch: {
+      clearScreen: false
+    },
     external: [ 
       'tiny-cookie'
     ],
@@ -66,6 +72,9 @@ export default [
       format: 'iife',
       name: 'Feed',
       sourcemap: true
+    },
+    watch: {
+      clearScreen: false
     },
     plugins: [
       json({ // so we can get version
@@ -92,6 +101,9 @@ export default [
       file: 'build/player.js',
       format: 'iife',
       sourcemap: true
+    },
+    watch: {
+      clearScreen: false
     },
     plugins: [
       resolve(),

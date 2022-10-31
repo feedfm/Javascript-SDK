@@ -92,7 +92,6 @@ const SILENCE = IOS
 //const SILENCE = 'https://dgase5ckewowv.cloudfront.net/feedfm-audio/1573592316-88123.m4a';
 
 const TIMEUPDATE_PERIOD = window.requestAnimationFrame ? 1.0 : 0;
-
 var Sound = function (speaker, options, id, url) {
   var obj = Object.assign(this, Events);
 
@@ -216,6 +215,53 @@ Sound.prototype = {
 };
 
 /**
+ * Adjusts an audio group's volume over time.
+ */
+class VolumeFader {
+  /**
+   * @param {number} start
+   * @param {number} end
+   * @param {number} durationMS
+   * @param {number} ticketRateMS
+   */
+  constructor(audioGroup, startValue, endValue, durationMS, tickRateMS = 500) {
+    this.audioGroup = audioGroup;
+    this.startValue = startValue;
+    this.endValue = endValue;
+    this.durationMS = durationMS;
+    this.tickRateMS = tickRateMS;
+    this.promise = new Promise(resolve => this.resolvePromise = resolve);
+  }
+  
+  start() {
+    this.startedAt = performance.now();
+    this.ticker = setInterval(() => this.tick(), this.tickRateMS);
+    return this.promise;
+  }
+
+  /**
+   * Returns the value over time, as given by `performance.now`
+   */
+  getValueByTime(timeMS) {
+    const percentComplete = Math.min(1, (timeMS - this.startedAt) / this.durationMS);
+    const adjustment = (this.endValue - this.startValue) * percentComplete;
+    return parseFloat(this.startValue + adjustment);
+  }
+
+  tick() {
+    const timeMS = performance.now();
+    const currentValue = this.getValueByTime(timeMS);
+    console.log('fading volume to', currentValue, this.audioGroup.audio.id);
+    setVolumeForAudioGroup(this.audioGroup, currentValue);
+
+    if (timeMS >= this.startedAt + this.durationMS) {
+      clearInterval(this.ticker);
+      this.resolvePromise();
+    }
+  }
+}
+
+/**
  * Create new speaker object. Add event handling to it.
  *
  * @returns Speaker
@@ -262,24 +308,54 @@ function createAudioContext() {
   return context;
 }
 
+function setVolumeForAudioGroup(audioGroup, volume) {
+  if (Speaker.IOS) {
+    if (!brokenWebkit) {
+      return audioGroup.gain.volume = volume;
+    }
+  } else {
+    return audioGroup.audio.volume = volume;
+  }
+}
+
+function fadeOutAudioGroup(audioGroup) {
+  if (!audioGroup.fadeHandler) {
+    const currentVolume = audioGroup.audio.volume;
+    audioGroup.fadeHandler = new VolumeFader(audioGroup, currentVolume, 0, audioGroup.sound.fadeOutSeconds * 1000);
+    audioGroup.fadeHandler.start().then(() => {
+      console.log('fade out complete');
+      audioGroup.fadeHandler = null;
+      audioGroup.sound = null;
+      revoke(audioGroup.audio);
+      audioGroup.audio.src = SILENCE;
+    });
+  }
+}
+
 Speaker.prototype = {
   vol: 100, // 0..100
   outstandingSounds: {}, // Sound instances that have not yet been destroyed
 
   audioContext: null, // for mobile safari volume adjustment
 
-  startTime: 0, // timestamp when playback should have started
+  /**
+   * Outside of playback, this will be 0. When playback is paused, it will be null.
+   *
+   * The rest of the time, it is the time delta (milliseconds) between when the document was loaded
+   * and the most recent AudioTimeUpdate event. This is used to measure `elapsedMilliseconds`.
+   */
+  startTime: 0,
   elapsedMilliseconds: 0, // elapsed milliseconds of measured playback time
   startNextMS: 0, // when the next song should start playback, as measured by elapsedMilliseconds
 
-  active: null, // active audio element, sound, and gain node
-  fading: null, // fading audio element, sound, and gain node
-  preparing: null, // preparing audio element, sound, and gain node
+  audioGroups: [], // holds all audio groups in a fixed list, primarily for diagnostic purposes
+  active: null, // the currently active audio group
+  fading: null, // the currently fading-out audio group
+  preparing: null, // the audio group that should be used to play next
 
   responses: null, // array of response headers from preloading
 
   maxRetries: 10, // max number of times to retry preloading a song
-
   // drifts: [], // for debugging, matt
   // songDurations: [], // for debugging, matt
   // songCount: 0, // for debugging, matt
@@ -332,15 +408,15 @@ Speaker.prototype = {
 
       this.audioContext = createAudioContext();
 
-      this.active = this._createAudio(SILENCE);
-      this.fading = this._createAudio(SILENCE);
+      this.active = this._createAudio(SILENCE, 'active');
+      this.fading = this._createAudio(SILENCE, 'fading');
 
       const pwr = this.prepareWhenReady;
       if (pwr) {
-        this.preparing = this._createAudio(pwr.url);
+        this.preparing = this._createAudio(pwr.url, 'preparing');
         this._prepare(pwr.url, pwr.startPosition);
       } else {
-        this.preparing = this._createAudio(SILENCE);
+        this.preparing = this._createAudio(SILENCE, 'preparing');
       }
     } else {
       log('mobile already initialized');
@@ -383,13 +459,18 @@ Speaker.prototype = {
       gain = this._createAudioGainNode(audio);
     }
 
-    return {
+    const audioGroup = {
       audio: audio,
       sound: null,
       gain: gain,
       volume: DEFAULT_VOLUME,
       canplaythrough: false,
+      fadeHandler: null,
     };
+
+    this.audioGroups.push( audioGroup );
+
+    return audioGroup;
   },
 
   _addEventListeners: function (audio) {
@@ -455,7 +536,7 @@ Speaker.prototype = {
       // when doing first play, ignore 'end' events from the media player
       audio.currentTime = 0;
       audio.play();
-      audio.volume = 0;
+      setVolumeForAudioGroup(this.active, 0);
       this.active.sound.looping = true;
 
       // trigger a fake 'timeupdate' event, to see if we really want to stop here
@@ -526,21 +607,6 @@ Speaker.prototype = {
       return;
     }
 
-    if (audio === this.fading.audio && this.fading.sound) {
-      if (
-        this.fading.sound.endPosition &&
-        audio.currentTime >= ( this.fading.sound.endPosition / 1000 )
-      ) {
-        this.fading.sound = null;
-        revoke(this.fading.audio);
-        this.fading.audio.src = SILENCE;
-      } else {
-        this._setVolume(this.fading);
-      }
-
-      return;
-    }
-
     if (audio !== this.active.audio) {
       return;
     }
@@ -569,13 +635,15 @@ Speaker.prototype = {
         }
 
         if (this.active.sound.fadeOutSeconds) {
-        // song hit start of fade out
+          // song hit start of fade out
           this._setVolume(this.active);
 
           // active becomes fading, and fading becomes active
           let fading = this.fading;
           this.fading = this.active;
           this.active = fading;
+
+          fadeOutAudioGroup(this.fading);
 
           this.active.sound = null; // not used any more
 
@@ -683,7 +751,6 @@ Speaker.prototype = {
     }
 
     var currentTime = audioGroup.audio.currentTime;
-    var currentVolume = audioGroup.volume;
 
     var calculatedVolume = sound.gainAdjustedVolume(this.vol);
 
@@ -711,7 +778,7 @@ Speaker.prototype = {
 
       log('ramping ▲ volume', {
         currentTime: currentTime,
-        currentVolume: currentVolume,
+        currentVolume: audioGroup.audio.volume,
         calculatedVolume: calculatedVolume,
         sound: sound,
       });
@@ -729,31 +796,15 @@ Speaker.prototype = {
       this.elapsedMilliseconds >= this.startNextMS &&
       this.elapsedMilliseconds <= this.startNextMS + sound.fadeOutEnd * 1000.0
     ) {
-      // ramp down from 100% to 0
-      calculatedVolume =
-        (1 -
-          (this.elapsedMilliseconds - this.startNextMS) /
-            ((sound.fadeOutEnd - sound.fadeOutStart) * 1000.0)) *
-        calculatedVolume;
-
       log('ramping ▼ volume', {
         currentTime: currentTime,
-        currentVolume: currentVolume,
+        currentVolume: audioGroup.audio.volume,
         calculatedVolume: calculatedVolume,
         sound: sound,
       });
     }
 
-    if (currentVolume !== calculatedVolume) {
-      if (Speaker.IOS) {
-        if (!brokenWebkit) {
-          audioGroup.gain.value = calculatedVolume;
-        }
-      } else {
-        audioGroup.audio.volume = calculatedVolume;
-      }
-      audioGroup.volume = calculatedVolume;
-    }
+    setVolumeForAudioGroup(audioGroup, calculatedVolume);
   },
 
   _debugAudioObject: function (object) {
@@ -1222,9 +1273,9 @@ Speaker.prototype = {
     }
 
     // swap prepared -> active
-    var active = this.active;
+    var swap = this.active;
     this.active = this.preparing;
-    this.preparing = active;
+    this.preparing = swap;
 
     this.preparing.canplaythrough = false;
 
@@ -1245,12 +1296,13 @@ Speaker.prototype = {
     sound.awaitingPlayResponse = true;
     this.active.sound = sound;
 
-    var me = this.active;
+    var active = this.active;
 
     var attempt = 1;
 
     const play = () => {
       log(sound.id + ' initiating play()', { attempt });
+      this._setVolume(this.active);
 
       this.active.audio
         .play()
@@ -1261,12 +1313,12 @@ Speaker.prototype = {
             log(sound.id + ' play() succeeded, but sound has been destroyed');
 
             // this sound was killed before playback began - make sure to stop it
-            if (me.audio && me.audio.src === sound.url) {
+            if (active.audio && active.audio.src === sound.url) {
               log(sound.id + ' being paused and unloaded');
-              me.audio.pause();
+              active.audio.pause();
 
-              revoke(me.audio);
-              me.audio.src = SILENCE;
+              revoke(active.audio);
+              active.audio.src = SILENCE;
             }
 
             return;
@@ -1274,9 +1326,9 @@ Speaker.prototype = {
           log(sound.id + ' play() succeeded');
           // configure fade-out now that metadata is loaded
           if (sound.fadeOutSeconds && sound.fadeOutEnd === 0) {
-            sound.fadeOutStart =
-              me.sound.endPosition / 1000.0 - sound.fadeOutSeconds;
-            sound.fadeOutEnd = me.sound.endPosition / 1000.0;
+            sound.fadeOutStart = active.sound.endPosition / 1000.0 - sound.fadeOutSeconds;
+            sound.fadeOutEnd = active.sound.endPosition / 1000.0;
+
             if (sound.firstPlay) {
               speaker.startNextMS += sound.fadeOutStart * 1000.0;
               // speaker.songDurations.push(sound.fadeOutStart * 1000.0); for debugging, matt
@@ -1284,25 +1336,28 @@ Speaker.prototype = {
           } else if (sound.firstPlay) {
             // speaker.songDurations.push(
             //   sound.endPosition - (sound.startPosition || 0) ||
-            //     me.audio.duration * 1000
+            //     active.audio.duration * 1000
             // ); for debugging, matt
-            speaker.startNextMS +=
-              sound.endPosition - (sound.startPosition || 0) ||
-              me.sound.endPosition;
+            if (sound.fadeOutStart) {
+              speaker.startNextMS += sound.fadeOutStart * 1000;
+            } else {
+              const { startPosition = 0, endPosition } = active.sound;
+              speaker.startNextMS += (endPosition - startPosition) || endPosition;
+            }
           }
 
           if (sound.startPosition) {
             log('updating start position');
-            me.audio.currentTime = sound.startPosition / 1000;
+            active.audio.currentTime = sound.startPosition / 1000;
             log('updated');
           }
 
-          var paused = me.audio.paused;
+          var paused = active.audio.paused;
 
           sound.trigger('play');
 
-          if (me.pauseAfterPlay) {
-            me.audio.pause();
+          if (active.pauseAfterPlay) {
+            active.audio.pause();
           } else if (paused) {
             sound.trigger('pause');
           }
