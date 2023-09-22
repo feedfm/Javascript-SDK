@@ -349,7 +349,7 @@ Player.prototype._onStations = function(stations) {
 Player.prototype._onStationChanged = function(stationId, station) {
   this._station = station;
 
-  if (this.serverAssignedCrossfade && station.options && ('crossfade_seconds' in station.options)) {
+  if (station.options && ('crossfade_seconds' in station.options)) {
     // apply station level crossfade, if available
     this.secondsOfCrossfade = station.options.crossfade_seconds;
     
