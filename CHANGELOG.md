@@ -1,5 +1,9 @@
 # Changelog
 
+1.103.6
+- 'invalidate' calls didn't have an exit condition after a failed call - this was added.
+
+
 1.103.5
 
 - Start subsequent song before response to '/play/id/complete'
