@@ -505,7 +505,7 @@ Session.prototype._failInvalidate = function (delay, play, response) {
 
   if (delay < 3000) {
     setTimeout(() => {
-      self._sendInvalidate(play);
+      self._sendInvalidate(play, delay);
     }, delay);
 
   } else {
